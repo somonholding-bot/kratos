@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kratos · Centro de mando</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/kratos-scene.css">
+  <link rel="icon" href="/icon.png">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"></span>KRATOS</div>
+    <div id="state-chip" class="chip" data-state="desconectado">Desconectado</div>
+    <div id="mode-chip" class="chip subtle">Modo demostración · sin IA · 0 USD</div>
+    <div class="controls">
+      <button id="btn-ptt" class="ctl ptt" title="Mantén pulsado (o la barra espaciadora) mientras hablas">🎙 Mantén para hablar</button>
+      <button id="btn-mute" class="ctl">Silenciar micrófono</button>
+      <button id="btn-hush" class="ctl" disabled title="Detiene la respuesta hablada">Interrumpir voz</button>
+      <button id="btn-cancel" class="ctl" title="Cancelar la tarea en ejecución">Cancelar tarea</button>
+      <button id="btn-pause" class="ctl">Pausar automatizaciones</button>
+      <button id="btn-stop" class="ctl danger">PARADA DE EMERGENCIA</button>
+    </div>
+  </header>
+  <div id="mic-live" role="status" hidden><span class="dot"></span> MICRÓFONO ACTIVO — suelta para enviar · Esc para cancelar <span class="meter"><i id="meter"></i></span></div>
+  <div class="layout">
+    <nav id="nav" aria-label="Pantallas"></nav>
+    <div class="content">
+      <section id="stage" aria-label="KRATOS" hidden>
+        <div id="scene"></div>
+        <div class="stage-side">
+          <div id="scene-caption" class="meta" aria-live="polite"></div>
+          <ul id="agent-list" class="agent-list" aria-label="Especialistas"></ul>
+          <div id="agent-detail" class="card" hidden aria-live="polite"></div>
+        </div>
+      </section>
+      <main id="main" tabindex="-1"></main>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

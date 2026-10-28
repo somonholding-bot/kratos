@@ -1,0 +1,23 @@
+/* Escena de KRATOS */
+.kscene { position: relative; overflow: hidden; background: #04060d; border-radius: 14px; isolation: isolate; }
+.kscene-canvas { position: absolute; inset: 0; display: block; cursor: default; }
+.kscene-fox { position: absolute; left: 0; top: 0; pointer-events: none; transform-origin: center; will-change: transform; z-index: 1; }
+.kscene-fox svg { display: block; width: 100%; height: auto; overflow: visible; }
+.kscene-fox .fx-head { transform-box: view-box; transform-origin: 220px 175px; transition: transform .9s cubic-bezier(.2,.7,.2,1); }
+.kscene-fox .fx-ear-front, .kscene-fox .fx-ear-back { transform-box: view-box; transform-origin: 215px 108px; }
+.kscene-fox .fx-body { transform-box: view-box; transform-origin: 240px 382px; animation: fx-breathe 4.5s ease-in-out infinite; }
+.kscene-fox .fx-eye { transform-box: fill-box; transform-origin: center; animation: fx-blink 7s infinite; }
+.kscene[data-state="reposo"] .fx-head { animation: fx-look 14s ease-in-out infinite; }
+.kscene[data-state="reposo"] .fx-ear-front { animation: fx-ear 9s ease-in-out infinite; }
+.kscene-fox.walking { animation: fx-step .9s ease-in-out infinite; }
+.kscene:not([data-state="reposo"]) .fx-head { transform: rotate(-7deg) translateY(-3px); }   /* atención: levanta la cabeza */
+.kscene[data-state="escuchando"] .fx-ear-front, .kscene[data-state="escuchando"] .fx-ear-back { transform: rotate(-6deg); }
+.kscene[data-state="detenido"] .fx-head { transform: rotate(10deg) translateY(4px); }
+.kscene[data-state="detenido"] .kscene-fox { filter: saturate(.4) brightness(.8); }
+@keyframes fx-breathe { 50% { transform: scale(1.012, 1.02); } }
+@keyframes fx-blink { 0%, 96%, 100% { transform: scaleY(1); } 98% { transform: scaleY(.1); } }
+@keyframes fx-look { 0%, 30%, 100% { transform: rotate(0deg); } 40%, 55% { transform: rotate(-9deg); } 65%, 80% { transform: rotate(6deg) translateY(2px); } }
+@keyframes fx-ear { 0%, 88%, 100% { transform: rotate(0); } 91% { transform: rotate(-8deg); } 94% { transform: rotate(3deg); } }
+@keyframes fx-step { 50% { margin-top: -3px; } }
+.reduce-motion .kscene *, .kscene.reduced * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .kscene * { animation: none !important; transition: none !important; } }

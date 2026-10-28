@@ -1,0 +1,116 @@
+import type { Db } from '../db.ts';
+import { audit, emergencyStop, getState } from './state.ts';
+import { createTask } from './tasks.ts';
+import { requestApproval } from './approvals.ts';
+import { AI_ACCOUNT, think } from './brain.ts';
+
+// Modo demostración (sin IA): interpreta un conjunto fijo de órdenes en español.
+// No puede aprobar, gastar ni reanudar: esas acciones solo existen como botones del panel.
+// Cuando se conecte Claude (Etapa E), este módulo pasa a ser la vía de respaldo.
+
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?(kratos|jarvis)(\W+kratos)?\b\W*/, '').trim();
+
+export type Reply = { text: string; spoken: string; action?: string };
+
+export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto'): Promise<Reply> {
+  const text = raw.slice(0, 2000);
+  await db.query(`INSERT INTO messages (role, channel, content) VALUES ('usuario', $1, $2)`, [channel, text]);
+  const t = norm(text);
+  // Seguridad primero y sin IA: parar, reanudar y aprobar se resuelven siempre igual.
+  const SAFETY = /\b(deten|detener|detenga|parar|alto)\b.*\b(todo|todas|acciones)\b|emergencia|\b(reanuda|reanudar)\b|(aprueba|autoriza|autorizo|apruebo)/;
+  let reply: Reply;
+  if (SAFETY.test(t)) reply = await interpret(db, t, text);
+  else {
+    const ai = await think(db, channel);
+    if ('text' in ai) reply = ai;
+    else {
+      reply = await interpret(db, t, text);
+      const why = ai.unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
+        ai.unavailable.startsWith('presupuesto') ? `IA en pausa: sin presupuesto disponible en «${AI_ACCOUNT}»` : `IA no disponible (${ai.unavailable})`;
+      reply = { ...reply, text: `[${why}; respondo en modo demostración]\n${reply.text}` };
+    }
+  }
+  await db.query(`INSERT INTO messages (role, channel, content) VALUES ('jarvis', $1, $2)`, [channel, reply.text]);
+  return reply;
+}
+
+async function interpret(db: Db, t: string, original: string): Promise<Reply> {
+  if (/\b(deten|detener|detenga|parar|alto)\b.*\b(todo|todas|acciones)\b|emergencia/.test(t)) {
+    const r = await emergencyStop(db, 'propietario (conversación)');
+    return {
+      text: `Parada de emergencia activada. Tareas canceladas: ${r.cancelled.length ? r.cancelled.join(', ') : 'ninguna en curso'}. ${r.external.campanas_externas} Para reanudar, usa el botón «Reanudar» del panel.`,
+      spoken: 'Parada de emergencia activada. Todo detenido.', action: 'emergency_stop',
+    };
+  }
+  if (/\b(reanuda|reanudar|continua|activa)\b/.test(t)) {
+    return { text: 'Reanudar exige confirmación en el panel (botón «Reanudar»). Por seguridad no lo hago desde la conversación.', spoken: 'Confírmalo en el panel, por favor.' };
+  }
+  if (/(aprueba|autoriza|autorizo|apruebo)/.test(t)) {
+    return { text: 'No acepto aprobaciones por conversación ni por voz. Revisa la pantalla «Aprobaciones» y decide allí.', spoken: 'Las aprobaciones se confirman en el panel.' };
+  }
+
+  const money = t.match(/tienes?\s+(\d+(?:[.,]\d{1,2})?)\s*(?:usd|dolares|\$)?\s+(?:para|en)\s+(.+)/);
+  if (money) {
+    const cents = Math.round(Number(money[1].replace(',', '.')) * 100);
+    let purpose = original.slice(original.toLowerCase().lastIndexOf(money[2].split(' ')[0])).trim().slice(0, 120) || money[2];
+    if (/\b(ia|claude|inteligencia|api)\b/.test(money[2])) purpose = AI_ACCOUNT;
+    const a = await requestApproval(db, {
+      kind: 'asignacion_presupuesto', description: `Asignar ${(cents / 100).toFixed(2)} USD a «${purpose}»`,
+      accountLabel: purpose, maxAmountCents: cents, validDays: 7, requestedBy: 'propietario (conversación)',
+      scope: { origen: 'conversación', valid_until: new Date(Date.now() + 30 * 86400_000).toISOString() },
+    });
+    return {
+      text: `He registrado la propuesta #${a.id}: ${a.description}. No tendrá efecto hasta que la confirmes en «Aprobaciones» (vigencia de la asignación: 30 días).`,
+      spoken: `Propuesta registrada. Confírmala en el panel.`, action: 'approval_requested',
+    };
+  }
+
+  if (/(como van|resumen|estado|negocios)/.test(t)) return { ...(await summary(db)) };
+  if (/(que hiciste|actividad|registro|historial)/.test(t)) {
+    const { rows } = await db.query(`SELECT at, actor, action FROM audit_log ORDER BY id DESC LIMIT 8`);
+    const lines = rows.map((r) => `· ${new Date(r.at).toLocaleString('es')} — ${r.actor}: ${r.action}`).join('\n');
+    return { text: `Últimas acciones registradas:\n${lines}\nCoste observado: 0 USD (sin servicios de pago conectados).`, spoken: `Te muestro las últimas ${rows.length} acciones en pantalla.` };
+  }
+  if (/(presupuesto|dinero|saldo|gasto)/.test(t)) {
+    const { rows } = await db.query(`SELECT label, limit_cents, reserved_cents, spent_cents FROM budget_accounts ORDER BY id`);
+    const total = rows.reduce((s, r) => s + Number(r.limit_cents), 0);
+    return { text: `Presupuesto asignado en total: ${(total / 100).toFixed(2)} USD.\n${rows.map((r) => `· ${r.label}: límite ${(r.limit_cents / 100).toFixed(2)}, reservado ${(r.reserved_cents / 100).toFixed(2)}, gastado ${(r.spent_cents / 100).toFixed(2)}`).join('\n')}\nPara asignar, dime por ejemplo: «tienes 50 dólares para pruebas de anuncios».`, spoken: total ? `Hay ${(total / 100).toFixed(0)} dólares asignados.` : 'No hay dinero asignado. No puedo gastar nada.' };
+  }
+  if (/(pendiente|aprobaciones)/.test(t)) {
+    const { rows } = await db.query(`SELECT id, description FROM approvals WHERE status = 'pendiente' ORDER BY id`);
+    return { text: rows.length ? rows.map((r) => `#${r.id} ${r.description}`).join('\n') : 'No hay aprobaciones pendientes.', spoken: `${rows.length} aprobaciones pendientes.` };
+  }
+  const nt = t.match(/^(?:crea|anade|agrega|nueva)\s+(?:una\s+)?tarea\s*:?\s*(.+)/);
+  if (nt) {
+    const biz = (await db.query(`SELECT id FROM businesses ORDER BY is_demo, id LIMIT 1`)).rows[0];
+    const title = original.slice(original.length - nt[1].length).trim();
+    const { task } = await createTask(db, {
+      businessId: biz.id, ownerFunction: 'kratos', type: 'agente', title, objective: title, status: 'esperando_ia',
+      expectedResult: 'Por definir con el Director cuando haya IA conectada', verification: 'Revisión del propietario', createdBy: 'propietario (conversación)',
+    });
+    return { text: `Tarea #${task.id} creada: «${title}». Queda en estado «esperando IA» porque Kratos aún no tiene Claude conectado.`, spoken: 'Tarea creada.' };
+  }
+  if (/(nueva app|nueva aplicacion|lanzamiento)/.test(t)) {
+    return { text: 'Para preparar un lanzamiento necesito el expediente de la app: nombre, enlace, plataformas, audiencia, mercado e ingresos. Créala en «Negocios y productos». La planificación automática llegará al conectar Claude.', spoken: 'Necesito los datos de la app. Te dejo los detalles en pantalla.' };
+  }
+  await audit(db, 'jarvis', 'conversacion.no_entendida', { texto: original.slice(0, 200) });
+  return {
+    text: 'Estoy en modo demostración, sin IA conectada. Entiendo: «¿cómo van mis negocios?», «¿qué hiciste?», «presupuesto», «tienes N dólares para X», «crea una tarea: …», «aprobaciones pendientes» y «detén todas las acciones».',
+    spoken: 'Aún no entiendo eso. Te dejo en pantalla lo que puedo hacer.',
+  };
+}
+
+async function summary(db: Db): Promise<Reply> {
+  const s = await getState(db);
+  const biz = (await db.query(`SELECT b.name, b.is_demo,
+      (SELECT count(*) FROM tasks t WHERE t.business_id = b.id AND t.status IN ('pendiente','en_ejecucion','esperando_ia')) AS abiertas,
+      (SELECT count(*) FROM tasks t WHERE t.business_id = b.id AND t.status = 'completada' AND t.updated_at > now() - interval '24 hours') AS hechas24
+    FROM businesses b ORDER BY b.is_demo, b.id`)).rows;
+  const pend = (await db.query(`SELECT count(*)::int AS n FROM approvals WHERE status = 'pendiente'`)).rows[0].n;
+  const lines = biz.map((b) => `· ${b.name}${b.is_demo ? ' [DEMO]' : ''}: ${b.abiertas} tareas abiertas, ${b.hechas24} completadas en 24 h`).join('\n');
+  const flags = [s.emergency_stop ? 'PARADA DE EMERGENCIA ACTIVA' : null, s.automations_paused ? 'automatizaciones en pausa' : null].filter(Boolean).join(' · ');
+  return {
+    text: `${flags ? flags + '\n' : ''}${lines}\nAprobaciones pendientes: ${pend}. Modo: demostración (sin IA, 0 USD). No hay negocios reales con datos conectados todavía.`,
+    spoken: `Tienes ${biz.length} negocios registrados y ${pend} aprobaciones pendientes. Los detalles están en pantalla.`,
+  };
+}
