@@ -21,7 +21,7 @@ const AGENTS = [
 ];
 const QUALITY = {
   baja: { dpr: 1, bloom: false, stars: 11000, bright: 20, galaxies: 6, fox: 5000, strands: 4, neurons: 3000, fire: 500, field: 450 },
-  media: { dpr: 1.5, bloom: true, stars: 28000, bright: 48, galaxies: 12, fox: 11000, strands: 6, neurons: 7000, fire: 1100, field: 900 },
+  media: { dpr: 1.25, bloom: true, stars: 28000, bright: 48, galaxies: 12, fox: 11000, strands: 6, neurons: 7000, fire: 1100, field: 900 },
   alta: { dpr: 2, bloom: true, stars: 44000, bright: 80, galaxies: 18, fox: 16000, strands: 8, neurons: 12000, fire: 1800, field: 1500 },
 };
 const STATES = ['reposo', 'escuchando', 'pensando', 'hablando', 'ejecutando', 'esperando_permiso', 'detenido'];
@@ -452,6 +452,30 @@ function makeFox(q) {
   return { group, furU, fireU };
 }
 
+// ---------- fondo precalculado ----------
+// La nebulosa casi no cambia: se dibuja una vez en una textura y se reutiliza en cada fotograma.
+let bgTarget = null;
+function bakeBackground() {
+  bgTarget?.dispose();
+  const sc = new THREE.Scene(); sc.add(makeDeepSky(U));
+  bgTarget = new THREE.WebGLRenderTarget(Math.round(innerWidth * 0.8), Math.round(innerHeight * 0.8), { type: THREE.HalfFloatType });
+  const prevTime = U.time.value; U.time.value = 0;
+  renderer.setRenderTarget(bgTarget); renderer.render(sc, new THREE.Camera()); renderer.setRenderTarget(null);
+  U.time.value = prevTime;
+  sc.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+  return bgTarget.texture;
+}
+function makeBackgroundQuad() {
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: { uTex: { value: bakeBackground() }, uDim: U.dim },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.9999, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform sampler2D uTex; uniform float uDim; void main(){ gl_FragColor = vec4(texture2D(uTex, vUv).rgb * uDim, 1.0); }`,
+    depthWrite: false, depthTest: false,
+  }));
+  quad.frustumCulled = false; quad.renderOrder = -10;
+  return quad;
+}
+
 // ---------- órbitas de energía (filamentos dorados y azules con chispas) ----------
 function makeOrbits(anchors) {
   const group = new THREE.Group(), mats = [];
@@ -604,7 +628,7 @@ function build() {
   if (world) { scene.remove(world.root); world.root.traverse((o) => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
   const q = QUALITY[ui.quality];
   const root = new THREE.Group();
-  root.add(makeDeepSky(U));  // espacio negro con estrellas (sin bruma de color)
+  const background = makeBackgroundQuad(); root.add(background);  // nebulosa precalculada
   const stars = makeStarfield(q.stars, U); root.add(stars);
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
@@ -628,7 +652,7 @@ function build() {
   thought.lines.visible = false; // el zorro ya está dentro de la mente
   root.add(thought.lines);
   scene.add(root);
-  world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
+  world = { root, background, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.75, 0.55, 0.55);
@@ -789,7 +813,7 @@ function resize() {
   camera.fov = camera.aspect < 1.2 ? 58 : 42;
   camera.updateProjectionMatrix();
   composer?.setPixelRatio(pr); composer?.setSize(innerWidth, innerHeight);
-  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); }
+  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); world.background.material.uniforms.uTex.value = bakeBackground(); }
   if (ui.reduced || ui.paused) frame();
 }
 

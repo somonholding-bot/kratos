@@ -134,19 +134,29 @@ export function makeNebula(U) {
         float along = dot(p, uBand), across = dot(p, vec2(-uBand.y, uBand.x));
         float band = exp(-across * across * 16.0);
         float glow = fbm(vec2(along * 3.0, across * 9.0) + t);
+        float grain = pow(n(p * 900.0), 18.0) * 2.0 + pow(n(p * 520.0 + 3.1), 22.0) * 1.5;   // estrellas no resueltas
         // espacio negro profundo: solo una franja galáctica tenue y neutra, y estrellas no resueltas
         vec3 col = vec3(0.0015, 0.0018, 0.003);
         col += vec3(0.055, 0.05, 0.06) * band * pow(glow, 2.0) * 0.6;
-        col += vec3(0.9, 0.92, 1.0) * grain * (0.35 + band * 0.5);
-        // nebulosas: nubes violeta, azul y magenta, más densas hacia los bordes
-        float edge = smoothstep(0.25, 0.85, length(p * vec2(0.75, 1.1)));
-        float n1 = fbm(p * 2.6 + vec2(t * 2.0, -t));
-        float n2 = fbm(p * 4.2 - vec2(t * 1.4, t * 0.7) + n1 * 1.8);
-        float clouds = pow(n2, 3.2) * edge;
-        col += vec3(0.30, 0.12, 0.55) * clouds * 2.2;                                  // violeta
-        col += vec3(0.08, 0.22, 0.55) * pow(n1, 3.0) * edge * 1.6;                      // azul
-        col += vec3(0.45, 0.10, 0.30) * pow(fbm(p * 3.3 + 7.0), 4.0) * edge * 1.3;      // magenta
-        col += vec3(0.75, 0.55, 0.30) * pow(fbm(p * 6.0 - 3.0), 7.0) * edge * 0.25;     // polvo dorado
+        col += vec3(0.9, 0.92, 1.0) * grain * (0.08 + band * 0.12);
+        // nebulosas de color con nubes de estrellas (precalculado una vez: puede ser rico sin coste)
+        float edge = 0.12 + 0.88 * smoothstep(0.2, 0.95, length(p * vec2(0.75, 1.1)));   // el centro queda algo más limpio
+        vec2 w = p + 0.35 * vec2(fbm(p * 1.6 + 3.1), fbm(p * 1.6 - 5.7));                // deformación: formas de nube
+        float a1 = fbm(w * 2.2 + vec2(1.3, -0.7));
+        float a2 = fbm(w * 3.6 - vec2(4.1, 2.2) + a1 * 1.5);
+        float a3 = fbm(w * 5.5 + 9.0);
+        float dust = smoothstep(0.52, 0.78, fbm(w * 7.0 - 2.0));                        // polvo oscuro que recorta
+        vec3 neb = vec3(0.0);
+        neb += vec3(0.45, 0.16, 0.75) * pow(a2, 2.4);                                    // violeta
+        neb += vec3(0.10, 0.32, 0.85) * pow(a1, 2.8);                                    // azul
+        neb += vec3(0.85, 0.22, 0.55) * pow(a3, 4.0) * 0.9;                              // magenta
+        neb += vec3(1.0, 0.62, 0.28) * pow(a2 * a3, 3.0) * 1.6;                          // brillo dorado en los núcleos
+        neb += vec3(0.20, 0.75, 0.80) * pow(fbm(w * 2.8 + 11.0), 5.0) * 0.8;             // turquesa
+        neb *= (1.0 - dust * 0.75) * edge;
+        col += neb * 0.28;
+        // nubes de estrellas: más densas dentro de la nebulosa
+        float cluster = pow(n(p * 1100.0), 30.0) * 3.0 + pow(n(p * 640.0 + 7.7), 26.0) * 2.0;
+        col += vec3(0.95, 0.95, 1.0) * cluster * (0.04 + pow(a2, 2.0) * 0.5) * edge;
         gl_FragColor = vec4(col * uDim, 1.0);
       }`,
     depthWrite: false, depthTest: false,
