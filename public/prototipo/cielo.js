@@ -36,10 +36,10 @@ export function makeStarfield(count, U) {
     uniforms: { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio },
     vertexShader: `attribute vec3 color; attribute float size; attribute float seed; varying vec3 vC; varying float vA; uniform float uTime; uniform float uPR;
       void main(){ vC = color; vA = (0.18 + 0.48 * smoothstep(0.5, 2.2, size)) * (0.9 + 0.1 * sin(uTime * (0.8 + seed * 2.0) + seed * 60.0));
-        vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * uPR; gl_Position = projectionMatrix * mv; }`,
+        vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * 1.7 * uPR; gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying vec3 vC; varying float vA; uniform float uDim;
       void main(){ float d = length(gl_PointCoord - 0.5); float core = smoothstep(0.5, 0.0, d); core *= core;
-        gl_FragColor = vec4(vC * core * vA * 0.72 * uDim, core * vA); }`,
+        gl_FragColor = vec4(vC * core * vA * 2.4 * uDim, core * vA); }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
 }

@@ -11,18 +11,18 @@ import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky
 import { planetMaterial, ringMaterial } from './astros.js?v=cinema-4';
 
 const AGENTS = [
-  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.56, role: 'Propósito e identidad' },
-  { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.25, role: 'Investigación y comunicación' },
-  { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.36, role: 'Belleza, arte y sensibilidad' },
-  { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.32, role: 'Iniciativa y ejecución' },
-  { id: 'jupiter', real: '#e5cfae', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.5, role: 'Expansión y oportunidades' },
-  { id: 'saturno', real: '#ead7a8', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.4, role: 'Estructura, tiempo y límites' },
-  { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.3, role: 'Memoria, hábitos y cuidado' },
+  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.98, role: 'Propósito e identidad' },
+  { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.44, role: 'Investigación y comunicación' },
+  { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.63, role: 'Belleza, arte y sensibilidad' },
+  { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.56, role: 'Iniciativa y ejecución' },
+  { id: 'jupiter', real: '#e5cfae', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.88, role: 'Expansión y oportunidades' },
+  { id: 'saturno', real: '#ead7a8', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.7, role: 'Estructura, tiempo y límites' },
+  { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.53, role: 'Memoria, hábitos y cuidado' },
 ];
 const QUALITY = {
-  baja: { dpr: 1, bloom: false, stars: 550, bright: 3, galaxies: 1, fox: 3200, strands: 3, neurons: 500, fire: 500 },
-  media: { dpr: 1.5, bloom: false, stars: 900, bright: 5, galaxies: 2, fox: 6500, strands: 5, neurons: 900, fire: 1100 },
-  alta: { dpr: 2, bloom: false, stars: 1400, bright: 7, galaxies: 3, fox: 10000, strands: 7, neurons: 1400, fire: 1800 },
+  baja: { dpr: 1, bloom: false, stars: 7000, bright: 20, galaxies: 6, fox: 3200, strands: 4, neurons: 700, fire: 500, field: 450 },
+  media: { dpr: 1.5, bloom: true, stars: 18000, bright: 48, galaxies: 12, fox: 6500, strands: 6, neurons: 1400, fire: 1100, field: 900 },
+  alta: { dpr: 2, bloom: true, stars: 30000, bright: 80, galaxies: 18, fox: 10000, strands: 8, neurons: 2400, fire: 1800, field: 1500 },
 };
 const STATES = ['reposo', 'escuchando', 'pensando', 'hablando', 'ejecutando', 'esperando_permiso', 'detenido'];
 const STATE_NAME = { reposo: 'en reposo', escuchando: 'escuchando', pensando: 'pensando', hablando: 'hablando', ejecutando: 'ejecutando', esperando_permiso: 'esperando permiso', detenido: 'detenido' };
@@ -35,7 +35,27 @@ const ui = {
   reduced: prefersReduced || store('kratos.proto.reduced') === '1',
   paused: false, muted: false, state: 'reposo', stateSimulated: false,
 };
-const real = { agents: [], businesses: [], overview: null, connected: false };
+const real = { agents: [], businesses: [], overview: null, connected: false, state: 'reposo' };
+// Voz real desde la app de Mac: despertar, nivel del micrófono y pulsos de cada palabra de KRATOS
+const voice = { nativeState: null, enabled: true, awake: false, wokeAt: 0, level: 0, pulse: 0, thinking: false };
+const nativeBridge = window.webkit?.messageHandlers?.kratos ?? null;
+window.kratosNativeState = (state, enabled) => {
+  voice.nativeState = state; voice.enabled = enabled;
+  if (state === 'Di «Kratos»' || state === 'Escucha apagada') voice.awake = false;
+  ui.muted = !enabled; document.querySelector('[data-act="mute"]')?.setAttribute('aria-pressed', ui.muted);
+};
+window.kratosWoke = () => { voice.awake = true; voice.wokeAt = performance.now(); log('KRATOS ha despertado'); };
+window.kratosSpeechPulse = () => { voice.pulse = 1; };
+window.kratosMicLevel = (v) => { voice.level = Math.min(1, v * 9); };
+window.kratosRefresh = () => refreshReal();
+function voiceState() {
+  const w = voice.nativeState;
+  if (performance.now() - voice.wokeAt < 1200) return 'escuchando';
+  if (w === 'Respondiendo') return 'hablando';
+  if (voice.awake && w === 'Procesando…') return 'pensando';
+  if (voice.awake && (w === 'Te escucho…' || w === 'Oyendo…')) return 'escuchando';
+  return null;
+}
 
 async function api(path, body) {
   const options = body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
@@ -62,7 +82,7 @@ camera.position.set(0, 0.25, 14);
 let composer, bloom;
 let world = null; // todo lo construido según la calidad
 
-const U = { time: { value: 0 }, dim: { value: 1 }, pixelRatio: { value: 1 } };
+const U = { time: { value: 0 }, dim: { value: 1 }, pixelRatio: { value: 1 }, speak: { value: 0 } };
 const MIND_POS = new THREE.Vector3(0, 0.7, 0);
 
 function radialTexture(stops, size = 256) {
@@ -231,14 +251,20 @@ function makeConnection(from, to, color, strands) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('u', new THREE.Float32BufferAttribute(u, 1));
   g.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 1));
-  const uniforms = { uTime: U.time, uDim: U.dim, uColor: { value: new THREE.Color(color) }, uPulse: { value: -1 }, uActive: { value: 0 } };
+  const uniforms = { uTime: U.time, uDim: U.dim, uSpeak: U.speak, uColor: { value: new THREE.Color(color) }, uPulse: { value: -1 }, uActive: { value: 0 } };
   const m = new THREE.ShaderMaterial({
     uniforms,
-    vertexShader: `attribute float u; attribute float seed; varying float vU; varying float vS; void main(){ vU = u; vS = seed; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `varying float vU; varying float vS; uniform float uTime; uniform vec3 uColor; uniform float uPulse; uniform float uActive; uniform float uDim;
+    vertexShader: `attribute float u; attribute float seed; varying float vU; varying float vS; uniform float uTime; uniform float uSpeak;
+      void main(){ vU = u; vS = seed; vec3 p = position;
+        // la rama se ondula como un axón: suave en reposo, viva cuando hay voz
+        float w = sin(u * 18.0 - uTime * (1.2 + uSpeak * 6.0) + seed * 12.0) * sin(3.14159 * u);
+        p += vec3(sin(seed * 7.1), cos(seed * 5.3), sin(seed * 3.7)) * w * (0.015 + uSpeak * 0.09);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+    fragmentShader: `varying float vU; varying float vS; uniform float uTime; uniform vec3 uColor; uniform float uPulse; uniform float uActive; uniform float uDim; uniform float uSpeak;
       void main(){
         float shimmer = 0.7 + 0.3 * sin(uTime * 0.35 + vS * 6.28);           // ambiental: lento, no viaja
-        float base = (0.22 + 0.45 * uActive) * shimmer * (1.0 - 0.25 * vU);
+        float fire = uSpeak * (0.5 + 0.5 * sin(vU * 30.0 - uTime * 9.0 + vS * 20.0));   // chispas mientras hay voz
+        float base = (0.22 + 0.45 * uActive) * shimmer * (1.0 - 0.25 * vU) + fire * 0.55;
         float d = vU - uPulse; float pulse = uPulse < 0.0 ? 0.0 : exp(-d * d * 260.0) * 2.4;   // impulso de un evento
         vec3 c = mix(uColor, vec3(1.0), clamp(pulse, 0.0, 1.0) * 0.7) * (base + pulse);
         gl_FragColor = vec4(c * uDim, 1.0); }`,
@@ -397,11 +423,77 @@ function makeFox(q) {
   return { group, furU, fireU };
 }
 
+// ---------- campo neuronal: todo el universo como un pensamiento ----------
+// Neuronas repartidas por el espacio, unidas a sus vecinas. En reposo laten despacio;
+// con voz real (uSpeak) las sinapsis disparan y se ondulan.
+function makeNeuralField(count) {
+  const nodes = [];
+  for (let i = 0; i < count; i++) {
+    const r = 3.5 + Math.pow(Math.random(), 0.7) * 9;
+    const v = new THREE.Vector3().randomDirection();
+    nodes.push(new THREE.Vector3(v.x * r * 1.7, v.y * r * 0.95 + 0.4, -Math.abs(v.z) * r * 0.8 - 1.5));
+  }
+  const pos = [], seed = [], along = [];
+  nodes.forEach((a, i) => {
+    let links = 0;
+    for (let j = i + 1; j < nodes.length && links < 3; j++) {
+      const d = a.distanceTo(nodes[j]);
+      if (d < 1.9 && Math.random() < 0.55) {
+        // sinapsis curva en 6 tramos
+        const b = nodes[j], mid = a.clone().lerp(b, 0.5).add(new THREE.Vector3().randomDirection().multiplyScalar(d * 0.18));
+        const sd = Math.random();
+        let prev = a;
+        for (let k = 1; k <= 6; k++) {
+          const t = k / 6, q = a.clone().multiplyScalar((1 - t) * (1 - t)).add(mid.clone().multiplyScalar(2 * t * (1 - t))).add(b.clone().multiplyScalar(t * t));
+          pos.push(prev.x, prev.y, prev.z, q.x, q.y, q.z); seed.push(sd, sd); along.push((k - 1) / 6, t);
+          prev = q;
+        }
+        links++;
+      }
+    }
+  });
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  lg.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 1));
+  lg.setAttribute('u', new THREE.Float32BufferAttribute(along, 1));
+  const lines = new THREE.LineSegments(lg, new THREE.ShaderMaterial({
+    uniforms: { uTime: U.time, uDim: U.dim, uSpeak: U.speak },
+    vertexShader: `attribute float seed; attribute float u; varying float vS; varying float vU; uniform float uTime; uniform float uSpeak;
+      void main(){ vS = seed; vU = u; vec3 p = position;
+        p += vec3(sin(uTime * 0.5 + seed * 30.0), cos(uTime * 0.4 + seed * 22.0), 0.0) * (0.03 + uSpeak * 0.12) * sin(3.14159 * u);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+    fragmentShader: `varying float vS; varying float vU; uniform float uTime; uniform float uDim; uniform float uSpeak;
+      void main(){
+        float idle = 0.05 + 0.04 * sin(uTime * 0.3 + vS * 40.0);
+        float wave = pow(max(0.0, sin(vU * 6.0 - uTime * (2.0 + uSpeak * 10.0) + vS * 60.0)), 8.0);   // disparo que recorre la sinapsis
+        float a = idle + wave * (0.08 + uSpeak * 0.9);
+        gl_FragColor = vec4(mix(vec3(0.45, 0.6, 1.0), vec3(0.85, 0.95, 1.0), wave) * a * uDim, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  const ng = new THREE.BufferGeometry();
+  ng.setFromPoints(nodes);
+  ng.setAttribute('seed', new THREE.Float32BufferAttribute(nodes.map(() => Math.random()), 1));
+  const points = new THREE.Points(ng, new THREE.ShaderMaterial({
+    uniforms: { uTime: U.time, uDim: U.dim, uSpeak: U.speak, uPR: U.pixelRatio },
+    vertexShader: `attribute float seed; varying float vA; uniform float uTime; uniform float uSpeak; uniform float uPR;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        float fire = pow(max(0.0, sin(uTime * (0.8 + uSpeak * 6.0) + seed * 50.0)), 6.0);
+        vA = 0.25 + fire * (0.4 + uSpeak * 1.4);
+        gl_PointSize = (2.0 + fire * (2.0 + uSpeak * 5.0)) * uPR * (10.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vA; uniform float uDim;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vec3(0.7, 0.85, 1.0) * a * vA * uDim, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  const group = new THREE.Group(); group.add(lines, points);
+  return group;
+}
+
 // ---------- composición ----------
 function layout() {
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
   const w = h * camera.aspect;
-  const rx = Math.min(w * 0.40, h * 0.92), ry = h * 0.31;
+  const rx = Math.min(w * 0.41, h * 0.95), ry = h * 0.34;
   return AGENTS.map((a, k) => {
     const th = Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
     return new THREE.Vector3(Math.cos(th) * rx, 0.45 + Math.sin(th) * ry, Math.sin(k * 1.7) * 1.1);
@@ -412,10 +504,11 @@ function build() {
   if (world) { scene.remove(world.root); world.root.traverse((o) => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
   const q = QUALITY[ui.quality];
   const root = new THREE.Group();
-  root.add(makeNebula());
+  root.add(makeDeepSky(U));  // espacio negro con estrellas (sin bruma de color)
   const stars = makeStarfield(q.stars, U); root.add(stars);
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
+  root.add(makeNeuralField(q.field));
   const mind = makeMind(q); root.add(mind.group);
   const light = new THREE.PointLight(0xbfe6ff, 3.2, 18, 1.7); light.position.copy(mind.group.position); root.add(light);
   root.add(new THREE.AmbientLight(0x26334f, 0.16));
@@ -435,7 +528,7 @@ function build() {
   world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.18, 0.24, 0.88);
+  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.5, 0.42);
   bloom.enabled = q.bloom;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -507,14 +600,22 @@ function frame() {
   const dt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
   U.time.value = ui.reduced ? 12.0 : t;
+  // estado efectivo: la voz manda mientras habla contigo; si no, el estado real del sistema
+  if (!ui.stateSimulated) {
+    const eff = real.state === 'detenido' ? 'detenido' : voiceState() ?? real.state;
+    if (eff !== ui.state) setState(eff, false);
+  }
   const p = PRESET[ui.state];
   const ease = 1 - Math.pow(0.03, dt || 0.016);
   U.dim.value += (p.dim - U.dim.value) * (ui.reduced ? 1 : ease);
   const mu = world.mind.uniforms;
   mu.uTint.value.lerp(new THREE.Color(p.tint), ui.reduced ? 1 : ease);
   mu.uSpin.value += (p.spin - mu.uSpin.value) * ease;
-  // nivel de audio: en el prototipo, SIMULADO solo en escuchando / hablando
-  const lvl = ui.state === 'escuchando' ? Math.abs(Math.sin(t * 5.3) * Math.sin(t * 2.1)) : ui.state === 'hablando' ? Math.abs(Math.sin(t * 9.0)) * (0.5 + 0.5 * Math.sin(t * 1.3)) : 0;
+  // nivel real: micrófono al escuchar, una pulsación por palabra al hablar, latido lento al pensar
+  voice.pulse *= Math.pow(0.02, dt); voice.level *= Math.pow(0.08, dt);
+  const lvl = ui.state === 'escuchando' ? voice.level : ui.state === 'hablando' ? voice.pulse : 0;
+  const speakTarget = Math.max(lvl, ui.state === 'pensando' ? 0.35 + 0.15 * Math.sin(t * 3.0) : 0, ui.state === 'hablando' ? 0.3 : 0);
+  U.speak.value += (speakTarget - U.speak.value) * Math.min(1, dt * 8);
   mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
   const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
   world.mind.group.scale.setScalar(1 + breathe + mu.uLevel.value * 0.12);
@@ -558,7 +659,7 @@ function frame() {
   const th = world.thought.uniforms;
   const talking = ui.state === 'hablando' || ui.state === 'escuchando';
   th.uActive.value += ((talking ? 1 : 0) - th.uActive.value) * ease;
-  th.uPulse.value = ui.state === 'hablando' ? (t * 0.7) % 1.2 : -1;
+  th.uPulse.value = voice.pulse > 0.3 ? (t * 1.1) % 1.2 : -1;
   // cámara: deriva lenta y paralaje leve con el ratón
   if (!ui.reduced) {
     camera.position.x += ((Math.sin(t * 0.05) * 0.35 + mouse.x * 0.35) - camera.position.x) * 0.02;
@@ -698,10 +799,10 @@ async function refreshReal() {
       if (running && !active?.persistent) delegate(agent.id, false, true);
       if (!running && active?.persistent) world.active.delete(agent.id);
     }
-    if (overview.state?.emergency_stop) setState('detenido', false);
-    else if ((overview.running ?? []).length) setState('ejecutando', false);
-    else if (overview.pendingApprovals > 0) setState('esperando_permiso', false);
-    else setState('reposo', false);
+    if (overview.state?.emergency_stop) real.state = 'detenido';
+    else if ((overview.running ?? []).length) real.state = 'ejecutando';
+    else if (overview.pendingApprovals > 0 && Date.now() - new Date(overview.latestApprovalAt ?? 0).getTime() < 120000) real.state = 'esperando_permiso';
+    else real.state = 'reposo';
     if (!document.getElementById('list').hidden) renderList();
     if (!mission.hidden && world.selected) openMission(world.selected, false);
   } catch (error) {
@@ -712,7 +813,11 @@ async function refreshReal() {
 
 function act(a) {
   const btn = dock.querySelector(`[data-act="${a}"]`);
-  if (a === 'mute') { ui.muted = !ui.muted; btn.setAttribute('aria-pressed', ui.muted); log(ui.muted ? 'Micrófono silenciado (en el prototipo no hay micrófono conectado)' : 'Micrófono activo (simulado)'); }
+  if (a === 'mute') {
+    ui.muted = !ui.muted; btn.setAttribute('aria-pressed', ui.muted);
+    if (nativeBridge) nativeBridge.postMessage({ event: 'mute', muted: ui.muted });
+    log(ui.muted ? 'Micrófono silenciado: KRATOS no escucha' : nativeBridge ? 'Micrófono activo: di «Hey Kratos»' : 'Micrófono: solo disponible en la app de Mac');
+  }
   if (a === 'pause') { ui.paused = !ui.paused; btn.setAttribute('aria-pressed', ui.paused); if (!ui.paused) { clock.getDelta(); start(); } log(ui.paused ? 'Movimiento en pausa' : 'Movimiento reanudado'); }
   if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); btn.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
   if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
@@ -750,7 +855,7 @@ addEventListener('keydown', (e) => {
   if (k === 'i') act('metrics');
   if (k === 'h' || k === '?') { const h = document.getElementById('help'); h.hidden = !h.hidden; }
   if (k === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
-  if (k === 's') { const n = STATES[(STATES.indexOf(ui.state) + 1) % STATES.length]; setState(n); if (n === 'ejecutando') { delegate('marte'); delegate('saturno'); } frame(); }
+  if (k === 's') { const n = STATES[(STATES.indexOf(ui.state) + 1) % STATES.length]; ui.stateSimulated = n !== 'reposo'; setState(n); if (n === 'ejecutando') { delegate('marte'); delegate('saturno'); } frame(); }
   if (/^[1-7]$/.test(k)) { delegate(AGENTS[Number(k) - 1].id); if (ui.reduced) frame(); }
   if (!document.getElementById('list').hidden) renderList();
 });

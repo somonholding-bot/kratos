@@ -84,6 +84,8 @@ final class WakeListener {
   }
 
   var onState: ((State, String?) -> Void)?
+  var onLevel: ((Float) -> Void)?          // nivel del micrófono, solo mientras te escucha tras despertar
+  private var lastLevelAt = Date.distantPast
   private(set) var state: State = .off
   var enabled = UserDefaults.standard.object(forKey: "wakeEnabled") as? Bool ?? true {
     didSet { UserDefaults.standard.set(enabled, forKey: "wakeEnabled"); enabled ? start() : stop() }
@@ -173,6 +175,9 @@ final class WakeListener {
       let f = Array(pending.prefix(frame)); pending.removeFirst(frame)
       var sum: Float = 0; for s in f { sum += s * s }
       let rms = (sum / Float(frame)).squareRoot()
+      if (followUpUntil ?? .distantPast) > Date(), Date().timeIntervalSince(lastLevelAt) > 0.05 {
+        lastLevelAt = Date(); let v = rms; DispatchQueue.main.async { self.onLevel?(v) }
+      }
       let k = Float(5.0 - 3.0 * sensitivity)              // 5× (poco) … 2× (mucho) el ruido de fondo
       let thr = max(Float(0.02 - 0.014 * sensitivity), floor * k)
       if !inSpeech {
@@ -280,6 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     buildWindow()
     buildStatusItem()
     wake.onState = { [weak self] s, msg in self?.render(s, msg) }
+    wake.onLevel = { [weak self] v in self?.web.evaluateJavaScript("window.kratosMicLevel && window.kratosMicLevel(\(v))") }
     wake.speaker.onWord = { [weak self] in self?.web.evaluateJavaScript("window.kratosSpeechPulse && window.kratosSpeechPulse()") }
     NotificationCenter.default.addObserver(forName: .kratosWoke, object: nil, queue: .main) { [weak self] _ in
       self?.web.evaluateJavaScript("window.kratosWoke && window.kratosWoke()")
