@@ -2,7 +2,7 @@ import type { Db } from '../db.ts';
 import { config } from '../config.ts';
 import { expireApprovals } from './approvals.ts';
 import { appendDaily } from './vault.ts';
-import { executeSpecialistTask } from './brain.ts';
+import { ceoCycle, executeSpecialistTask } from './brain.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
 // Las tareas de tipo 'agente' quedan en 'esperando_ia' hasta conectar Claude.
@@ -10,6 +10,9 @@ import { executeSpecialistTask } from './brain.ts';
 type Handler = (db: Db, task: any) => Promise<Record<string, unknown>>;
 
 export const handlers: Record<string, Handler> = {
+  async ciclo_ceo(db) {
+    return ceoCycle(db);
+  },
   async agente(db, task) {
     return executeSpecialistTask(db, task);
   },

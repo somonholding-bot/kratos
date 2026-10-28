@@ -7,9 +7,33 @@ DEST="$ROOT/skills"
 MK="coreyhaines31/marketingskills@0cd9b3a0ef4c411a1d690419ce843f2a1da32cce"   # MIT
 SP="obra/superpowers@2ce8aa15d05bd57213e6f746f953aafb7ded7a8b"                # MIT
 AN="anthropics/skills@ca45fc496a3436251f191354091d557da31c15b5"               # Apache-2.0
+CL="alirezarezvani/claude-skills@5434623a788ec3105d238328cfe554e1e2242ff7"   # MIT · nivel C (CEO)
+SF="shawnpang/startup-founder-skills@4ad31b43eef3ae3755cc57ec7e435dab4699ab44" # MIT · fundadores
 
-# planeta | repo@commit | skill
+# planeta | repo@commit | skill | ruta (opcional; por defecto skills/<skill>/SKILL.md)
 MAP="
+kratos|$CL|ceo-advisor|c-level-advisor/skills/ceo-advisor/SKILL.md
+kratos|$CL|chief-of-staff|c-level-advisor/skills/chief-of-staff/SKILL.md
+kratos|$CL|cmo-advisor|c-level-advisor/skills/cmo-advisor/SKILL.md
+kratos|$CL|strategic-alignment|c-level-advisor/skills/strategic-alignment/SKILL.md
+kratos|$CL|decision-logger|c-level-advisor/skills/decision-logger/SKILL.md
+kratos|$CL|founder-coach|c-level-advisor/skills/founder-coach/SKILL.md
+kratos|$CL|scenario-war-room|c-level-advisor/skills/scenario-war-room/SKILL.md
+kratos|$CL|company-os|c-level-advisor/skills/company-os/SKILL.md
+kratos|$CL|postmortem|c-level-advisor/executive-mentor/skills/postmortem/SKILL.md
+kratos|$SF|startup-context
+sol|$SF|roadmap-planning
+luna|$SF|user-research-synthesis
+luna|$SF|daily-product-digest
+mercurio|$CL|competitive-intel|c-level-advisor/skills/competitive-intel/SKILL.md
+mercurio|$SF|review-mining
+mercurio|$SF|competitor-monitoring
+mercurio|$SF|market-research
+venus|$SF|landing-page
+venus|$SF|social-content
+marte|$SF|launch-strategy
+marte|$SF|partnership-outreach
+saturno|$SF|churn-analysis
 sol|$MK|product-marketing
 sol|$MK|marketing-plan
 sol|$MK|offers
@@ -66,12 +90,12 @@ mkdir -p "$DEST"
   echo "| Planeta | Skill | Origen | Licencia |"
   echo "|---|---|---|---|"
 } > "$DEST/MANIFEST.md"
-echo "$MAP" | while IFS='|' read -r planet src skill; do
+echo "$MAP" | while IFS='|' read -r planet src skill sub; do
   [ -z "$planet" ] && continue
   repo="${src%@*}"; sha="${src#*@}"
   out="$DEST/$planet/$skill"; mkdir -p "$out"
-  curl -fsSL "https://raw.githubusercontent.com/$repo/$sha/skills/$skill/SKILL.md" -o "$out/SKILL.md"
+  curl -fsSL "https://raw.githubusercontent.com/$repo/$sha/${sub:-skills/$skill/SKILL.md}" -o "$out/SKILL.md"
   lic=$([ "$repo" = "anthropics/skills" ] && echo "Apache-2.0" || echo "MIT")
-  echo "| $planet | $skill | [$repo@${sha:0:10}](https://github.com/$repo/tree/$sha/skills/$skill) | $lic |" >> "$DEST/MANIFEST.md"
+  echo "| $planet | $skill | [$repo@${sha:0:10}](https://github.com/$repo/blob/$sha/${sub:-skills/$skill/SKILL.md}) | $lic |" >> "$DEST/MANIFEST.md"
   echo "✓ $planet / $skill"
 done
