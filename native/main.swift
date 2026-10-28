@@ -362,7 +362,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { syncFullScreen() }
   func syncFullScreen() {
     guard window.isVisible else { return }
-    let immersive = web.url?.path.hasPrefix("/prototipo") ?? false
+    let immersive = (web.url?.path.hasPrefix("/prototipo") ?? false) && !(web.url?.query?.contains("embed") ?? false)
     if immersive != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
   }
   func openDetails() { web.load(URLRequest(url: BASE)) }

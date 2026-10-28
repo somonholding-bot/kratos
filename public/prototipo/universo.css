@@ -46,3 +46,5 @@ body.idle { cursor: none; }
 .mission-submit:disabled { opacity: .45; cursor: wait; }
 .mission-status { min-height: 18px; color: rgba(174,220,255,.85); font-size: 11px; }
 @media (max-width: 700px) { .mission { right: 12px; left: 12px; width: auto; top: auto; bottom: 76px; transform: none; } }
+
+.embed .dock, .embed .proto-tag, .embed #event-log, .embed .whisper { display: none !important; }

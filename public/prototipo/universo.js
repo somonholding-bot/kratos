@@ -36,6 +36,9 @@ const ui = {
   paused: false, muted: false, state: 'reposo', stateSimulated: false,
 };
 const real = { agents: [], businesses: [], overview: null, connected: false, state: 'reposo' };
+// Modo integrado (dentro del panel): sin controles ni salida propios
+const embedded = new URLSearchParams(location.search).has('embed');
+if (embedded) document.documentElement.classList.add('embed');
 // Voz real desde la app de Mac: despertar, nivel del micrófono y pulsos de cada palabra de KRATOS
 const voice = { nativeState: null, enabled: true, awake: false, wokeAt: 0, level: 0, pulse: 0, thinking: false };
 const nativeBridge = window.webkit?.messageHandlers?.kratos ?? null;
@@ -657,6 +660,7 @@ function build() {
   composer.addPass(new RenderPass(scene, camera));
   bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.75, 0.55, 0.55);
   bloom.enabled = q.bloom;
+  { const full = bloom.setSize.bind(bloom); bloom.setSize = (w, h) => full(w * 0.5, h * 0.5); }
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   buildLabels();
@@ -714,13 +718,26 @@ const clock = new THREE.Clock();
 let raf = 0, frames = 0, fpsAt = performance.now(), fps = 0, cpuMs = 0;
 const mouse = { x: 0, y: 0 };
 
-function tick() {
+const fluid = { last: 0, avg: 16.7, lowSince: 0, highSince: 0, scale: 1 };
+function governFluidity(now) {
+  if (fluid.last) fluid.avg = fluid.avg * 0.92 + Math.min(100, now - fluid.last) * 0.08;
+  fluid.last = now;
+  const slow = fluid.avg > 21, fast = fluid.avg < 15.5;
+  fluid.lowSince = slow ? fluid.lowSince || now : 0;
+  fluid.highSince = fast ? fluid.highSince || now : 0;
+  const apply = () => { fluid.resizing = true; resize(); fluid.resizing = false; };
+  if (fluid.lowSince && now - fluid.lowSince > 1500 && fluid.scale > 0.6) { fluid.scale = Math.max(0.6, fluid.scale - 0.15); fluid.lowSince = 0; apply(); }
+  else if (fluid.highSince && now - fluid.highSince > 8000 && fluid.scale < 1) { fluid.scale = Math.min(1, fluid.scale + 0.1); fluid.highSince = 0; apply(); }
+}
+
+function tick(now) {
   raf = 0;
+  if (now) governFluidity(now);
   if (document.hidden || ui.paused) return;
   frame();
   if (!ui.reduced) raf = requestAnimationFrame(tick);
 }
-function start() { if (!raf && !document.hidden && !ui.paused) raf = requestAnimationFrame(tick); }
+function start() { if (!raf && !document.hidden && !ui.paused) { fluid.last = 0; raf = requestAnimationFrame(tick); } }
 
 function frame() {
   const t0 = performance.now();
@@ -805,7 +822,7 @@ function frame() {
 
 function resize() {
   const q = QUALITY[ui.quality];
-  const pr = Math.min(devicePixelRatio || 1, q.dpr);
+  const pr = Math.min(devicePixelRatio || 1, q.dpr) * (typeof fluid === 'undefined' ? 1 : fluid.scale);
   U.pixelRatio.value = pr;
   renderer.setPixelRatio(pr);
   renderer.setSize(innerWidth, innerHeight, false);
@@ -813,7 +830,7 @@ function resize() {
   camera.fov = camera.aspect < 1.2 ? 58 : 42;
   camera.updateProjectionMatrix();
   composer?.setPixelRatio(pr); composer?.setSize(innerWidth, innerHeight);
-  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); world.background.material.uniforms.uTex.value = bakeBackground(); }
+  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); if (!fluid.resizing) world.background.material.uniforms.uTex.value = bakeBackground(); }
   if (ui.reduced || ui.paused) frame();
 }
 
@@ -823,7 +840,7 @@ function updateMetrics() {
   if (metricsEl.hidden) return;
   const info = renderer.info;
   const mem = performance.memory ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)} MB JS` : 'memoria JS: n/d';
-  metricsEl.innerHTML = `${fps} fps · ${cpuMs.toFixed(2)} ms CPU/fotograma<br>${info.render.calls} llamadas · ${(info.render.triangles / 1000).toFixed(0)} k triángulos · ${(info.render.points / 1000).toFixed(1)} k puntos<br>calidad ${ui.quality} · resolución ×${U.pixelRatio.value} · ${mem}`;
+  metricsEl.innerHTML = `${fps} fps · ${cpuMs.toFixed(2)} ms CPU/fotograma<br>${info.render.calls} llamadas · ${(info.render.triangles / 1000).toFixed(0)} k triángulos · ${(info.render.points / 1000).toFixed(1)} k puntos<br>calidad ${ui.quality} · resolución ×${U.pixelRatio.value.toFixed(2)} (fluidez ${Math.round(fluid.scale * 100)} %) · ${fluid.avg.toFixed(1)} ms/fotograma · ${mem}`;
 }
 
 // ---------- controles discretos ----------
@@ -956,6 +973,7 @@ function act(a) {
 dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
 
 function exitExperience() {
+  if (embedded) return;
   // En la app de Mac: minimiza la ventana inmersiva. En el navegador: vuelve al panel.
   if (window.webkit?.messageHandlers?.kratos) window.webkit.messageHandlers.kratos.postMessage({ event: 'exitImmersive' });
   else if (document.fullscreenElement) document.exitFullscreen();

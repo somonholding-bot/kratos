@@ -14,3 +14,7 @@ The following files are derived from the free planet texture set by [Solar Syste
 The WebP copies were obtained from [stiutin/threejs-solar-system](https://github.com/stiutin/threejs-solar-system), whose source code is MIT-licensed. The textures remain CC BY 4.0.
 
 KRATOS applies its own lighting, color grading, interaction states and agent visualization over these assets.
+
+## Referencia visual
+
+- La imagen de referencia aportada por el propietario (28-oct-2026) se usa solo como guía de estilo; no se incluye en la aplicación.

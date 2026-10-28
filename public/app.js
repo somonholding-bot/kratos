@@ -326,7 +326,14 @@ async function pttStop() {
 
 // ---------- escena de KRATOS (estados reales) ----------
 const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const scene = createScene($('#scene'), { quality: store('kratos.quality') || 'media', reducedMotion: prefersReduced || store('jarvis.reduceMotion') === '1' });
+// El panel muestra el mismo universo 3D de KRATOS, integrado y sin controles propios
+const sceneFrame = document.createElement('iframe');
+sceneFrame.src = '/prototipo/?embed=1';
+sceneFrame.title = 'Universo de KRATOS';
+sceneFrame.className = 'universe-frame';
+$('#scene').append(sceneFrame);
+const inner = (fn, ...args) => { try { sceneFrame.contentWindow?.[fn]?.(...args); } catch {} };
+const scene = { set() {}, start() {}, pulse() { inner('kratosSpeechPulse'); } };
 const SCENE_CAPTION = {
   reposo: 'En reposo. No está escuchando una orden ni ejecutando tareas.',
   despertar: 'Despierto: te escucho.', escuchando: 'Escuchando (el núcleo sigue el nivel real del micrófono).',
@@ -406,10 +413,12 @@ $('#stage').addEventListener('click', (e) => {
 window.kratosRefresh = async () => { await refreshOverview(); render(); };
 window.kratosNativeState = (state, enabled, cfg) => {
   app.wake = { state, enabled, cfg };
+  inner('kratosNativeState', state, enabled);
   if (state === 'Di «Kratos»' || state === 'Escucha apagada') app.awake = false; // vuelve a reposo tras la respuesta
   paintChrome();
 };
-window.kratosWoke = () => { app.wokeUntil = Date.now() + 1800; app.awake = true; toast('Kratos ha despertado'); paintChrome(); };
+window.kratosWoke = () => { app.wokeUntil = Date.now() + 1800; app.awake = true; toast('Kratos ha despertado'); paintChrome(); inner('kratosWoke'); };
+window.kratosMicLevel = (v) => inner('kratosMicLevel', v);
 window.kratosSpeechPulse = () => scene.pulse();
 
 // ---------- eventos ----------
