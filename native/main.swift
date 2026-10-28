@@ -334,6 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     window.appearance = NSAppearance(named: .darkAqua)
     window.contentView = web
     window.isReleasedWhenClosed = false
+    window.collectionBehavior = [.fullScreenPrimary]
     window.setFrameAutosaveName("KratosMain")
     window.center()
   }
@@ -343,13 +344,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
           let cookie = HTTPCookie(properties: [.domain: "127.0.0.1", .path: "/", .name: "jarvis", .value: token,
                                                .expires: Date().addingTimeInterval(30 * 86400)]) else { return }
     web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { [weak self] in
-      self?.web.load(URLRequest(url: BASE))
+      self?.openUniverse()
     }
   }
+
+  // Modo inmersivo: el universo de KRATOS a pantalla completa. Esc o «Salir» llevan al panel de detalles.
+  func openUniverse() {
+    web.load(URLRequest(url: BASE.appendingPathComponent("prototipo/")))
+  }
+  // Al terminar de cargar: el universo va a pantalla completa; el panel, en ventana.
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { syncFullScreen() }
+  func syncFullScreen() {
+    guard window.isVisible else { return }
+    let immersive = web.url?.path.hasPrefix("/prototipo") ?? false
+    if immersive != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+  }
+  func openDetails() { web.load(URLRequest(url: BASE)) }
 
   func showWindow() {
     NSApp.activate(ignoringOtherApps: true)
     window.makeKeyAndOrderFront(nil)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { self.syncFullScreen() }
   }
 
   // El panel solo puede usar el micrófono de su propio origen local.
@@ -382,6 +397,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         self?.web.evaluateJavaScript("window.kratosSpoke && window.kratosSpoke()")
       }
     case "hush": wake.speaker.stop()
+    case "exitImmersive": openDetails()
     case "wake", "mute":
       // Silenciar apaga también el detector: el micrófono queda cerrado del todo.
       let on = event == "mute" ? !(body["muted"] as? Bool ?? false) : (body["enabled"] as? Bool ?? wake.enabled)
@@ -399,7 +415,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     stateItem.isEnabled = false
     menu.addItem(stateItem)
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Abrir Kratos", action: #selector(openPanel), keyEquivalent: "o")
+    menu.addItem(withTitle: "Universo KRATOS (pantalla completa)", action: #selector(openUniverseMenu), keyEquivalent: "u")
+    menu.addItem(withTitle: "Panel de detalles", action: #selector(openDetailsMenu), keyEquivalent: "d")
     wakeItem = menu.addItem(withTitle: "Escuchar «Kratos»", action: #selector(toggleWake), keyEquivalent: "")
     menu.addItem(.separator())
     menu.addItem(withTitle: "Parada de emergencia", action: #selector(emergency), keyEquivalent: "")
@@ -441,6 +458,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   }
 
   @objc func openPanel() { showWindow() }
+  @objc func openUniverseMenu() { showWindow(); openUniverse() }
+  @objc func openDetailsMenu() { showWindow(); openDetails() }
   @objc func toggleWake() { wake.enabled.toggle(); render(wake.state, nil); heartbeat() }
   @objc func emergency() {
     API.post("/api/emergency-stop", [:]) { [weak self] r in

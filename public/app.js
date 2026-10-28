@@ -108,7 +108,7 @@ const screens = {
       <p>Nivel de autonomía: <b>${esc(o.state.autonomy_level)}</b>. IA: <b>${o.ai?.active ? `Claude conectado (${esc(o.ai.model)}) · disponible ${usd(o.ai.availableCents)}` : o.ai?.keyPresent ? 'clave guardada, falta presupuesto aprobado' : 'sin clave de Claude'}</b>. Memoria: Obsidian (${esc(o.vault ?? '')}).</p>
       ${o.state.emergency_stop ? '<p class="tag bad">PARADA DE EMERGENCIA ACTIVA</p>' : ''}
       ${o.state.automations_paused ? '<p class="tag warn">Automatizaciones en pausa</p>' : ''}
-      <p class="meta"><a href="/propuesta.html" style="color:var(--muted)">Propuesta visual con estados simulados →</a></p>
+      <p><a href="/prototipo/" style="color:var(--accent)">✦ Abrir el universo de KRATOS (pantalla completa) →</a></p>
       <div class="grid">
         <div class="card"><div class="k">Tareas pendientes</div><div class="v">${count('pendiente')}</div></div>
         <div class="card"><div class="k">Esperando IA</div><div class="v">${count('esperando_ia')}</div></div>
