@@ -25,7 +25,7 @@ export function makeStarfield(count, U) {
     pos.set([x, y, z], i * 3);
     const c = spectral();
     col.set([c[0], c[1], c[2]], i * 3);
-    size[i] = 0.5 + Math.pow(Math.random(), 7) * 3.2; // muchas débiles, pocas brillantes
+    size[i] = 0.28 + Math.pow(Math.random(), 9) * 2.15; // fondo fino; unas pocas estrellas protagonistas
     seed[i] = Math.random();
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -35,11 +35,11 @@ export function makeStarfield(count, U) {
   return new THREE.Points(g, new THREE.ShaderMaterial({
     uniforms: { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio },
     vertexShader: `attribute vec3 color; attribute float size; attribute float seed; varying vec3 vC; varying float vA; uniform float uTime; uniform float uPR;
-      void main(){ vC = color; vA = (0.35 + 0.65 * smoothstep(0.5, 3.0, size)) * (0.8 + 0.2 * sin(uTime * (0.8 + seed * 2.0) + seed * 60.0));
+      void main(){ vC = color; vA = (0.18 + 0.48 * smoothstep(0.5, 2.2, size)) * (0.9 + 0.1 * sin(uTime * (0.8 + seed * 2.0) + seed * 60.0));
         vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * uPR; gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying vec3 vC; varying float vA; uniform float uDim;
       void main(){ float d = length(gl_PointCoord - 0.5); float core = smoothstep(0.5, 0.0, d); core *= core;
-        gl_FragColor = vec4(vC * core * vA * 1.3 * uDim, core); }`,
+        gl_FragColor = vec4(vC * core * vA * 0.72 * uDim, core * vA); }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
 }
@@ -89,7 +89,7 @@ export function makeBrightStars(count, U) {
     const sp = new THREE.Sprite(m);
     const z = -rand(25, 80), spread = (-z + 14) * 0.58;
     sp.position.set(rand(-spread, spread) * 1.7, rand(-spread, spread), z);
-    sp.scale.setScalar(rand(0.8, 2.6) * (-z / 40));
+    sp.scale.setScalar(rand(0.45, 1.35) * (-z / 40));
     sp.userData.base = m.opacity; sp.userData.seed = Math.random() * 50;
     group.add(sp);
   }
@@ -128,29 +128,10 @@ export function makeNebula(U) {
         float along = dot(p, uBand), across = dot(p, vec2(-uBand.y, uBand.x));
         float band = exp(-across * across * 16.0);
         float glow = fbm(vec2(along * 3.0, across * 9.0) + t);
-        float grain = pow(n(p * 900.0), 18.0) * 2.0 + pow(n(p * 520.0 + 3.1), 22.0) * 1.5;   // estrellas no resueltas
-        // cielo: azul profundo con bruma azul (luz dispersada)
-        vec3 col = mix(vec3(0.004, 0.01, 0.03), vec3(0.01, 0.035, 0.09), vUv.y);
-        float haze = fbm(p * 2.4 + vec2(t, -t * 0.6));
-        col += vec3(0.04, 0.12, 0.30) * pow(haze, 2.6) * 0.9;
-        col += vec3(0.10, 0.14, 0.26) * band * glow * 0.45;
-        col += vec3(0.85, 0.9, 1.0) * grain * (0.25 + band * 0.35);
-        // acantilados de polvo: cresta irregular en la parte baja, borde iluminado, interior texturizado
-        float x = p.x;
-        float ridge = -0.34 + 0.06 * fbm(vec2(x * 2.2, 1.3)) + 0.05 * sin(x * 3.1 + 0.6) + 0.03 * fbm(vec2(x * 9.0, 4.2));
-        float below = ridge - p.y;
-        float mask = smoothstep(-0.015, 0.03, below);
-        float dustTex = fbm(vec2(x * 7.0, p.y * 9.0) + vec2(t * 0.5, 0.0));
-        float deep = fbm(vec2(x * 3.0, p.y * 4.0) + 5.0);
-        vec3 amber = mix(vec3(0.42, 0.17, 0.05), vec3(0.95, 0.58, 0.22), dustTex);
-        amber = mix(amber, vec3(0.16, 0.06, 0.03), smoothstep(0.08, 0.32, below) * (0.6 + 0.4 * deep));
-        float rim = exp(-below * below * 900.0) * smoothstep(-0.02, 0.0, below + 0.02);
-        vec3 cliff = (amber * (0.55 + 0.6 * dustTex)) * 0.30 + vec3(1.0, 0.7, 0.4) * rim * 0.32;
-        // jirones de polvo por encima de la cresta
-        float wisps = smoothstep(0.55, 0.9, fbm(vec2(x * 4.0, p.y * 7.0) - vec2(t, 0.0))) * smoothstep(0.25, 0.0, -below);
-        col += vec3(0.75, 0.42, 0.16) * wisps * 0.12;
-        col = mix(col, cliff, mask * 0.96);
-        col += vec3(0.03, 0.045, 0.11) * smoothstep(0.9, 0.0, length(p - vec2(0.0, 0.05))) * 0.3;   // luz de la mente
+        // espacio negro profundo: solo una franja galáctica tenue y neutra, y estrellas no resueltas
+        vec3 col = vec3(0.0015, 0.0018, 0.003);
+        col += vec3(0.055, 0.05, 0.06) * band * pow(glow, 2.0) * 0.6;
+        col += vec3(0.9, 0.92, 1.0) * grain * (0.35 + band * 0.5);
         gl_FragColor = vec4(col * uDim, 1.0);
       }`,
     depthWrite: false, depthTest: false,

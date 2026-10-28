@@ -7,22 +7,22 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky } from './cielo.js';
-import { planetMaterial, ringMaterial } from './astros.js';
+import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky } from './cielo.js?v=cinema-4';
+import { planetMaterial, ringMaterial } from './astros.js?v=cinema-4';
 
 const AGENTS = [
-  { id: 'sol', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.56, role: 'Propósito e identidad' },
-  { id: 'mercurio', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.25, role: 'Investigación y comunicación' },
-  { id: 'venus', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.36, role: 'Belleza, arte y sensibilidad' },
-  { id: 'marte', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.32, role: 'Iniciativa y ejecución' },
-  { id: 'jupiter', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.5, role: 'Expansión y oportunidades' },
-  { id: 'saturno', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.4, role: 'Estructura, tiempo y límites' },
-  { id: 'luna', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.3, role: 'Memoria, hábitos y cuidado' },
+  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.56, role: 'Propósito e identidad' },
+  { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.25, role: 'Investigación y comunicación' },
+  { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.36, role: 'Belleza, arte y sensibilidad' },
+  { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.32, role: 'Iniciativa y ejecución' },
+  { id: 'jupiter', real: '#e5cfae', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.5, role: 'Expansión y oportunidades' },
+  { id: 'saturno', real: '#ead7a8', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.4, role: 'Estructura, tiempo y límites' },
+  { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.3, role: 'Memoria, hábitos y cuidado' },
 ];
 const QUALITY = {
-  baja: { dpr: 1, bloom: false, stars: 6000, bright: 18, galaxies: 6, fox: 3200, strands: 3, neurons: 800, fire: 500 },
-  media: { dpr: 1.5, bloom: true, stars: 14000, bright: 40, galaxies: 12, fox: 6500, strands: 5, neurons: 1600, fire: 1100 },
-  alta: { dpr: 2, bloom: true, stars: 26000, bright: 70, galaxies: 18, fox: 10000, strands: 7, neurons: 2800, fire: 1800 },
+  baja: { dpr: 1, bloom: false, stars: 550, bright: 3, galaxies: 1, fox: 3200, strands: 3, neurons: 500, fire: 500 },
+  media: { dpr: 1.5, bloom: false, stars: 900, bright: 5, galaxies: 2, fox: 6500, strands: 5, neurons: 900, fire: 1100 },
+  alta: { dpr: 2, bloom: false, stars: 1400, bright: 7, galaxies: 3, fox: 10000, strands: 7, neurons: 1400, fire: 1800 },
 };
 const STATES = ['reposo', 'escuchando', 'pensando', 'hablando', 'ejecutando', 'esperando_permiso', 'detenido'];
 const STATE_NAME = { reposo: 'en reposo', escuchando: 'escuchando', pensando: 'pensando', hablando: 'hablando', ejecutando: 'ejecutando', esperando_permiso: 'esperando permiso', detenido: 'detenido' };
@@ -35,13 +35,26 @@ const ui = {
   reduced: prefersReduced || store('kratos.proto.reduced') === '1',
   paused: false, muted: false, state: 'reposo', stateSimulated: false,
 };
+const real = { agents: [], businesses: [], overview: null, connected: false };
+
+async function api(path, body) {
+  const options = body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
+  const response = await fetch(path, options);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+const agentData = (id) => real.agents.find((agent) => agent.id === id);
+const taskState = (id) => agentData(id)?.current_task?.status ?? null;
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // ---------- motor ----------
 const canvas = document.getElementById('universo');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setClearColor(0x010208, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
+renderer.toneMappingExposure = 0.58;
 renderer.info.autoReset = false; // contamos todas las pasadas del fotograma
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 300);
@@ -82,7 +95,7 @@ function makeNebula() {
         col += vec3(0.16, 0.06, 0.32) * pow(b, 3.0) * 0.9;           // violeta
         col += vec3(0.02, 0.16, 0.22) * pow(a, 4.0) * 0.8;           // turquesa
         float vign = smoothstep(1.25, 0.35, length(vUv - vec2(0.5, 0.52)) * 1.6);
-        col += vec3(0.03, 0.045, 0.11) * vign * 0.35;                   // luz de la mente
+                           // luz de la mente
         gl_FragColor = vec4(col * uDim, 1.0);
       }`,
     depthWrite: false, depthTest: false,
@@ -130,12 +143,13 @@ function makeMind(q) {
     fragmentShader: `varying vec3 vN; varying vec3 vP; uniform float uTime; uniform float uLevel; uniform vec3 uTint; uniform float uDim;
       void main(){ float f = pow(1.0 - abs(vN.z), 2.2);
         float swirl = 0.5 + 0.5 * sin(vP.x * 9.0 + uTime * 0.7) * sin(vP.y * 11.0 - uTime * 0.5) * sin(vP.z * 7.0 + uTime * 0.3);
-        vec3 c = mix(uTint * 0.9, vec3(1.0), 0.25 + 0.4 * swirl) * (0.95 + uLevel * 1.4) + uTint * f * 1.6;
+        vec3 c = mix(uTint * 0.26, vec3(0.72, 0.88, 1.0), 0.12 + 0.18 * swirl) * (0.62 + uLevel * 0.72) + uTint * f * 0.48;
         gl_FragColor = vec4(c * uDim, 1.0); }`,
   }));
   group.add(core);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(150,220,255,0.38)'], [0.22, 'rgba(110,140,255,0.10)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  halo.scale.setScalar(4.2); group.add(halo);
+  halo.material.opacity = 0.42;
+  halo.scale.setScalar(2.75); group.add(halo);
   // neuronas: corteza de puntos con ruido
   const n = q.neurons;
   const g = new THREE.BufferGeometry();
@@ -264,8 +278,9 @@ function makePlanet(a) {
   body.userData.agent = a.id;
   body.rotation.z = rand(-0.4, 0.4);
   group.add(body);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, new THREE.Color(a.color).getStyle().replace('rgb', 'rgba').replace(')', ',0.55)')], [0.35, new THREE.Color(a.color).getStyle().replace('rgb', 'rgba').replace(')', ',0.12)')], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  glow.scale.setScalar(a.size * (a.id === 'sol' ? 7 : 4.2)); group.add(glow);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, new THREE.Color(a.real).getStyle().replace('rgb', 'rgba').replace(')', ',0.55)')], [0.35, new THREE.Color(a.real).getStyle().replace('rgb', 'rgba').replace(')', ',0.12)')], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  glow.material.opacity = a.id === 'sol' ? 0.52 : 0.34;
+  glow.scale.setScalar(a.size * (a.id === 'sol' ? 4.8 : 3.1)); group.add(glow);
   if (a.id === 'saturno') {
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.58, 1.0, 192), ringMaterial(a.color));
     ring.scale.setScalar(a.size * 2.4);
@@ -316,7 +331,7 @@ function makeFox(q) {
     }
     return out;
   };
-  const S = 2.9 / 512; // altura del zorro ≈ 2,9 unidades
+  const S = 2.65 / 512; // altura contenida para convivir con la órbita completa
   const toWorld = ([x, y], depth) => [(x - 256) * S, (512 - y) * S, depth];
   const group = new THREE.Group();
   // cuerpo y ojos
@@ -376,8 +391,9 @@ function makeFox(q) {
   }));
   group.add(fire);
   const warm = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(255,120,40,0.42)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  warm.position.set(1.3, 0.9, -0.2); warm.scale.setScalar(3.2); group.add(warm);
-  group.position.set(0, -3.85, 1.6);
+  warm.material.opacity = 0.38;
+  warm.position.set(1.12, 0.78, -0.2); warm.scale.setScalar(2.45); group.add(warm);
+  group.position.set(0, -3.15, 1.6);
   return { group, furU, fireU };
 }
 
@@ -385,7 +401,7 @@ function makeFox(q) {
 function layout() {
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
   const w = h * camera.aspect;
-  const rx = Math.min(w * 0.38, h * 0.95), ry = h * 0.36;
+  const rx = Math.min(w * 0.40, h * 0.92), ry = h * 0.31;
   return AGENTS.map((a, k) => {
     const th = Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
     return new THREE.Vector3(Math.cos(th) * rx, 0.45 + Math.sin(th) * ry, Math.sin(k * 1.7) * 1.1);
@@ -396,13 +412,13 @@ function build() {
   if (world) { scene.remove(world.root); world.root.traverse((o) => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
   const q = QUALITY[ui.quality];
   const root = new THREE.Group();
-  root.add(makeDeepSky(U));
+  root.add(makeNebula());
   const stars = makeStarfield(q.stars, U); root.add(stars);
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
   const mind = makeMind(q); root.add(mind.group);
-  const light = new THREE.PointLight(0xbfe6ff, 26, 0, 1.2); light.position.copy(mind.group.position); root.add(light);
-  root.add(new THREE.AmbientLight(0x404a70, 0.35));
+  const light = new THREE.PointLight(0xbfe6ff, 3.2, 18, 1.7); light.position.copy(mind.group.position); root.add(light);
+  root.add(new THREE.AmbientLight(0x26334f, 0.16));
   const anchors = layout();
   const planets = AGENTS.map((a, i) => { const p = makePlanet(a); p.group.position.copy(anchors[i]); p.anchor = anchors[i].clone(); root.add(p.group); return p; });
   const links = AGENTS.map((a, i) => { const c = makeConnection(mind.group.position, anchors[i], a.color, q.strands); root.add(c.lines); return c; });
@@ -419,7 +435,7 @@ function build() {
   world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.72, 0.55, 0.32);
+  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.18, 0.24, 0.88);
   bloom.enabled = q.bloom;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -461,10 +477,10 @@ const logEl = document.getElementById('event-log');
 function log(text) { const d = document.createElement('div'); d.textContent = text; logEl.append(d); setTimeout(() => d.remove(), 6200); while (logEl.children.length > 4) logEl.firstChild.remove(); }
 
 // Impulso de delegación: solo por un evento. En este prototipo los eventos son SIMULADOS.
-function delegate(id, simulated = true) {
+function delegate(id, simulated = true, persistent = false) {
   const i = AGENTS.findIndex((a) => a.id === id);
   if (i < 0 || ui.state === 'detenido') return;
-  world.active.set(id, { start: clock.elapsedTime, until: clock.elapsedTime + 5 });
+  world.active.set(id, { start: clock.elapsedTime, until: persistent ? Infinity : clock.elapsedTime + 5, persistent });
   log(`${simulated ? 'SIMULADO · ' : ''}KRATOS → ${AGENTS[i].symbol} ${AGENTS[i].name}: delegación`);
 }
 
@@ -511,11 +527,13 @@ function frame() {
     pl.group.position.set(pl.anchor.x + Math.sin(t * 0.21 + i) * 0.06, pl.anchor.y + Math.sin(t * 0.33 + i * 1.7) * 0.08, pl.anchor.z);
     pl.body.rotation.y = t * (0.05 + i * 0.012);
     const act = world.active.get(a.id);
-    const waiting = ui.state === 'esperando_permiso' && a.id === 'saturno';
+    const realStatus = taskState(a.id);
+    const waiting = realStatus === 'esperando_permiso' || (ui.state === 'esperando_permiso' && a.id === 'saturno');
     const link = world.links[i].uniforms;
-    let target = 0;
+    let target = ['pendiente', 'esperando_ia'].includes(realStatus) ? 0.25 : 0;
     if (act) {
-      const k = (t - act.start) / 1.4;                        // el impulso tarda 1,4 s en llegar
+      const elapsed = act.persistent ? (t - act.start) % 3.6 : t - act.start;
+      const k = elapsed / 1.4;                                // el impulso tarda 1,4 s en llegar
       link.uPulse.value = k <= 1.15 ? k : -1;
       if (k > 1 && pl.flare < 0.01 && k < 1.2) pl.flare = 1;
       target = 1;
@@ -524,8 +542,8 @@ function frame() {
     if (waiting) target = 0.8;
     link.uActive.value += (target - link.uActive.value) * ease;
     pl.flare *= Math.pow(0.15, dt);
-    pl.glow.material.opacity = (a.id === 'sol' ? 0.55 : 0.32) + 0.55 * link.uActive.value + pl.flare;
-    pl.glow.scale.setScalar(a.size * (a.id === 'sol' ? 7 : 4.2) * (1 + 0.35 * pl.flare));
+    pl.glow.material.opacity = (a.id === 'sol' ? 0.6 : 0.16) + 0.55 * link.uActive.value + pl.flare;
+    pl.glow.scale.setScalar(a.size * (a.id === 'sol' ? 4.8 : 3.1) * (1 + 0.22 * pl.flare));
     pl.halo.material.opacity = (waiting ? 0.9 : link.uActive.value * 0.8) * U.dim.value;
     pl.halo.material.color.set(waiting ? '#ffb547' : a.color);
     pl.halo.lookAt(camera.position);
@@ -598,9 +616,12 @@ function pick(e) {
 }
 function showCard(id, e) {
   if (!id) { card.hidden = true; return; }
-  const a = AGENTS.find((x) => x.id === id), busy = world.active.has(id);
-  card.innerHTML = `<div class="card-h"><b>${a.symbol}</b> ${a.name}</div><div>${a.role}</div>
-    <div class="card-m">Estado: ${busy ? 'delegación SIMULADA en curso' : 'disponible'}<br>Tarea actual: —<br>Último resultado verificado: — (prototipo sin datos)</div>`;
+  const a = AGENTS.find((x) => x.id === id), data = agentData(id), task = data?.current_task;
+  const last = data?.last_result;
+  const lastSummary = last?.result?.deliverable || last?.result?.summary || '';
+  card.innerHTML = `<div class="card-h"><b>${a.symbol}</b> ${esc(a.name)}</div><div>${esc(data?.purpose ?? a.role)}</div>
+    <div class="card-m">Estado: ${task ? esc(task.status) : 'disponible'}<br>Tarea actual: ${task ? `#${task.id} ${esc(task.title)}` : 'ninguna'}<br>Último resultado: ${last ? `#${last.id} ${esc(last.title)}${lastSummary ? ` · ${esc(lastSummary.slice(0, 90))}` : ''}` : 'ninguno todavía'}</div>
+    <div class="card-action">Haz clic para abrir este agente</div>`;
   card.hidden = false;
   const x = Math.min(innerWidth - 280, e.clientX + 18), y = Math.min(innerHeight - 140, e.clientY + 18);
   card.style.left = `${x}px`; card.style.top = `${y}px`;
@@ -613,7 +634,81 @@ addEventListener('mousemove', (e) => {
   showCard(world.hover ?? world.selected, e);
   if (ui.reduced) frame();
 });
-canvas.addEventListener('click', (e) => { const id = pick(e); world.selected = id === world.selected ? null : id; showCard(world.selected, e); if (ui.reduced) frame(); });
+canvas.addEventListener('click', (e) => {
+  const id = pick(e);
+  world.selected = id === world.selected ? null : id;
+  showCard(world.selected, e);
+  if (world.selected) openMission(world.selected);
+  if (ui.reduced) frame();
+});
+
+const mission = document.getElementById('mission');
+const missionForm = document.getElementById('mission-form');
+function openMission(id, focus = true) {
+  const agent = AGENTS.find((item) => item.id === id);
+  const data = agentData(id);
+  if (!agent) return;
+  document.getElementById('mission-agent').value = id;
+  document.getElementById('mission-title').textContent = `${agent.symbol} ${agent.name}`;
+  document.getElementById('mission-purpose').textContent = data?.purpose ?? agent.role;
+  const select = document.getElementById('mission-business');
+  select.innerHTML = real.businesses.map((business) => `<option value="${business.id}">${esc(business.name)}${business.is_demo ? ' · DEMO' : ''}</option>`).join('');
+  const task = data?.current_task;
+  const last = data?.last_result;
+  document.getElementById('mission-status').textContent = task ? `Tarea #${task.id}: ${task.status} · ${task.title}` : last ? `Último resultado: #${last.id} ${last.title}` : real.connected ? 'Disponible para una misión.' : 'Conectando con KRATOS…';
+  mission.hidden = false;
+  if (focus) document.getElementById('mission-objective').focus();
+}
+
+document.getElementById('mission-close').addEventListener('click', () => { mission.hidden = true; });
+missionForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const submit = missionForm.querySelector('button[type="submit"]');
+  const status = document.getElementById('mission-status');
+  const form = new FormData(missionForm);
+  submit.disabled = true;
+  status.textContent = 'KRATOS está registrando la misión…';
+  try {
+    const result = await api('/api/agents/task', {
+      agentId: form.get('agentId'), businessId: Number(form.get('businessId')),
+      objective: form.get('objective'), priority: Number(form.get('priority')),
+      requestId: crypto.randomUUID(),
+    });
+    status.textContent = result.aiActive ? `Misión #${result.task.id} creada. ${result.task.ownerFunction} entrará en ejecución.` : `Misión #${result.task.id} guardada. Espera conexión y presupuesto de IA.`;
+    document.getElementById('mission-objective').value = '';
+    await refreshReal();
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+async function refreshReal() {
+  try {
+    const [agents, overview, businesses] = await Promise.all([api('/api/agents'), api('/api/overview'), api('/api/businesses')]);
+    real.agents = agents;
+    real.overview = overview;
+    real.businesses = businesses.businesses ?? [];
+    real.connected = true;
+    document.getElementById('proto-tag').textContent = overview.ai?.active ? 'UNIVERSO KRATOS · agentes reales disponibles' : 'UNIVERSO KRATOS · agentes conectados · IA pendiente de clave o presupuesto';
+    for (const agent of AGENTS) {
+      const running = taskState(agent.id) === 'en_ejecucion';
+      const active = world.active.get(agent.id);
+      if (running && !active?.persistent) delegate(agent.id, false, true);
+      if (!running && active?.persistent) world.active.delete(agent.id);
+    }
+    if (overview.state?.emergency_stop) setState('detenido', false);
+    else if ((overview.running ?? []).length) setState('ejecutando', false);
+    else if (overview.pendingApprovals > 0) setState('esperando_permiso', false);
+    else setState('reposo', false);
+    if (!document.getElementById('list').hidden) renderList();
+    if (!mission.hidden && world.selected) openMission(world.selected, false);
+  } catch (error) {
+    real.connected = false;
+    document.getElementById('proto-tag').textContent = 'UNIVERSO KRATOS · sin conexión con el sistema local';
+  }
+}
 
 function act(a) {
   const btn = dock.querySelector(`[data-act="${a}"]`);
@@ -636,7 +731,7 @@ function exitExperience() {
 
 function renderList() {
   document.getElementById('list-items').innerHTML = `<li><span class="sym">✦</span><span><b>KRATOS</b><br><span class="st">Conciencia coordinadora</span></span><span class="st">${STATE_NAME[ui.state]}</span></li>` +
-    AGENTS.map((a) => `<li><span class="sym" aria-hidden="true">${a.symbol}</span><span><b>${a.name}</b><br><span class="st">${a.role}</span></span><span class="st ${world.active.has(a.id) ? 'on' : ''}">${world.active.has(a.id) ? 'delegación simulada' : 'disponible'}</span></li>`).join('');
+    AGENTS.map((a) => { const status = taskState(a.id); return `<li><span class="sym" aria-hidden="true">${a.symbol}</span><span><b>${a.name}</b><br><span class="st">${a.role}</span></span><span class="st ${status === 'en_ejecucion' ? 'on' : ''}">${status ? esc(status.replaceAll('_', ' ')) : 'disponible'}</span></li>`; }).join('');
 }
 
 addEventListener('keydown', (e) => {
@@ -672,3 +767,5 @@ setState('reposo', false);
 frame();
 start();
 wake();
+refreshReal();
+setInterval(refreshReal, 2500);

@@ -196,5 +196,18 @@ test('panel: exige sesión, host local y origen local', async () => {
     assert.equal(evil.status, 403);
     const form = await fetch(`${url}/api/emergency-stop`, { method: 'POST', headers: { cookie, 'content-type': 'text/plain' }, body: '{}' });
     assert.equal(form.status, 415);
+    const requestId = '7b3d2d5a-4e17-4a0a-8fb0-0da70fc65ab9';
+    const mission = { agentId: 'venus', businessId: bizA, objective: 'Proponer tres direcciones visuales claras para la aplicación', priority: 2, requestId };
+    const first = await fetch(`${url}/api/agents/task`, { method: 'POST', headers: { cookie, origin: url, 'content-type': 'application/json' }, body: JSON.stringify(mission) });
+    const firstBody: any = await first.json();
+    assert.equal(first.status, 200);
+    assert.equal(firstBody.task.ownerFunction, 'venus');
+    assert.equal(firstBody.task.status, 'esperando_ia');
+    const repeated = await fetch(`${url}/api/agents/task`, { method: 'POST', headers: { cookie, origin: url, 'content-type': 'application/json' }, body: JSON.stringify(mission) });
+    const repeatedBody: any = await repeated.json();
+    assert.equal(repeatedBody.task.id, firstBody.task.id);
+    const stored = (await db.query(`SELECT owner_function, type, status, count(*) OVER ()::int AS n FROM tasks WHERE idempotency_key = $1`, [`universo:${requestId}`])).rows;
+    assert.equal(stored.length, 1);
+    assert.deepEqual([stored[0].owner_function, stored[0].type, stored[0].status], ['venus', 'agente', 'esperando_ia']);
   } finally { server.close(); }
 });

@@ -65,6 +65,15 @@ async function interpret(db: Db, t: string, original: string): Promise<Reply> {
     };
   }
 
+  if (/(me oyes|me escuchas|estas ahi|hola)/.test(t)) {
+    return { text: 'Sí, te escucho. Estoy en modo demostración porque aún no tengo la clave de Claude; cuando la guardes y apruebes mi presupuesto, podré conversar de verdad.', spoken: 'Sí, te escucho. Aún me falta la clave de Claude para pensar contigo.' };
+  }
+  if (/(que puedes hacer|que sabes hacer|ayuda|como funcionas)/.test(t)) {
+    return {
+      text: 'Ahora mismo, sin IA, puedo: decirte cómo van tus negocios, contarte qué hice, mostrar el presupuesto, registrar una asignación («tienes 50 dólares para…»), crear una tarea («crea una tarea: …»), listar aprobaciones pendientes y detener todo («detén todas las acciones»). Con la clave de Claude podré conversar libremente, investigar, recordar en Obsidian y repartir trabajo entre mis siete especialistas.',
+      spoken: 'Sin IA puedo resumir tus negocios, crear tareas, mostrar el presupuesto y detener todo. Con la clave de Claude podré hacer mucho más.',
+    };
+  }
   if (/(como van|resumen|estado|negocios)/.test(t)) return { ...(await summary(db)) };
   if (/(que hiciste|actividad|registro|historial)/.test(t)) {
     const { rows } = await db.query(`SELECT at, actor, action FROM audit_log ORDER BY id DESC LIMIT 8`);

@@ -6,7 +6,7 @@
   <title>KRATOS · Prototipo de universo</title>
   <link rel="icon" href="/icon.png">
   <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
-  <link rel="stylesheet" href="/prototipo/universo.css">
+  <link rel="stylesheet" href="/prototipo/universo.css?v=cinema-4">
 </head>
 <body>
   <canvas id="universo" aria-label="Universo de KRATOS: su mente en el centro y siete especialistas alrededor"></canvas>
@@ -14,10 +14,24 @@
 
   <!-- Capa mínima: estado y avisos honestos -->
   <div id="whisper" class="whisper" aria-live="polite"><span id="state-name">en reposo</span></div>
-  <div id="proto-tag" class="proto-tag">PROTOTIPO · zorro de luz provisional · eventos simulados con teclas</div>
+  <div id="proto-tag" class="proto-tag">UNIVERSO KRATOS · estado y tareas conectados al sistema local</div>
   <div id="event-log" class="event-log" aria-live="polite"></div>
   <div id="metrics" class="metrics" hidden></div>
   <div id="card" class="card" hidden role="status"></div>
+  <aside id="mission" class="mission" hidden aria-labelledby="mission-title">
+    <button id="mission-close" class="mission-close" type="button" aria-label="Cerrar">×</button>
+    <div class="mission-kicker">ENCARGO REAL</div>
+    <h2 id="mission-title">Especialista</h2>
+    <p id="mission-purpose"></p>
+    <form id="mission-form">
+      <input id="mission-agent" name="agentId" type="hidden">
+      <label>Negocio<select id="mission-business" name="businessId" required></select></label>
+      <label>Objetivo<textarea id="mission-objective" name="objective" rows="4" required placeholder="¿Qué resultado necesitas de este especialista?"></textarea></label>
+      <label>Prioridad<select name="priority"><option value="2">Alta</option><option value="3" selected>Normal</option><option value="4">Baja</option></select></label>
+      <button class="mission-submit" type="submit">Delegar a este planeta</button>
+      <div id="mission-status" class="mission-status" aria-live="polite"></div>
+    </form>
+  </aside>
 
   <!-- Controles discretos: aparecen al mover el ratón o pulsar una tecla -->
   <nav id="dock" class="dock" aria-label="Controles de KRATOS">
@@ -33,7 +47,7 @@
   <aside id="list" class="list" hidden aria-label="Especialistas">
     <h2>KRATOS y sus especialistas</h2>
     <ul id="list-items"></ul>
-    <p class="hint">Teclas 1–7: simular una delegación (marcada como SIMULADA). S: cambiar estado simulado. H: ayuda.</p>
+    <p class="hint">Selecciona un planeta para ver su trabajo real o delegarle una misión. Las teclas 1–7 siguen disponibles solo para probar la animación.</p>
   </aside>
 
   <div id="help" class="help" hidden>
@@ -41,6 +55,6 @@
     <p><b>Esc</b> salir · <b>Espacio</b> pausar · <b>M</b> silenciar · <b>R</b> movimiento reducido · <b>Q</b> calidad · <b>L</b> lista · <b>I</b> consumo · <b>F</b> pantalla completa · <b>1–7</b> delegación simulada · <b>S</b> estado simulado</p>
   </div>
 
-  <script type="module" src="/prototipo/universo.js"></script>
+  <script type="module" src="/prototipo/universo.js?v=cinema-4"></script>
 </body>
 </html>

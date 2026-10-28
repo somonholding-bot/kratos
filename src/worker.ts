@@ -5,6 +5,7 @@ import { migrate } from './migrate.ts';
 import { audit, heartbeat, isHalted } from './core/state.ts';
 import { claimNext, completeTask, failTask, recoverStale } from './core/tasks.ts';
 import { handlers } from './core/handlers.ts';
+import { aiStatus } from './core/brain.ts';
 
 // Ciclo: observar → (parada/pausa?) → reclamar → ejecutar → comprobar → registrar → esperar.
 // Si no hay trabajo útil, solo late y espera.
@@ -14,6 +15,11 @@ export async function tick(db: Db, workerId: string): Promise<'parado' | 'sin_tr
   await recoverStale(db, workerId);
   const halt = await isHalted(db);
   if (halt.halted) return 'parado';
+  const ai = await aiStatus(db);
+  if (ai.active) {
+    await db.query(`UPDATE tasks SET status = 'pendiente', updated_at = now()
+      WHERE status = 'esperando_ia' AND type = 'agente'`);
+  }
   const task = await claimNext(db, workerId, Object.keys(handlers));
   if (!task) return 'sin_trabajo';
   try {

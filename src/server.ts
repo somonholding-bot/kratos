@@ -7,7 +7,7 @@ import { createPool, type Db } from './db.ts';
 import { migrate } from './migrate.ts';
 import { consumeLoginCode, safeEqual, sessionToken } from './auth.ts';
 import { audit, emergencyStop, getState, heartbeat, resumeFromEmergency, setAutomationsPaused } from './core/state.ts';
-import { cancelTask } from './core/tasks.ts';
+import { cancelTask, createTask } from './core/tasks.ts';
 import { decideApproval } from './core/approvals.ts';
 import { handleMessage } from './core/chat.ts';
 import { cleanTmp, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
@@ -91,6 +91,35 @@ const GET: Record<string, Route> = {
 };
 
 const POST: Record<string, Route> = {
+  '/api/agents/task': async (db, b) => {
+    const state = await getState(db);
+    if (state.emergency_stop) throw new HttpError(409, 'KRATOS está detenido por la parada de emergencia');
+    const agentId = String(b.agentId ?? '').toLowerCase();
+    const agent = (await db.query(`SELECT id, name, deliverables FROM agent_functions WHERE id = $1 AND id <> 'kratos'`, [agentId])).rows[0];
+    if (!agent) throw new HttpError(400, 'Especialista no válido');
+    const businessId = Number(b.businessId);
+    const business = (await db.query(`SELECT id FROM businesses WHERE id = $1`, [businessId])).rows[0];
+    if (!business) throw new HttpError(400, 'Negocio no válido');
+    const productId = b.productId == null || b.productId === '' ? null : Number(b.productId);
+    if (productId && !(await db.query(`SELECT 1 FROM products WHERE id = $1 AND business_id = $2`, [productId, businessId])).rows[0]) throw new HttpError(400, 'Producto no válido para este negocio');
+    const objective = String(b.objective ?? '').trim().slice(0, 2000);
+    if (objective.length < 5) throw new HttpError(400, 'Describe el objetivo con un poco más de detalle');
+    const title = String(b.title ?? objective).trim().slice(0, 140);
+    const requestId = String(b.requestId ?? '');
+    if (!/^[0-9a-f-]{20,64}$/i.test(requestId)) throw new HttpError(400, 'Identificador de solicitud no válido');
+    const ai = await aiStatus(db);
+    const { task } = await createTask(db, {
+      businessId, productId, ownerFunction: agentId, type: 'agente', title, objective,
+      priority: Math.min(5, Math.max(1, Number(b.priority) || 3)),
+      inputs: { origin: 'universo', requestedAt: new Date().toISOString() },
+      expectedResult: (agent.deliverables ?? []).join(', ') || `Entregable de ${agent.name}`,
+      verification: String(b.verification ?? 'Revisión del propietario en KRATOS').trim().slice(0, 500),
+      status: ai.active ? 'pendiente' : 'esperando_ia',
+      idempotencyKey: `universo:${requestId}`,
+      createdBy: 'propietario (universo)',
+    });
+    return { task: { id: task.id, title: task.title, status: task.status, ownerFunction: task.owner_function }, aiActive: ai.active };
+  },
   '/api/chat': async (db, b) => {
     if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
     return handleMessage(db, b.text, b.channel === 'voz' ? 'voz' : 'texto');

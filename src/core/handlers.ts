@@ -2,6 +2,7 @@ import type { Db } from '../db.ts';
 import { config } from '../config.ts';
 import { expireApprovals } from './approvals.ts';
 import { appendDaily } from './vault.ts';
+import { executeSpecialistTask } from './brain.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
 // Las tareas de tipo 'agente' quedan en 'esperando_ia' hasta conectar Claude.
@@ -9,6 +10,10 @@ import { appendDaily } from './vault.ts';
 type Handler = (db: Db, task: any) => Promise<Record<string, unknown>>;
 
 export const handlers: Record<string, Handler> = {
+  async agente(db, task) {
+    return executeSpecialistTask(db, task);
+  },
+
   async revision_salud(db, task) {
     const expired = await expireApprovals(db, 'trabajador');
     const hb = (await db.query(`SELECT process, extract(epoch FROM now() - at)::int AS age FROM heartbeats`)).rows;
