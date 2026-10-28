@@ -11,13 +11,13 @@ import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky
 import { planetMaterial, ringMaterial } from './astros.js?v=cinema-4';
 
 const AGENTS = [
-  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.98, role: 'Propósito e identidad' },
-  { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.44, role: 'Investigación y comunicación' },
-  { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.63, role: 'Belleza, arte y sensibilidad' },
-  { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.56, role: 'Iniciativa y ejecución' },
-  { id: 'jupiter', real: '#e5cfae', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.88, role: 'Expansión y oportunidades' },
-  { id: 'saturno', real: '#ead7a8', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.7, role: 'Estructura, tiempo y límites' },
-  { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.53, role: 'Memoria, hábitos y cuidado' },
+  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.83, role: 'Propósito e identidad' },
+  { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.37, role: 'Investigación y comunicación' },
+  { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.54, role: 'Belleza, arte y sensibilidad' },
+  { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.48, role: 'Iniciativa y ejecución' },
+  { id: 'jupiter', real: '#e5cfae', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.75, role: 'Expansión y oportunidades' },
+  { id: 'saturno', real: '#ead7a8', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.59, role: 'Estructura, tiempo y límites' },
+  { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.45, role: 'Memoria, hábitos y cuidado' },
 ];
 const QUALITY = {
   baja: { dpr: 1, bloom: false, stars: 11000, bright: 20, galaxies: 6, fox: 5000, strands: 4, neurons: 3000, fire: 500, field: 450 },
@@ -174,24 +174,27 @@ function makeMind(q) {
         float plasma = n(p * 3.0 + uTime * 0.15) * 0.6 + n(p * 7.0 - uTime * 0.25) * 0.4;
         // estrellas dentro de la esfera, en varias capas que se dispersan hacia el borde
         float st = 0.0;
-        for (int k = 0; k < 3; k++) {
-          vec3 q = p * (14.0 + float(k) * 11.0) + float(k) * 7.3;
+        for (int k = 0; k < 5; k++) {
+          vec3 q = p * (10.0 + float(k) * 9.0) + float(k) * 7.3;
           vec3 cell = floor(q); vec3 f = fract(q) - 0.5;
           float r = h(cell);
           float tw = 0.6 + 0.4 * sin(uTime * (1.0 + r * 3.0) + r * 40.0);
-          st += step(0.86, r) * smoothstep(0.18, 0.0, length(f)) * tw;
+          st += step(0.8, r) * smoothstep(0.2, 0.0, length(f)) * tw;
         }
-        vec3 col = uTint * (0.05 + 0.16 * pow(depth, 3.0)) * (0.5 + 0.7 * plasma);
-        col += vec3(0.95, 0.97, 1.0) * st * (0.9 + depth * 0.6);
-        col += uTint * rim * (0.45 + uLevel * 0.6);
-        col += vec3(1.0) * pow(depth, 18.0) * (0.25 + uLevel * 0.45);      // corazón brillante
+        // filamentos de energía que giran dentro de la esfera
+        float fil = pow(n(vec3(p.x * 5.0 + uTime * 0.4, p.y * 14.0, p.z * 5.0 - uTime * 0.3)), 6.0) * 3.0;
+        vec3 col = uTint * (0.015 + 0.07 * pow(depth, 2.0)) * (0.4 + 0.9 * plasma);
+        col += vec3(0.95, 0.97, 1.0) * st * (1.4 + depth * 0.9);
+        col += mix(uTint, vec3(0.8, 0.9, 1.0), 0.5) * fil * (0.35 + depth * 0.6) * (1.0 + uLevel * 1.5);
+        col += uTint * rim * (0.22 + uLevel * 0.5);
+        col += vec3(1.0) * pow(depth, 9.0) * (0.75 + uLevel * 0.9);        // corazón brillante
         gl_FragColor = vec4(col * uDim, 1.0);
       }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
   group.add(core);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(150,220,255,0.38)'], [0.22, 'rgba(110,140,255,0.10)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  halo.material.opacity = 0.22;
+  halo.material.opacity = 0.38;
   halo.scale.setScalar(9.0); group.add(halo);
   // neuronas: corteza de puntos con ruido
   const n = q.neurons;
@@ -448,6 +451,45 @@ function makeFox(q) {
   return { group, furU, fireU };
 }
 
+// ---------- constelaciones del fondo ----------
+function makeConstellations(count) {
+  const pts = [], col = [], size = [], seed = [], lines = [];
+  for (let c = 0; c < count; c++) {
+    const z = -rand(30, 55), spread = (-z + 14) * 0.62;
+    let p = new THREE.Vector3(rand(-spread, spread) * 1.6, rand(-spread * 0.9, spread * 0.9), z);
+    const n = Math.floor(rand(5, 10)), stars = [p.clone()];
+    let dir = rand(0, Math.PI * 2);
+    for (let i = 1; i < n; i++) {
+      dir += rand(-1.1, 1.1);
+      const step = rand(1.6, 3.4) * (-z / 40);
+      const from = Math.random() < 0.25 ? stars[Math.floor(Math.random() * stars.length)] : stars[stars.length - 1];
+      const q = from.clone().add(new THREE.Vector3(Math.cos(dir) * step, Math.sin(dir) * step, rand(-0.5, 0.5)));
+      lines.push(from.x, from.y, from.z, q.x, q.y, q.z);
+      stars.push(q);
+    }
+    for (const st of stars) { pts.push(st.x, st.y, st.z); const warm = Math.random() < 0.3; col.push(1, warm ? 0.85 : 0.95, warm ? 0.7 : 1); size.push(rand(3.0, 6.0)); seed.push(Math.random()); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
+  g.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 1));
+  const starsObj = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio },
+    vertexShader: `attribute vec3 color; attribute float size; attribute float seed; varying vec3 vC; varying float vA; uniform float uTime; uniform float uPR;
+      void main(){ vC = color; vA = 0.75 + 0.25 * sin(uTime * (0.7 + seed) + seed * 30.0);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * uPR; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying vec3 vC; varying float vA; uniform float uDim;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = pow(smoothstep(0.5, 0.0, d), 2.0);
+        gl_FragColor = vec4(vC * a * vA * 1.6 * uDim, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+  const linesObj = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x8fa8ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const group = new THREE.Group(); group.add(linesObj, starsObj);
+  return group;
+}
+
 // ---------- campo neuronal: todo el universo como un pensamiento ----------
 // Neuronas repartidas por el espacio, unidas a sus vecinas. En reposo laten despacio;
 // con voz real (uSpeak) las sinapsis disparan y se ondulan.
@@ -489,9 +531,9 @@ function makeNeuralField(count) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
     fragmentShader: `varying float vS; varying float vU; uniform float uTime; uniform float uDim; uniform float uSpeak;
       void main(){
-        float idle = 0.05 + 0.04 * sin(uTime * 0.3 + vS * 40.0);
+        float idle = 0.012 + 0.012 * sin(uTime * 0.3 + vS * 40.0);
         float wave = pow(max(0.0, sin(vU * 6.0 - uTime * (2.0 + uSpeak * 10.0) + vS * 60.0)), 8.0);   // disparo que recorre la sinapsis
-        float a = idle + wave * (0.08 + uSpeak * 0.9);
+        float a = idle + wave * (0.015 + uSpeak * 1.1);
         gl_FragColor = vec4(mix(vec3(0.45, 0.6, 1.0), vec3(0.85, 0.95, 1.0), wave) * a * uDim, 1.0); }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
@@ -503,7 +545,7 @@ function makeNeuralField(count) {
     vertexShader: `attribute float seed; varying float vA; uniform float uTime; uniform float uSpeak; uniform float uPR;
       void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0);
         float fire = pow(max(0.0, sin(uTime * (0.8 + uSpeak * 6.0) + seed * 50.0)), 6.0);
-        vA = 0.25 + fire * (0.4 + uSpeak * 1.4);
+        vA = 0.1 + fire * (0.12 + uSpeak * 1.6);
         gl_PointSize = (2.0 + fire * (2.0 + uSpeak * 5.0)) * uPR * (10.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying float vA; uniform float uDim;
       void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
@@ -518,7 +560,7 @@ function makeNeuralField(count) {
 function layout() {
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
   const w = h * camera.aspect;
-  const rx = Math.min(w * 0.41, h * 0.95), ry = h * 0.34;
+  const rx = Math.min(w * 0.38, w / 2 - 2.1, h * 0.95), ry = h * 0.33;   // el anillo de Saturno queda dentro
   return AGENTS.map((a, k) => {
     const th = Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
     return new THREE.Vector3(Math.cos(th) * rx, 0.45 + Math.sin(th) * ry, Math.sin(k * 1.7) * 1.1);
@@ -533,6 +575,8 @@ function build() {
   const stars = makeStarfield(q.stars, U); root.add(stars);
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
+  root.add(makeConstellations(ui.quality === 'baja' ? 10 : ui.quality === 'media' ? 22 : 32));
+  root.add(makeNeuralField(q.field));
   const mind = makeMind(q); root.add(mind.group);
   const light = new THREE.PointLight(0xbfe6ff, 3.2, 18, 1.7); light.position.copy(mind.group.position); root.add(light);
   root.add(new THREE.AmbientLight(0x26334f, 0.16));
@@ -639,7 +683,7 @@ function frame() {
   // nivel real: micrófono al escuchar, una pulsación por palabra al hablar, latido lento al pensar
   voice.pulse *= Math.pow(0.02, dt); voice.level *= Math.pow(0.08, dt);
   const lvl = ui.state === 'escuchando' ? voice.level : ui.state === 'hablando' ? voice.pulse : 0;
-  const speakTarget = Math.max(lvl, ui.state === 'pensando' ? 0.35 + 0.15 * Math.sin(t * 3.0) : 0, ui.state === 'hablando' ? 0.3 : 0);
+  const speakTarget = Math.max(lvl, ui.state === 'pensando' ? 0.4 + 0.15 * Math.sin(t * 3.0) : 0, ui.state === 'hablando' ? 0.35 : 0, ui.state === 'escuchando' ? 0.25 : 0, ui.state === 'ejecutando' ? 0.2 : 0);
   U.speak.value += (speakTarget - U.speak.value) * Math.min(1, dt * 8);
   mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
   const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
