@@ -76,6 +76,10 @@ const HINTS: Record<string, string[]> = {
   'social-content': ['contenido para redes', 'posts', 'publicaciones', 'reels'],
   'launch-strategy': ['estrategia de lanzamiento', 'lanzamiento', 'lanzar la app'],
   'partnership-outreach': ['alianzas', 'socios', 'partners', 'colaboraciones'],
+  'sourcing-outreach': ['contratar', 'contratacion', 'fichar', 'buscar creadores', 'freelancer', 'talento'],
+  'cold-outreach': ['contactar', 'primer mensaje', 'mensaje en frio', 'propuesta de colaboracion'],
+  'community-discovery': ['donde esta mi audiencia', 'comunidades', 'subreddit', 'grupos de nicho'],
+  'earned-media-outreach': ['periodistas', 'podcast', 'entrevista', 'cobertura', 'menciones'],
   'churn-analysis': ['analisis de bajas', 'churn', 'cancelaciones', 'retencion'],
 };
 

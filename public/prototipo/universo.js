@@ -511,6 +511,30 @@ function makeOrbits(anchors) {
   return group;
 }
 
+// ---------- estrellas fugaces ----------
+const meteors = [];
+let meteorGroup = null, nextMeteor = 4;
+function updateMeteors(dt) {
+  if (!meteorGroup) return;
+  nextMeteor -= dt;
+  if (nextMeteor <= 0 && meteors.length < 3) {
+    nextMeteor = 3 + Math.random() * 7;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const start = new THREE.Vector3(rand(-18, 18), rand(4, 11), -20), dir = new THREE.Vector3(rand(-1, -0.4) * (Math.random() < 0.5 ? -1 : 1), rand(-0.8, -0.4), 0).normalize();
+    meteorGroup.add(line); meteors.push({ line, pos: start, dir, life: 0, max: rand(0.7, 1.3), speed: rand(14, 22) });
+  }
+  for (let i = meteors.length - 1; i >= 0; i--) {
+    const m = meteors[i]; m.life += dt;
+    m.pos.addScaledVector(m.dir, m.speed * dt);
+    const tail = m.pos.clone().addScaledVector(m.dir, -2.2);
+    m.line.geometry.attributes.position.array.set([m.pos.x, m.pos.y, m.pos.z, tail.x, tail.y, tail.z]);
+    m.line.geometry.attributes.position.needsUpdate = true;
+    m.line.material.opacity = Math.sin(Math.PI * Math.min(1, m.life / m.max)) * 0.9 * U.dim.value;
+    if (m.life > m.max) { meteorGroup.remove(m.line); m.line.geometry.dispose(); m.line.material.dispose(); meteors.splice(i, 1); }
+  }
+}
+
 // ---------- constelaciones del fondo ----------
 function makeConstellations(count) {
   const pts = [], col = [], size = [], seed = [], lines = [];
@@ -618,13 +642,28 @@ function makeNeuralField(count) {
 
 // ---------- composición ----------
 function layout() {
+  camera.updateMatrixWorld();
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
   const w = h * camera.aspect;
-  const rx = Math.min(w * 0.38, w / 2 - 2.1, h * 0.95), ry = h * 0.33;   // el anillo de Saturno queda dentro
-  return AGENTS.map((a, k) => {
-    const th = Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
-    return new THREE.Vector3(Math.cos(th) * rx, 0.45 + Math.sin(th) * ry, Math.sin(k * 1.7) * 1.1);
-  });
+  const th = (k) => Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
+  const extent = (k) => AGENTS[k].size * (AGENTS[k].id === 'saturno' ? 2.4 : 1.15) * 1.3 + 0.2;   // anillo, halo y crecimiento al trabajar
+  const at = (k, rx, ry) => new THREE.Vector3(Math.cos(th(k)) * rx, 0.3 + Math.sin(th(k)) * ry, Math.sin(k * 1.7) * 0.6);
+  // ancho y alto se ajustan por separado: la órbita usa toda la pantalla sin que ningún astro se salga
+  let rx = w * 0.42, ry = h * 0.4;
+  for (let i = 0; i < 40; i++) {
+    let outX = false, outY = false;
+    AGENTS.forEach((a, k) => {
+      const p = at(k, rx, ry), e = extent(k);
+      const vx = Math.max(Math.abs(p.clone().add(new THREE.Vector3(e, 0, 0)).project(camera).x), Math.abs(p.clone().add(new THREE.Vector3(-e, 0, 0)).project(camera).x));
+      const vy = Math.max(p.clone().add(new THREE.Vector3(0, e, 0)).project(camera).y, -p.clone().add(new THREE.Vector3(0, -e - 0.45, 0)).project(camera).y);
+      if (vx > 0.93) outX = true;
+      if (vy > 0.9) outY = true;
+    });
+    if (!outX && !outY) break;
+    if (outX) rx *= 0.97;
+    if (outY) ry *= 0.97;
+  }
+  return AGENTS.map((a, k) => at(k, rx, ry));
 }
 
 function build() {
@@ -633,6 +672,7 @@ function build() {
   const root = new THREE.Group();
   const background = makeBackgroundQuad(); root.add(background);  // nebulosa precalculada
   const stars = makeStarfield(q.stars, U); root.add(stars);
+  meteorGroup = new THREE.Group(); root.add(meteorGroup); meteors.length = 0;
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
   root.add(makeConstellations(ui.quality === 'baja' ? 10 : ui.quality === 'media' ? 22 : 32));
@@ -800,6 +840,12 @@ function frame() {
     pl.group.scale.setScalar(1 + 0.18 * mu2.uHover.value + 0.5 * link.uActive.value);   // crece cuando KRATOS le manda trabajo
   });
   world.bright.userData.twinkle(t);
+  if (!ui.reduced) {
+    world.stars.rotation.z = t * 0.004;                       // el cielo gira despacio
+    world.stars.rotation.y = Math.sin(t * 0.03) * 0.02;
+    world.bright.rotation.z = t * 0.003;
+    updateMeteors(dt);
+  }
   // hilo de pensamiento: se enciende al escuchar o hablar; al hablar, un impulso por frase (simulado aquí)
   const th = world.thought.uniforms;
   const talking = ui.state === 'hablando' || ui.state === 'escuchando';

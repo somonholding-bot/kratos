@@ -33,6 +33,10 @@ venus|$SF|landing-page
 venus|$SF|social-content
 marte|$SF|launch-strategy
 marte|$SF|partnership-outreach
+marte|$SF|sourcing-outreach
+marte|$SF|cold-outreach
+venus|$SF|community-discovery
+venus|$SF|earned-media-outreach
 saturno|$SF|churn-analysis
 sol|$MK|product-marketing
 sol|$MK|marketing-plan

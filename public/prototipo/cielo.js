@@ -153,7 +153,7 @@ export function makeNebula(U) {
         neb += vec3(1.0, 0.62, 0.28) * pow(a2 * a3, 3.0) * 1.6;                          // brillo dorado en los núcleos
         neb += vec3(0.20, 0.75, 0.80) * pow(fbm(w * 2.8 + 11.0), 5.0) * 0.8;             // turquesa
         neb *= (1.0 - dust * 0.75) * edge;
-        col += neb * 0.15;   // nebulosa presente pero oscura: deja ver las estrellas
+        col += neb * 0.24;   // más nebulosa, sin tapar las estrellas
         // nubes de estrellas: más densas dentro de la nebulosa
         float cluster = pow(n(p * 1100.0), 30.0) * 3.0 + pow(n(p * 640.0 + 7.7), 26.0) * 2.0;
         col += vec3(0.95, 0.95, 1.0) * cluster * (0.04 + pow(a2, 2.0) * 0.5) * edge;

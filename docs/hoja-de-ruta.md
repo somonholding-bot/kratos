@@ -16,11 +16,21 @@ Actualizada: 28-oct-2026.
 | 5 | Inteligencia con Claude (clave + 10 USD aprobados) | ✅ |
 | 6 | Memoria en Obsidian (`~/Documents/Kratos`) | ✅ |
 | 7 | Siete agentes planetarios con estatuto por regente | ✅ |
-| 8 | 68 skills (versión fijada, solo instrucciones): KRATOS 10 de CEO; planetas 5–12 cada uno | ✅ ([skills/MANIFEST.md](../skills/MANIFEST.md)) |
+| 8 | 72 skills (versión fijada, solo instrucciones): KRATOS 10 de CEO; planetas 5–12 cada uno, incluidas contratación de creadores y prensa | ✅ ([skills/MANIFEST.md](../skills/MANIFEST.md)) |
 | 9 | Meta de vida en el núcleo + ciclo proactivo del CEO cada 12 h | ✅ |
 | 10 | Motor de aprendizaje: lecciones (funcionó / no funcionó) que KRATOS y los agentes leen antes de trabajar | ✅ |
 | 11 | Universo 3D a pantalla completa; panel interno con el mismo universo | ✅ |
 | 12 | Repositorio público en GitHub | ✅ |
+
+## 🚀 Plan actual en 5 etapas
+
+| Etapa | Qué incluye | Estado |
+|---|---|---|
+| 1 | Universo encuadrado (todos los planetas en pantalla), cielo con movimiento y estrellas fugaces, más nebulosa; skills para buscar y contactar creadores e influencers, comunidades y prensa | ✅ |
+| 2 | **Apple App Store Connect (solo lectura):** estado de revisión de tus 2 apps en tiempo real, descargas y reseñas | Necesita tu clave de API (Issuer ID, Key ID, archivo .p8, rol de solo lectura) |
+| 3 | **Correo y lista de correo:** leer y preparar borradores; enviar solo con tu aprobación | Autorizar Gmail y elegir proveedor de lista |
+| 4 | **Internet y Claude Code:** búsqueda web para los agentes; delegar diseño y programación en una carpeta aislada con aprobación | Aprobar la instalación |
+| 5 | **Creadores reales, Google Play y panel mínimo:** flujo de contratación (plataformas, briefs, pagos solo con tu aprobación), Google Play en lectura, panel con solo voz, diseños, saldos y conexiones | Elegir plataformas de creadores |
 
 ## ⏳ Falta (en orden)
 
