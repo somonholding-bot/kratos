@@ -20,9 +20,9 @@ const AGENTS = [
   { id: 'luna', real: '#c9c9c9', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.53, role: 'Memoria, hábitos y cuidado' },
 ];
 const QUALITY = {
-  baja: { dpr: 1, bloom: false, stars: 7000, bright: 20, galaxies: 6, fox: 3200, strands: 4, neurons: 700, fire: 500, field: 450 },
-  media: { dpr: 1.5, bloom: true, stars: 18000, bright: 48, galaxies: 12, fox: 6500, strands: 6, neurons: 1400, fire: 1100, field: 900 },
-  alta: { dpr: 2, bloom: true, stars: 30000, bright: 80, galaxies: 18, fox: 10000, strands: 8, neurons: 2400, fire: 1800, field: 1500 },
+  baja: { dpr: 1, bloom: false, stars: 11000, bright: 20, galaxies: 6, fox: 5000, strands: 4, neurons: 3000, fire: 500, field: 450 },
+  media: { dpr: 1.5, bloom: true, stars: 28000, bright: 48, galaxies: 12, fox: 11000, strands: 6, neurons: 7000, fire: 1100, field: 900 },
+  alta: { dpr: 2, bloom: true, stars: 44000, bright: 80, galaxies: 18, fox: 16000, strands: 8, neurons: 12000, fire: 1800, field: 1500 },
 };
 const STATES = ['reposo', 'escuchando', 'pensando', 'hablando', 'ejecutando', 'esperando_permiso', 'detenido'];
 const STATE_NAME = { reposo: 'en reposo', escuchando: 'escuchando', pensando: 'pensando', hablando: 'hablando', ejecutando: 'ejecutando', esperando_permiso: 'esperando permiso', detenido: 'detenido' };
@@ -166,10 +166,11 @@ function makeMind(q) {
         vec3 c = mix(uTint * 0.26, vec3(0.72, 0.88, 1.0), 0.12 + 0.18 * swirl) * (0.62 + uLevel * 0.72) + uTint * f * 0.48;
         gl_FragColor = vec4(c * uDim, 1.0); }`,
   }));
+  core.visible = false; // el centro lo ocupa el zorro
   group.add(core);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(150,220,255,0.38)'], [0.22, 'rgba(110,140,255,0.10)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   halo.material.opacity = 0.42;
-  halo.scale.setScalar(2.75); group.add(halo);
+  halo.scale.setScalar(7.5); group.add(halo);
   // neuronas: corteza de puntos con ruido
   const n = q.neurons;
   const g = new THREE.BufferGeometry();
@@ -177,8 +178,11 @@ function makeMind(q) {
   const pts = [];
   for (let i = 0; i < n; i++) {
     const v = new THREE.Vector3().randomDirection();
-    const r = 0.62 + Math.pow(Math.random(), 1.8) * 0.95;
-    v.multiplyScalar(r).multiply(new THREE.Vector3(1.15, 0.95, 1));
+    // denso alrededor del zorro y cada vez más disperso hasta más allá de los planetas
+    const r = 1.2 + Math.pow(Math.random(), 1.6) * 8.5;
+    v.multiplyScalar(r).multiply(new THREE.Vector3(1.55, 0.82, 0.55));
+    // el centro queda despejado para que el zorro se lea: las neuronas delante de él se van detrás
+    if (Math.abs(v.x) < 1.9 && Math.abs(v.y) < 2.3 && v.z > -1.2) v.z = -1.2 - Math.random() * 2.5;
     pos.set([v.x, v.y, v.z], i * 3); seed[i] = Math.random(); pts.push(v);
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -186,12 +190,12 @@ function makeMind(q) {
   const neurons = new THREE.Points(g, new THREE.ShaderMaterial({
     uniforms,
     vertexShader: `attribute float seed; varying float vA; uniform float uTime; uniform float uLevel; uniform float uPR; uniform float uSpin;
-      void main(){ float a = uTime * uSpin * (0.4 + seed);
+      void main(){ float a = uTime * uSpin * (0.4 + seed) / (0.6 + length(position) * 0.18);   // el remolino gira más rápido cerca del centro
         vec3 p = position; float c = cos(a), s = sin(a); p.xz = mat2(c, -s, s, c) * p.xz;
         p *= 1.0 + uLevel * 0.12 * sin(seed * 30.0 + uTime * 6.0);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vA = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(uTime * (0.6 + seed * 1.4) + seed * 50.0), 3.0);
-        gl_PointSize = (1.2 + seed * 2.2) * uPR * (12.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+        gl_PointSize = (1.4 + seed * 2.6) * uPR * (13.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying float vA; uniform vec3 uTint; uniform float uDim;
       void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d);
         gl_FragColor = vec4(mix(uTint, vec3(1.0), 0.4) * a * vA * 1.1 * uDim, a); }`,
@@ -202,14 +206,14 @@ function makeMind(q) {
   const seg = [];
   for (let i = 0; i < pts.length && seg.length < 900 * 6; i += 2) {
     for (let j = i + 1; j < Math.min(pts.length, i + 40); j++) {
-      if (pts[i].distanceTo(pts[j]) < 0.28) { seg.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z); break; }
+      if (pts[i].length() < 3.2 && pts[i].distanceTo(pts[j]) < 0.45) { seg.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z); break; }
     }
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
   const syn = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: 0x7fc8ff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
   group.add(syn);
   group.position.set(0, 0.7, 0);
-  return { group, uniforms, synMat: syn.material, neuronGeo: g };
+  return { group, uniforms, synMat: syn.material, syn, neuronGeo: g };
 }
 
 // ---------- ramificaciones neuronales ----------
@@ -384,11 +388,11 @@ function makeFox(q) {
         p += 0.006 * vec3(sin(uTime * 0.8 + seed * 20.0), cos(uTime * 0.7 + seed * 17.0), 0.0);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vA = kind > 0.5 ? 1.0 : 0.55 + 0.45 * sin(uTime * (0.4 + seed) + seed * 30.0);
-        gl_PointSize = (kind > 0.5 ? 3.0 : 1.1 + seed * 1.2) * uPR * (14.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+        gl_PointSize = (kind > 0.5 ? 3.4 : 1.5 + seed * 1.5) * uPR * (14.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying float vK; varying float vA; uniform float uDim;
       void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
         vec3 c = vK > 1.5 ? vec3(0.05, 0.07, 0.12) : vK > 0.5 ? vec3(1.6, 0.95, 0.35) : vec3(0.92, 0.96, 1.08);
-        gl_FragColor = vec4(c * a * vA * uDim * (vK > 1.5 ? 1.0 : 0.62), a); }`,
+        gl_FragColor = vec4(c * a * vA * uDim * (vK > 1.5 ? 1.0 : 1.05), a); }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
   group.add(body);
@@ -419,7 +423,8 @@ function makeFox(q) {
   const warm = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(255,120,40,0.42)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   warm.material.opacity = 0.38;
   warm.position.set(1.12, 0.78, -0.2); warm.scale.setScalar(2.45); group.add(warm);
-  group.position.set(0, -3.15, 1.6);
+  group.scale.setScalar(1.35);
+  group.position.set(0, 0.7 - 1.45 * 1.35, 0.6);   // centrado en la mente de KRATOS
   return { group, furU, fireU };
 }
 
@@ -508,7 +513,6 @@ function build() {
   const stars = makeStarfield(q.stars, U); root.add(stars);
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
-  root.add(makeNeuralField(q.field));
   const mind = makeMind(q); root.add(mind.group);
   const light = new THREE.PointLight(0xbfe6ff, 3.2, 18, 1.7); light.position.copy(mind.group.position); root.add(light);
   root.add(new THREE.AmbientLight(0x26334f, 0.16));
@@ -523,6 +527,7 @@ function build() {
   root.add(constellation);
   const fox = makeFox(q); root.add(fox.group);
   const thought = makeConnection(new THREE.Vector3(0, fox.group.position.y + 2.55, fox.group.position.z), new THREE.Vector3(0, 0.15, 0.2), '#ffd9a8', 3);
+  thought.lines.visible = false; // el zorro ya está dentro de la mente
   root.add(thought.lines);
   scene.add(root);
   world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
@@ -551,7 +556,7 @@ function placeLabels() {
     el.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight + 6}px`;
     el.classList.toggle('on', world.active.has(AGENTS[i].id));
   });
-  tmp.set(0, world.mind.group.position.y - 1.25, 0).project(camera); // rótulo bajo la mente
+  tmp.set(0, world.mind.group.position.y - 2.25, 0.6).project(camera); // rótulo bajo el zorro
   const k = labelEls[labelEls.length - 1];
   k.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; k.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight}px`;
 }
@@ -618,7 +623,8 @@ function frame() {
   U.speak.value += (speakTarget - U.speak.value) * Math.min(1, dt * 8);
   mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
   const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
-  world.mind.group.scale.setScalar(1 + breathe + mu.uLevel.value * 0.12);
+  world.mind.group.scale.setScalar(1 + breathe * 0.4 + mu.uLevel.value * 0.05);
+  world.mind.syn.rotation.y = U.time.value * mu.uSpin.value * 0.5;
   world.mind.synMat.opacity = 0.12 + 0.12 * (ui.state === 'pensando' ? 1 : 0) + mu.uLevel.value * 0.15;
   world.fox.fireU.uFire.value += (p.fire - world.fox.fireU.uFire.value) * ease;
   world.light.color.copy(mu.uTint.value);
@@ -652,7 +658,7 @@ function frame() {
     const mu2 = pl.body.material.uniforms;
     mu2.uHover.value += ((isHover ? 1 : 0) - mu2.uHover.value) * ease;
     mu2.uActive.value = link.uActive.value;
-    pl.group.scale.setScalar(1 + 0.18 * mu2.uHover.value);
+    pl.group.scale.setScalar(1 + 0.18 * mu2.uHover.value + 0.5 * link.uActive.value);   // crece cuando KRATOS le manda trabajo
   });
   world.bright.userData.twinkle(t);
   // hilo de pensamiento: se enciende al escuchar o hablar; al hablar, un impulso por frase (simulado aquí)
