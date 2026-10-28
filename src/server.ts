@@ -59,7 +59,7 @@ const GET: Record<string, Route> = {
   '/api/tasks': async (db) => q(db, `SELECT t.*, b.name AS business FROM tasks t JOIN businesses b ON b.id = t.business_id ORDER BY
       CASE t.status WHEN 'en_ejecucion' THEN 0 WHEN 'esperando_permiso' THEN 1 WHEN 'pendiente' THEN 2 WHEN 'esperando_ia' THEN 3 ELSE 4 END, t.priority, t.run_at DESC LIMIT 200`),
   '/api/functions': async (db) => q(db, `SELECT f.*, (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion','esperando_ia')) AS open_tasks FROM agent_functions f`),
-  '/api/agents': async (db) => q(db, `SELECT f.id, f.name, f.symbol, f.color, f.purpose, f.deliverables, f.prohibited,
+  '/api/agents': async (db) => q(db, `SELECT f.id, f.name, f.symbol, f.color, f.purpose, f.deliverables, f.prohibited, f.charter,
       (SELECT json_build_object('id', t.id, 'title', t.title, 'status', t.status, 'since', t.updated_at) FROM tasks t
          WHERE t.owner_function = f.id AND t.status IN ('en_ejecucion','esperando_permiso','pendiente','esperando_ia')
          ORDER BY (t.status = 'en_ejecucion') DESC, t.priority, t.run_at LIMIT 1) AS current_task,
