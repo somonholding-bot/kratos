@@ -62,9 +62,9 @@ export function planetMaterial(a, U, lightPos) {
         if (uType == 0) {                                            // Sol: blanco amarillento, granulación, manchas, limbo oscuro
           float g = fbm(p * 9.0 + vec3(0.0, t * 0.06, t * 0.04));
           float spots = smoothstep(0.74, 0.8, fbm(p * 3.0 - t * 0.008));
-          c = mix(vec3(1.0, 0.72, 0.32), vec3(1.0, 0.97, 0.86), g) * (1.0 - spots * 0.6);
+          c = mix(vec3(1.0, 0.42, 0.06), vec3(1.0, 0.8, 0.32), g) * (1.0 - spots * 0.6);   // naranja de fuego
           c *= mix(1.0, 0.6, pow(1.0 - max(dot(vN, vV), 0.0), 1.4));
-          c *= 1.15; lit = 1.0;
+          c *= 0.82; lit = 1.0;   // por debajo de 1 para que el tono ACES no lo vuelva blanco
         } else if (uType == 1) {                                     // Mercurio: gris parduzco con cráteres
           float cr = craters(p * 7.0); float rim = smoothstep(0.02, 0.05, cr) - smoothstep(0.05, 0.1, cr);
           c = mix(vec3(0.36, 0.33, 0.30), vec3(0.62, 0.58, 0.54), fbm(p * 9.0)) * (0.72 + 0.28 * smoothstep(0.0, 0.05, cr)) + rim * 0.12;
@@ -97,9 +97,14 @@ export function planetMaterial(a, U, lightPos) {
           float maria = smoothstep(0.5, 0.62, fbm(p * 1.8 + 7.0));
           c = mix(vec3(0.72, 0.71, 0.69), vec3(0.34, 0.34, 0.35), maria) * (0.7 + 0.3 * smoothstep(0.0, 0.07, cr));
         }
-        c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.35);    // compensa la desaturación del tono ACES
-        vec3 night = c * 0.12;
-        vec3 col = mix(night, c * (0.1 + 0.55 * lit), lit);
+        // textura real del planeta (Solar System Scope, CC BY 4.0) cuando existe
+        if (uHasMap > 0.5) {
+          vec2 uv = vec2(0.5 + atan(p.z, p.x) / 6.2831853, 0.5 + asin(clamp(p.y, -1.0, 1.0)) / 3.14159265);
+          c = texture2D(uMap, uv).rgb;
+        }
+        vec3 night = c * 0.06;
+        vec3 col = mix(night, c * (0.16 + 0.68 * lit), lit);
+        col += vec3(1.0, 0.78, 0.45) * pow(fres, 3.0) * 0.18 * (0.4 + lit);         // borde dorado, como en la referencia
         col += atmo * fres * atmoK;                                                  // atmósfera real (si la tiene)
         col += uColor * fres * (0.6 * uActive + 0.35 * uHover);                     // color simbólico solo al trabajar o al señalarlo
         gl_FragColor = vec4(col * uDim * (0.82 + 0.18 * uHover), 1.0);

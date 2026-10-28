@@ -1,0 +1,77 @@
+#!/bin/bash
+# Descarga, con versión fijada, solo los SKILL.md (instrucciones) de cada skill asignada a un planeta.
+# No descarga scripts, evaluaciones ni integraciones. Para actualizar: cambiar el commit y revisar el diff.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="$ROOT/skills"
+MK="coreyhaines31/marketingskills@0cd9b3a0ef4c411a1d690419ce843f2a1da32cce"   # MIT
+SP="obra/superpowers@2ce8aa15d05bd57213e6f746f953aafb7ded7a8b"                # MIT
+AN="anthropics/skills@ca45fc496a3436251f191354091d557da31c15b5"               # Apache-2.0
+
+# planeta | repo@commit | skill
+MAP="
+sol|$MK|product-marketing
+sol|$MK|marketing-plan
+sol|$MK|offers
+sol|$MK|pricing
+luna|$MK|onboarding
+luna|$MK|churn-prevention
+luna|$MK|emails
+mercurio|$MK|copywriting
+mercurio|$MK|copy-editing
+mercurio|$MK|competitors
+mercurio|$MK|competitor-profiling
+mercurio|$MK|customer-research
+mercurio|$MK|content-strategy
+mercurio|$MK|cold-email
+mercurio|$MK|public-relations
+venus|$MK|ad-creative
+venus|$MK|image
+venus|$MK|video
+venus|$MK|social
+venus|$MK|influencer-marketing
+venus|$MK|co-marketing
+venus|$MK|community-marketing
+venus|$AN|frontend-design
+marte|$MK|launch
+marte|$MK|ads
+marte|$MK|prospecting
+marte|$MK|sales-enablement
+marte|$MK|directory-submissions
+marte|$SP|writing-plans
+marte|$SP|executing-plans
+jupiter|$MK|marketing-ideas
+jupiter|$MK|marketing-loops
+jupiter|$MK|referrals
+jupiter|$MK|aso
+jupiter|$MK|seo-audit
+jupiter|$MK|ai-seo
+jupiter|$MK|programmatic-seo
+jupiter|$MK|lead-magnets
+jupiter|$MK|free-tools
+saturno|$MK|analytics
+saturno|$MK|ab-testing
+saturno|$MK|attribution
+saturno|$MK|cro
+saturno|$MK|conversion-tracking
+saturno|$MK|revops
+saturno|$SP|verification-before-completion
+"
+mkdir -p "$DEST"
+{
+  echo "# Skills de los especialistas de KRATOS"
+  echo
+  echo "Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado por scripts/descargar-skills.sh."
+  echo
+  echo "| Planeta | Skill | Origen | Licencia |"
+  echo "|---|---|---|---|"
+} > "$DEST/MANIFEST.md"
+echo "$MAP" | while IFS='|' read -r planet src skill; do
+  [ -z "$planet" ] && continue
+  repo="${src%@*}"; sha="${src#*@}"
+  out="$DEST/$planet/$skill"; mkdir -p "$out"
+  curl -fsSL "https://raw.githubusercontent.com/$repo/$sha/skills/$skill/SKILL.md" -o "$out/SKILL.md"
+  lic=$([ "$repo" = "anthropics/skills" ] && echo "Apache-2.0" || echo "MIT")
+  echo "| $planet | $skill | [$repo@${sha:0:10}](https://github.com/$repo/tree/$sha/skills/$skill) | $lic |" >> "$DEST/MANIFEST.md"
+  echo "✓ $planet / $skill"
+done

@@ -136,7 +136,7 @@ export function makeNebula(U) {
         float glow = fbm(vec2(along * 3.0, across * 9.0) + t);
         float grain = pow(n(p * 900.0), 18.0) * 2.0 + pow(n(p * 520.0 + 3.1), 22.0) * 1.5;   // estrellas no resueltas
         // espacio negro profundo: solo una franja galáctica tenue y neutra, y estrellas no resueltas
-        vec3 col = vec3(0.0015, 0.0018, 0.003);
+        vec3 col = vec3(0.0008, 0.001, 0.002);
         col += vec3(0.055, 0.05, 0.06) * band * pow(glow, 2.0) * 0.6;
         col += vec3(0.9, 0.92, 1.0) * grain * (0.08 + band * 0.12);
         // nebulosas de color con nubes de estrellas (precalculado una vez: puede ser rico sin coste)
@@ -153,7 +153,7 @@ export function makeNebula(U) {
         neb += vec3(1.0, 0.62, 0.28) * pow(a2 * a3, 3.0) * 1.6;                          // brillo dorado en los núcleos
         neb += vec3(0.20, 0.75, 0.80) * pow(fbm(w * 2.8 + 11.0), 5.0) * 0.8;             // turquesa
         neb *= (1.0 - dust * 0.75) * edge;
-        col += neb * 0.28;
+        col += neb * 0.15;   // nebulosa presente pero oscura: deja ver las estrellas
         // nubes de estrellas: más densas dentro de la nebulosa
         float cluster = pow(n(p * 1100.0), 30.0) * 3.0 + pow(n(p * 640.0 + 7.7), 26.0) * 2.0;
         col += vec3(0.95, 0.95, 1.0) * cluster * (0.04 + pow(a2, 2.0) * 0.5) * edge;

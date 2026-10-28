@@ -11,7 +11,7 @@ import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky
 import { planetMaterial, ringMaterial } from './astros.js?v=cinema-4';
 
 const AGENTS = [
-  { id: 'sol', real: '#fff1c9', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.83, role: 'Propósito e identidad' },
+  { id: 'sol', real: '#ffad3d', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.83, role: 'Propósito e identidad' },
   { id: 'mercurio', real: '#a89c90', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.37, role: 'Investigación y comunicación' },
   { id: 'venus', real: '#f3e2b5', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.54, role: 'Belleza, arte y sensibilidad' },
   { id: 'marte', real: '#d9714a', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.48, role: 'Iniciativa y ejecución' },
