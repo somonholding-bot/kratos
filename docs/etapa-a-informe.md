@@ -46,7 +46,7 @@ Jarvis es un **sistema operativo de trabajo** para tus negocios, no un chatbot:
 | Puertos ocupados | 5000 y 7000 (AirPlay), 5432 (Postgres), 11434 (Ollama), 8768 (un proceso node desconocido), 5037 (adb), 39127 (1Password) | Jarvis usará **127.0.0.1:7420** (libre). No tocaré el proceso del 8768. |
 | Audio | Micrófono y altavoces del MacBook Air (predeterminados) + un micrófono adicional de un dispositivo personal | Selección de dispositivo será obligatoria en la interfaz. |
 | Instalación previa | No existe `~/jarvis`, `~/.openclaw` ni `~/.n8n`; ningún servicio Jarvis/OpenClaw/n8n en launchd | Instalación limpia. |
-| Carpeta reciente “Unidad market ia” | Aparece entre tus proyectos recientes. **No la he abierto.** | Pregunta abierta (§10). |
+| Otra carpeta de proyecto reciente | Aparece entre tus proyectos recientes. **No la he abierto.** | Pregunta abierta (§10). |
 
 No he leído carpetas personales, credenciales, historial ni archivos ajenos.
 
@@ -281,7 +281,7 @@ La clave de API la guardarás tú en el Llavero de macOS con un comando que te d
 
 ## 10. Preguntas imprescindibles
 
-1. **Primera app**: nombre, enlace y plataformas (iOS / Android / web). ¿Tiene relación con la carpeta “Unidad market ia”? (no la he abierto).
+1. **Primera app**: nombre, enlace y plataformas (iOS / Android / web). ¿Tiene relación con algún proyecto existente?
 2. **Audiencia, mercado e idioma** del piloto (p. ej. hispanohablantes en EE. UU., España, México…).
 3. **Modelo de ingresos**: gratuita con anuncios, compra única, suscripción (¿RevenueCat?), freemium.
 4. **Herramientas y cuentas** que ya usas: analítica, App Store Connect / Play Console, redes, correo.
