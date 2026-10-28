@@ -1,6 +1,6 @@
 # Dirección visual de KRATOS (corrección del 28-oct-2026)
 
-Estado anterior guardado: commit `8e57164`, etiqueta `estado-antes-direccion-visual`.
+Estado anterior guardado en la etiqueta `estado-antes-direccion-visual`.
 
 ## Dónde me aparté de tus instrucciones
 
