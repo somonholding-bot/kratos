@@ -157,7 +157,7 @@ function makeMind(q) {
   const group = new THREE.Group();
   const uniforms = { uTime: U.time, uLevel: { value: 0 }, uTint: { value: new THREE.Color('#8fdcff') }, uDim: U.dim, uPR: U.pixelRatio, uSpin: { value: 0.15 } };
   // núcleo: fresnel + ruido interno
-  const core = new THREE.Mesh(new THREE.SphereGeometry(1.55, 96, 96), new THREE.ShaderMaterial({
+  const core = new THREE.Mesh(new THREE.SphereGeometry(1.0, 96, 96), new THREE.ShaderMaterial({
     uniforms,
     vertexShader: `varying vec3 vN; varying vec3 vP; varying vec3 vV;
       void main(){ vN = normalize(normalMatrix * normal); vP = position; vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
@@ -168,7 +168,7 @@ function makeMind(q) {
                    mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
       void main(){
         float a = uTime * 0.25; float c = cos(a), s = sin(a);
-        vec3 p = vP / 1.55; p.xz = mat2(c, -s, s, c) * p.xz;              // gira sin parar
+        vec3 p = vP / 1.0; p.xz = mat2(c, -s, s, c) * p.xz;              // gira sin parar
         float rim = pow(1.0 - max(dot(vN, vV), 0.0), 2.4);
         float depth = max(dot(vN, vV), 0.0);                               // más denso en el centro
         float plasma = n(p * 3.0 + uTime * 0.15) * 0.6 + n(p * 7.0 - uTime * 0.25) * 0.4;
@@ -195,7 +195,7 @@ function makeMind(q) {
   group.add(core);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(150,220,255,0.38)'], [0.22, 'rgba(110,140,255,0.10)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   halo.material.opacity = 0.38;
-  halo.scale.setScalar(9.0); group.add(halo);
+  halo.scale.setScalar(5.5); group.add(halo);
   // neuronas: corteza de puntos con ruido
   const n = q.neurons;
   const g = new THREE.BufferGeometry();
@@ -204,8 +204,9 @@ function makeMind(q) {
   for (let i = 0; i < n; i++) {
     const v = new THREE.Vector3().randomDirection();
     // denso alrededor del zorro y cada vez más disperso hasta más allá de los planetas
-    const r = 1.2 + Math.pow(Math.random(), 1.6) * 8.5;
-    v.multiplyScalar(r).multiply(new THREE.Vector3(1.55, 0.82, 0.55));
+    // concentrado: casi todas las neuronas cerca del núcleo, unas pocas se alejan
+    const r = 0.75 + Math.pow(Math.random(), 2.6) * 4.2;
+    v.multiplyScalar(r).multiply(new THREE.Vector3(1.25, 0.95, 0.8));
     pos.set([v.x, v.y, v.z], i * 3); seed[i] = Math.random(); pts.push(v);
   }
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -215,7 +216,7 @@ function makeMind(q) {
     vertexShader: `attribute float seed; varying float vA; uniform float uTime; uniform float uLevel; uniform float uPR; uniform float uSpin;
       void main(){ float a = uTime * uSpin * (0.4 + seed) / (0.6 + length(position) * 0.18);   // el remolino gira más rápido cerca del centro
         vec3 p = position; float c = cos(a), s = sin(a); p.xz = mat2(c, -s, s, c) * p.xz;
-        p *= 1.0 + uLevel * 0.12 * sin(seed * 30.0 + uTime * 6.0);
+        p *= 1.0 + uLevel * 0.35 * sin(seed * 30.0 + uTime * 8.0);   // al hablar, las neuronas se expanden y laten
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vA = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(uTime * (0.6 + seed * 1.4) + seed * 50.0), 3.0);
         gl_PointSize = (1.4 + seed * 2.6) * uPR * (13.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
@@ -229,7 +230,7 @@ function makeMind(q) {
   const seg = [];
   for (let i = 0; i < pts.length && seg.length < 900 * 6; i += 2) {
     for (let j = i + 1; j < Math.min(pts.length, i + 40); j++) {
-      if (pts[i].length() < 3.2 && pts[i].distanceTo(pts[j]) < 0.45) { seg.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z); break; }
+      if (pts[i].length() < 2.4 && pts[i].distanceTo(pts[j]) < 0.32) { seg.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z); break; }
     }
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
@@ -451,6 +452,38 @@ function makeFox(q) {
   return { group, furU, fireU };
 }
 
+// ---------- órbitas de energía (filamentos dorados y azules con chispas) ----------
+function makeOrbits(anchors) {
+  const group = new THREE.Group(), mats = [];
+  const center = MIND_POS;
+  const specs = [[0.42, 0.62, 0.15, '#ffc56b'], [0.62, 0.8, -0.2, '#6fa8ff'], [0.82, 0.95, 0.1, '#ffd890'], [1.0, 1.0, -0.06, '#8fb8ff'], [1.12, 1.05, 0.22, '#ffb84d']];
+  const rx = Math.max(...anchors.map((a) => Math.abs(a.x))), ry = Math.max(...anchors.map((a) => Math.abs(a.y - 0.45)));
+  for (const [kx, ky, tilt, color] of specs) {
+    const pts = [], u = [];
+    for (let k = 0; k <= 360; k++) {
+      const a = (k / 360) * Math.PI * 2;
+      const x = Math.cos(a) * rx * kx, y = Math.sin(a) * ry * ky;
+      pts.push(new THREE.Vector3(center.x + x * Math.cos(tilt) - y * Math.sin(tilt), center.y - 0.25 + x * Math.sin(tilt) + y * Math.cos(tilt), Math.sin(a) * 1.2 - 0.4));
+      u.push(k / 360);
+    }
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    g.setAttribute('u', new THREE.Float32BufferAttribute(u, 1));
+    const m = new THREE.ShaderMaterial({
+      uniforms: { uTime: U.time, uDim: U.dim, uSpeak: U.speak, uColor: { value: new THREE.Color(color) }, uSeed: { value: Math.random() * 10 } },
+      vertexShader: `attribute float u; varying float vU; void main(){ vU = u; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `varying float vU; uniform float uTime; uniform float uDim; uniform float uSpeak; uniform vec3 uColor; uniform float uSeed;
+        void main(){
+          float sparks = 0.0;
+          for (int i = 0; i < 4; i++) { float h = fract(uTime * (0.012 + float(i) * 0.004) + float(i) * 0.25 + uSeed); float d = abs(vU - h); d = min(d, 1.0 - d); sparks += exp(-d * d * 9000.0); }
+          float a = 0.14 + 0.07 * sin(vU * 40.0 + uSeed) + sparks * 2.2 + uSpeak * 0.35;
+          gl_FragColor = vec4(mix(uColor, vec3(1.0), sparks * 0.6) * a * uDim, 1.0); }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    group.add(new THREE.Line(g, m)); mats.push(m);
+  }
+  return group;
+}
+
 // ---------- constelaciones del fondo ----------
 function makeConstellations(count) {
   const pts = [], col = [], size = [], seed = [], lines = [];
@@ -589,6 +622,7 @@ function build() {
   const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(cpos, 3));
   const constellation = new THREE.LineSegments(cg, new THREE.LineBasicMaterial({ color: 0x9fb4ff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }));
   root.add(constellation);
+  root.add(makeOrbits(anchors));
   const fox = makeFox(q); fox.group.visible = false; root.add(fox.group);   // el centro es ahora el núcleo esférico
   const thought = makeConnection(new THREE.Vector3(0, fox.group.position.y + 2.55, fox.group.position.z), new THREE.Vector3(0, 0.15, 0.2), '#ffd9a8', 3);
   thought.lines.visible = false; // el zorro ya está dentro de la mente
@@ -597,7 +631,7 @@ function build() {
   world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.5, 0.42);
+  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.75, 0.55, 0.55);
   bloom.enabled = q.bloom;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -620,7 +654,7 @@ function placeLabels() {
     el.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight + 6}px`;
     el.classList.toggle('on', world.active.has(AGENTS[i].id));
   });
-  tmp.set(0, world.mind.group.position.y - 2.0, 0.6).project(camera); // rótulo bajo el núcleo
+  tmp.set(0, world.mind.group.position.y - 1.5, 0.6).project(camera); // rótulo bajo el núcleo
   const k = labelEls[labelEls.length - 1];
   k.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; k.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight}px`;
 }
@@ -687,9 +721,9 @@ function frame() {
   U.speak.value += (speakTarget - U.speak.value) * Math.min(1, dt * 8);
   mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
   const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
-  world.mind.group.scale.setScalar(1 + breathe * 0.4 + mu.uLevel.value * 0.05);
+  world.mind.group.scale.setScalar(1 + breathe * 0.5 + U.speak.value * 0.55);   // el núcleo crece mientras habláis
   world.mind.syn.rotation.y = U.time.value * mu.uSpin.value * 0.5;
-  world.mind.synMat.opacity = 0.12 + 0.12 * (ui.state === 'pensando' ? 1 : 0) + mu.uLevel.value * 0.15;
+  world.mind.synMat.opacity = 0.14 + 0.15 * (ui.state === 'pensando' ? 1 : 0) + U.speak.value * 0.45;
   world.fox.fireU.uFire.value += (p.fire - world.fox.fireU.uFire.value) * ease;
   world.light.color.copy(mu.uTint.value);
   // astros: deriva ambiental mínima alrededor de su ancla (nunca orbitan fuera de cuadro)

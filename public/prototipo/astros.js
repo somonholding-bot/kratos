@@ -55,7 +55,7 @@ export function planetMaterial(a, U, lightPos) {
         vec3 p = vObj; float t = uTime;
         vec3 L = normalize(uLight - vW);
         float lambert = dot(vN, L);
-        float lit = smoothstep(-0.08, 0.7, lambert);   // terminador más nítido: más contraste, más real
+        float lit = smoothstep(-0.75, 0.55, lambert);   // casi todo iluminado, con sombra suave en el borde
         float fres = pow(1.0 - max(dot(vN, vV), 0.0), 3.0);
         vec3 c;
         vec3 atmo = vec3(0.0); float atmoK = 0.0;
@@ -98,8 +98,8 @@ export function planetMaterial(a, U, lightPos) {
           c = mix(vec3(0.72, 0.71, 0.69), vec3(0.34, 0.34, 0.35), maria) * (0.7 + 0.3 * smoothstep(0.0, 0.07, cr));
         }
         c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.35);    // compensa la desaturación del tono ACES
-        vec3 night = c * 0.01;
-        vec3 col = mix(night, c * (0.04 + 0.85 * lit), lit);
+        vec3 night = c * 0.12;
+        vec3 col = mix(night, c * (0.1 + 0.55 * lit), lit);
         col += atmo * fres * atmoK;                                                  // atmósfera real (si la tiene)
         col += uColor * fres * (0.6 * uActive + 0.35 * uHover);                     // color simbólico solo al trabajar o al señalarlo
         gl_FragColor = vec4(col * uDim * (0.82 + 0.18 * uHover), 1.0);

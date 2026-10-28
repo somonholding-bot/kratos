@@ -63,12 +63,12 @@ function spikeTexture() {
 }
 
 function galaxyTexture(kind) {
-  const s = 128, c = document.createElement('canvas'); c.width = c.height = s;
+  const s = 256, c = document.createElement('canvas'); c.width = c.height = s;
   const g = c.getContext('2d');
   g.translate(s / 2, s / 2);
   if (kind === 'espiral') {
-    for (let i = 0; i < 900; i++) {
-      const arm = i % 2, t = Math.random() * 3.2, r = t * 16 + rand(-3, 3);
+    for (let i = 0; i < 4000; i++) {
+      const arm = i % 2, t = Math.random() * 3.2, r = t * 34 + rand(-6, 6);
       const a = t * 1.9 + arm * Math.PI + rand(-0.25, 0.25);
       g.fillStyle = `rgba(${200 + rand(0, 55)},${190 + rand(0, 50)},255,${0.25 * (1 - t / 3.4)})`;
       g.fillRect(Math.cos(a) * r, Math.sin(a) * r * 0.45, 1.5, 1.5);
@@ -100,6 +100,12 @@ export function makeBrightStars(count, U) {
 export function makeGalaxies(count) {
   const group = new THREE.Group();
   const tex = { espiral: galaxyTexture('espiral'), eliptica: galaxyTexture('eliptica') };
+  // cuatro galaxias espirales grandes cerca de las esquinas
+  for (const [x, y] of [[-1, 0.8], [1, 0.75], [-1.1, -0.55], [1.05, -0.65]]) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.espiral, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: rand(0.55, 0.8), rotation: rand(0, Math.PI) }));
+    sp.position.set(x * 26, y * 15, -30); sp.scale.setScalar(rand(7, 11));
+    group.add(sp);
+  }
   for (let i = 0; i < count; i++) {
     const kind = Math.random() < 0.6 ? 'espiral' : 'eliptica';
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex[kind], blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: rand(0.25, 0.6), rotation: rand(0, Math.PI) }));
@@ -132,6 +138,15 @@ export function makeNebula(U) {
         vec3 col = vec3(0.0015, 0.0018, 0.003);
         col += vec3(0.055, 0.05, 0.06) * band * pow(glow, 2.0) * 0.6;
         col += vec3(0.9, 0.92, 1.0) * grain * (0.35 + band * 0.5);
+        // nebulosas: nubes violeta, azul y magenta, más densas hacia los bordes
+        float edge = smoothstep(0.25, 0.85, length(p * vec2(0.75, 1.1)));
+        float n1 = fbm(p * 2.6 + vec2(t * 2.0, -t));
+        float n2 = fbm(p * 4.2 - vec2(t * 1.4, t * 0.7) + n1 * 1.8);
+        float clouds = pow(n2, 3.2) * edge;
+        col += vec3(0.30, 0.12, 0.55) * clouds * 2.2;                                  // violeta
+        col += vec3(0.08, 0.22, 0.55) * pow(n1, 3.0) * edge * 1.6;                      // azul
+        col += vec3(0.45, 0.10, 0.30) * pow(fbm(p * 3.3 + 7.0), 4.0) * edge * 1.3;      // magenta
+        col += vec3(0.75, 0.55, 0.30) * pow(fbm(p * 6.0 - 3.0), 7.0) * edge * 0.25;     // polvo dorado
         gl_FragColor = vec4(col * uDim, 1.0);
       }`,
     depthWrite: false, depthTest: false,
