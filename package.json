@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "three": "0.186.1"
   }
 }

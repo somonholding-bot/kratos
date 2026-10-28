@@ -1,0 +1,34 @@
+html, body { margin: 0; height: 100%; background: #010208; overflow: hidden; color: #dbe8ff; font: 14px/1.4 "SF Pro Text", system-ui, sans-serif; cursor: default; }
+body.idle { cursor: none; }
+#universo { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+#labels { position: fixed; inset: 0; pointer-events: none; }
+.label { position: absolute; transform: translate(-50%, 0); white-space: nowrap; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(225,235,255,.62); text-shadow: 0 0 8px rgba(0,0,0,.9); transition: color .6s, opacity .6s; }
+.label b { font-size: 15px; letter-spacing: 0; margin-right: 6px; font-weight: 400; }
+.label.on { color: #fff; }
+.label.kratos { letter-spacing: .5em; font-size: 13px; color: rgba(240,246,255,.85); }
+.whisper { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: rgba(200,220,255,.55); pointer-events: none; }
+.proto-tag { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); font-size: 11px; letter-spacing: .08em; color: rgba(210,185,255,.55); border: 1px dashed rgba(195,139,255,.35); border-radius: 6px; padding: 2px 8px; pointer-events: none; }
+.event-log { position: fixed; left: 24px; bottom: 24px; font-size: 12px; color: rgba(220,232,255,.75); pointer-events: none; display: flex; flex-direction: column; gap: 4px; max-width: 360px; }
+.event-log div { animation: fade 6s forwards; }
+@keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.metrics { position: fixed; right: 20px; top: 14px; font: 11px/1.5 ui-monospace, monospace; color: rgba(190,210,240,.75); background: rgba(5,10,20,.55); padding: 6px 10px; border-radius: 8px; }
+.dock { position: fixed; right: 20px; bottom: 20px; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(8,14,28,.45); backdrop-filter: blur(10px); border: 1px solid rgba(140,170,255,.14); opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s; }
+.dock.show, .dock:focus-within { opacity: 1; transform: none; }
+.dock button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: 6px 4px; border-radius: 10px; color: #dbe8ff; font-size: 16px; }
+.dock button span { font-size: 10px; letter-spacing: .06em; color: rgba(200,215,240,.7); }
+.dock button:hover, .dock button:focus-visible { background: rgba(120,160,255,.14); outline: none; }
+.dock button[aria-pressed="true"] { color: #ffb36b; }
+.list, .help { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); width: 300px; background: rgba(6,10,22,.72); backdrop-filter: blur(12px); border: 1px solid rgba(140,170,255,.16); border-radius: 14px; padding: 14px 16px; }
+.help { left: 50%; transform: translate(-50%, -50%); width: min(560px, 90vw); }
+.list h2, .help h2 { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: rgba(190,210,240,.7); margin: 0 0 10px; }
+.list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: baseline; }
+.list .sym { font-size: 17px; text-align: center; }
+.list .st { font-size: 11px; color: rgba(190,210,240,.6); }
+.list .st.on { color: #fff; }
+.hint { font-size: 11px; color: rgba(190,210,240,.55); margin: 12px 0 0; }
+
+.card { position: fixed; width: 260px; padding: 10px 12px; border-radius: 12px; background: rgba(6,10,22,.72); backdrop-filter: blur(10px); border: 1px solid rgba(160,190,255,.2); font-size: 12px; color: rgba(225,235,255,.85); pointer-events: none; }
+.card-h { font-size: 14px; letter-spacing: .08em; margin-bottom: 4px; color: #fff; }
+.card-h b { font-weight: 400; font-size: 17px; margin-right: 4px; }
+.card-m { margin-top: 6px; color: rgba(190,210,240,.65); font-size: 11px; }

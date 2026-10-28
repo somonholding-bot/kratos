@@ -1,4 +1,5 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, config } from './config.ts';
@@ -14,6 +15,20 @@ import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 
 const PUBLIC = path.join(ROOT, 'public');
+// Three.js se sirve desde node_modules (versión fijada en package.json); solo build/ y examples/jsm/.
+const THREE_DIR = path.join(ROOT, 'node_modules', 'three');
+// Los import maps deben ir en línea: se permiten por su hash exacto, no con 'unsafe-inline'.
+const IMPORTMAP_HASHES = (() => {
+  const hashes = new Set<string>();
+  const walk = (d: string) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) walk(p);
+    else if (e.name.endsWith('.html')) for (const m of fs.readFileSync(p, 'utf8').matchAll(/<script type="importmap">([\s\S]*?)<\/script>/g)) {
+      hashes.add(`'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+    } } };
+  walk(PUBLIC);
+  return [...hashes].join(' ');
+})();
 const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${config.port}`, `localhost:${config.port}`]);
 
@@ -131,7 +146,7 @@ function send(res: http.ServerResponse, status: number, body: unknown, headers: 
     'content-type': typeof body === 'string' ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
-    'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self'",
+    'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'`,
     ...headers,
   });
   res.end(data);
@@ -207,10 +222,14 @@ export function createServer(db: Db) {
         return send(res, 200, await m[0](db, await readBody(req), m[1]));
       }
       if (req.method === 'GET') {
-        const rel = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
-        const file = path.join(PUBLIC, path.normalize(rel));
-        if (!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: 'No existe' });
-        res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
+        const rel = url.pathname === '/' ? 'index.html' : url.pathname.endsWith('/') ? url.pathname.slice(1) + 'index.html' : url.pathname.slice(1);
+        const vendor = rel.startsWith('vendor/three/');
+        const base = vendor ? THREE_DIR : PUBLIC;
+        const file = vendor ? path.join(THREE_DIR, path.normalize(rel.slice('vendor/three/'.length))) : path.join(PUBLIC, path.normalize(rel));
+        if (vendor && !(file.startsWith(path.join(THREE_DIR, 'build')) || file.startsWith(path.join(THREE_DIR, 'examples', 'jsm')))) return send(res, 404, { error: 'No existe' });
+        if (!file.startsWith(base) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: 'No existe' });
+        res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store',
+          'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'`, 'x-content-type-options': 'nosniff' });
         return fs.createReadStream(file).pipe(res);
       }
       send(res, 405, { error: 'Método no permitido' });

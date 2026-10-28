@@ -1,3 +1,5 @@
+> **Sustituido en lo visual por [direccion-visual.md](direccion-visual.md)** (28-oct-2026). Se conserva como historial.
+
 # Identidad visual de KRATOS
 
 Tres manifestaciones conectadas:

@@ -1,6 +1,8 @@
 # KRATOS — guía para agentes de desarrollo
 
-KRATOS es el asistente personal y empresarial del propietario (Jarvis es solo la referencia conceptual). Identidad: zorro blanco con cola de fuego, núcleo neuronal y siete especialistas planetarios. Detalle visual: [docs/identidad-kratos.md](docs/identidad-kratos.md). Voz: [docs/voz.md](docs/voz.md).
+KRATOS es el asistente personal y empresarial del propietario (Jarvis es solo la referencia conceptual). Identidad: zorro blanco con cola de fuego, mente neuronal y siete especialistas planetarios. Voz: [docs/voz.md](docs/voz.md).
+
+**Dirección visual vigente: [docs/direccion-visual.md](docs/direccion-visual.md)** — universo a pantalla completa, sin aspecto de panel; KRATOS en el centro y los siete astros siempre visibles; impulsos solo con eventos reales. No integrar en la app sin aprobación del prototipo (`public/prototipo/`).
 
 ## Mapa
 

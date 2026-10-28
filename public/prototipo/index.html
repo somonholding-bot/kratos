@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KRATOS · Prototipo de universo</title>
+  <link rel="icon" href="/icon.png">
+  <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+  <link rel="stylesheet" href="/prototipo/universo.css">
+</head>
+<body>
+  <canvas id="universo" aria-label="Universo de KRATOS: su mente en el centro y siete especialistas alrededor"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+
+  <!-- Capa mínima: estado y avisos honestos -->
+  <div id="whisper" class="whisper" aria-live="polite"><span id="state-name">en reposo</span></div>
+  <div id="proto-tag" class="proto-tag">PROTOTIPO · zorro de luz provisional · eventos simulados con teclas</div>
+  <div id="event-log" class="event-log" aria-live="polite"></div>
+  <div id="metrics" class="metrics" hidden></div>
+  <div id="card" class="card" hidden role="status"></div>
+
+  <!-- Controles discretos: aparecen al mover el ratón o pulsar una tecla -->
+  <nav id="dock" class="dock" aria-label="Controles de KRATOS">
+    <button data-act="mute" title="Silenciar micrófono (M)">🎙︎<span>Silenciar</span></button>
+    <button data-act="pause" title="Pausar movimiento (Espacio)">❚❚<span>Pausar</span></button>
+    <button data-act="reduced" title="Movimiento reducido (R)">◐<span>Reducir</span></button>
+    <button data-act="quality" title="Calidad gráfica (Q)">◆<span id="q-label">Media</span></button>
+    <button data-act="list" title="Vista en lista (L)">☰<span>Lista</span></button>
+    <button data-act="metrics" title="Consumo (I)">⌁<span>Consumo</span></button>
+    <button data-act="exit" title="Salir (Esc)">✕<span>Salir</span></button>
+  </nav>
+
+  <aside id="list" class="list" hidden aria-label="Especialistas">
+    <h2>KRATOS y sus especialistas</h2>
+    <ul id="list-items"></ul>
+    <p class="hint">Teclas 1–7: simular una delegación (marcada como SIMULADA). S: cambiar estado simulado. H: ayuda.</p>
+  </aside>
+
+  <div id="help" class="help" hidden>
+    <h2>Teclado</h2>
+    <p><b>Esc</b> salir · <b>Espacio</b> pausar · <b>M</b> silenciar · <b>R</b> movimiento reducido · <b>Q</b> calidad · <b>L</b> lista · <b>I</b> consumo · <b>F</b> pantalla completa · <b>1–7</b> delegación simulada · <b>S</b> estado simulado</p>
+  </div>
+
+  <script type="module" src="/prototipo/universo.js"></script>
+</body>
+</html>

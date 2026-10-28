@@ -1,0 +1,674 @@
+// KRATOS · prototipo de universo a pantalla completa (Three.js, sin activos de terceros).
+// Composición fija: la mente de KRATOS en el centro, su zorro de luz y siete especialistas
+// siempre visibles, unidos por ramificaciones neuronales. El brillo ambiental es lento y no
+// viaja; los impulsos que viajan solo aparecen con un evento (aquí, simulado con teclas).
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky } from './cielo.js';
+import { planetMaterial, ringMaterial } from './astros.js';
+
+const AGENTS = [
+  { id: 'sol', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.56, role: 'Propósito e identidad' },
+  { id: 'mercurio', name: 'Mercurio', symbol: '☿', color: '#46d9ff', size: 0.25, role: 'Investigación y comunicación' },
+  { id: 'venus', name: 'Venus', symbol: '♀', color: '#ff9c8a', size: 0.36, role: 'Belleza, arte y sensibilidad' },
+  { id: 'marte', name: 'Marte', symbol: '♂', color: '#ff5533', size: 0.32, role: 'Iniciativa y ejecución' },
+  { id: 'jupiter', name: 'Júpiter', symbol: '♃', color: '#a184ff', size: 0.5, role: 'Expansión y oportunidades' },
+  { id: 'saturno', name: 'Saturno', symbol: '♄', color: '#7482ff', size: 0.4, role: 'Estructura, tiempo y límites' },
+  { id: 'luna', name: 'Luna', symbol: '☾', color: '#d4e4ff', size: 0.3, role: 'Memoria, hábitos y cuidado' },
+];
+const QUALITY = {
+  baja: { dpr: 1, bloom: false, stars: 6000, bright: 18, galaxies: 6, fox: 3200, strands: 3, neurons: 800, fire: 500 },
+  media: { dpr: 1.5, bloom: true, stars: 14000, bright: 40, galaxies: 12, fox: 6500, strands: 5, neurons: 1600, fire: 1100 },
+  alta: { dpr: 2, bloom: true, stars: 26000, bright: 70, galaxies: 18, fox: 10000, strands: 7, neurons: 2800, fire: 1800 },
+};
+const STATES = ['reposo', 'escuchando', 'pensando', 'hablando', 'ejecutando', 'esperando_permiso', 'detenido'];
+const STATE_NAME = { reposo: 'en reposo', escuchando: 'escuchando', pensando: 'pensando', hablando: 'hablando', ejecutando: 'ejecutando', esperando_permiso: 'esperando permiso', detenido: 'detenido' };
+
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ui = {
+  quality: store('kratos.proto.quality') || 'media',
+  reduced: prefersReduced || store('kratos.proto.reduced') === '1',
+  paused: false, muted: false, state: 'reposo', stateSimulated: false,
+};
+
+// ---------- motor ----------
+const canvas = document.getElementById('universo');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setClearColor(0x010208, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+renderer.info.autoReset = false; // contamos todas las pasadas del fotograma
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 0.25, 14);
+let composer, bloom;
+let world = null; // todo lo construido según la calidad
+
+const U = { time: { value: 0 }, dim: { value: 1 }, pixelRatio: { value: 1 } };
+const MIND_POS = new THREE.Vector3(0, 0.7, 0);
+
+function radialTexture(stops, size = 256) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  for (const [o, col] of stops) grd.addColorStop(o, col);
+  g.fillStyle = grd; g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const rand = (a, b) => a + Math.random() * (b - a);
+
+// ---------- fondo: nebulosa y estrellas ----------
+function makeNebula() {
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.time, uDim: U.dim },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.9999, 1.0); }`,
+    fragmentShader: `
+      varying vec2 vUv; uniform float uTime; uniform float uDim;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+      float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); }
+      float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<6;i++){ v+=a*n(p); p*=2.03; a*=0.5; } return v; }
+      void main(){
+        vec2 p = vUv * vec2(3.2, 1.8);
+        float t = uTime * 0.004;
+        float a = fbm(p + vec2(t, -t));
+        float b = fbm(p * 1.7 - vec2(t * 1.3, 0.0) + a);
+        vec3 col = vec3(0.004, 0.006, 0.02);
+        col += vec3(0.16, 0.06, 0.32) * pow(b, 3.0) * 0.9;           // violeta
+        col += vec3(0.02, 0.16, 0.22) * pow(a, 4.0) * 0.8;           // turquesa
+        float vign = smoothstep(1.25, 0.35, length(vUv - vec2(0.5, 0.52)) * 1.6);
+        col += vec3(0.03, 0.045, 0.11) * vign * 0.35;                   // luz de la mente
+        gl_FragColor = vec4(col * uDim, 1.0);
+      }`,
+    depthWrite: false, depthTest: false,
+  });
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+  q.frustumCulled = false; q.renderOrder = -10;
+  return q;
+}
+
+function makeStars(count) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3), seed = new Float32Array(count), size = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const layer = Math.random();
+    const z = layer < 0.6 ? rand(-90, -40) : layer < 0.9 ? rand(-40, -15) : rand(-15, -6);
+    const spread = (-z + 14) * 0.9;
+    pos.set([rand(-spread, spread) * 1.6, rand(-spread, spread), z], i * 3);
+    seed[i] = Math.random(); size[i] = layer < 0.6 ? rand(0.6, 1.4) : layer < 0.9 ? rand(1, 2) : rand(1.5, 2.6);
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  g.setAttribute('size', new THREE.BufferAttribute(size, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio },
+    vertexShader: `attribute float seed; attribute float size; varying float vA; uniform float uTime; uniform float uPR;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0);
+        vA = 0.55 + 0.45 * sin(uTime * (0.3 + seed) + seed * 40.0);
+        gl_PointSize = size * uPR; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vA; uniform float uDim;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vec3(0.82,0.88,1.0) * a * vA * 0.9 * uDim, a * vA); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  return new THREE.Points(g, m);
+}
+
+// ---------- la mente de KRATOS ----------
+function makeMind(q) {
+  const group = new THREE.Group();
+  const uniforms = { uTime: U.time, uLevel: { value: 0 }, uTint: { value: new THREE.Color('#8fdcff') }, uDim: U.dim, uPR: U.pixelRatio, uSpin: { value: 0.15 } };
+  // núcleo: fresnel + ruido interno
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 64, 64), new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `varying vec3 vN; varying vec3 vP; void main(){ vN = normalize(normalMatrix * normal); vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec3 vN; varying vec3 vP; uniform float uTime; uniform float uLevel; uniform vec3 uTint; uniform float uDim;
+      void main(){ float f = pow(1.0 - abs(vN.z), 2.2);
+        float swirl = 0.5 + 0.5 * sin(vP.x * 9.0 + uTime * 0.7) * sin(vP.y * 11.0 - uTime * 0.5) * sin(vP.z * 7.0 + uTime * 0.3);
+        vec3 c = mix(uTint * 0.9, vec3(1.0), 0.25 + 0.4 * swirl) * (0.95 + uLevel * 1.4) + uTint * f * 1.6;
+        gl_FragColor = vec4(c * uDim, 1.0); }`,
+  }));
+  group.add(core);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(150,220,255,0.38)'], [0.22, 'rgba(110,140,255,0.10)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  halo.scale.setScalar(4.2); group.add(halo);
+  // neuronas: corteza de puntos con ruido
+  const n = q.neurons;
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3), seed = new Float32Array(n);
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().randomDirection();
+    const r = 0.62 + Math.pow(Math.random(), 1.8) * 0.95;
+    v.multiplyScalar(r).multiply(new THREE.Vector3(1.15, 0.95, 1));
+    pos.set([v.x, v.y, v.z], i * 3); seed[i] = Math.random(); pts.push(v);
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  const neurons = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `attribute float seed; varying float vA; uniform float uTime; uniform float uLevel; uniform float uPR; uniform float uSpin;
+      void main(){ float a = uTime * uSpin * (0.4 + seed);
+        vec3 p = position; float c = cos(a), s = sin(a); p.xz = mat2(c, -s, s, c) * p.xz;
+        p *= 1.0 + uLevel * 0.12 * sin(seed * 30.0 + uTime * 6.0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vA = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(uTime * (0.6 + seed * 1.4) + seed * 50.0), 3.0);
+        gl_PointSize = (1.2 + seed * 2.2) * uPR * (12.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vA; uniform vec3 uTint; uniform float uDim;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d);
+        gl_FragColor = vec4(mix(uTint, vec3(1.0), 0.4) * a * vA * 1.1 * uDim, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  group.add(neurons);
+  // sinapsis internas: pares cercanos
+  const seg = [];
+  for (let i = 0; i < pts.length && seg.length < 900 * 6; i += 2) {
+    for (let j = i + 1; j < Math.min(pts.length, i + 40); j++) {
+      if (pts[i].distanceTo(pts[j]) < 0.28) { seg.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z); break; }
+    }
+  }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+  const syn = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: 0x7fc8ff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+  group.add(syn);
+  group.position.set(0, 0.7, 0);
+  return { group, uniforms, synMat: syn.material, neuronGeo: g };
+}
+
+// ---------- ramificaciones neuronales ----------
+function branchPath(a, b, jitter) {
+  const pts = [];
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const perp = new THREE.Vector3(-dir.y, dir.x, 0).normalize();
+  const perp2 = new THREE.Vector3(0, 0, 1);
+  const o1 = rand(-1, 1) * jitter, o2 = rand(-1, 1) * jitter * 0.6;
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24;
+    const bow = Math.sin(Math.PI * t);
+    pts.push(new THREE.Vector3().copy(a).addScaledVector(dir, t).addScaledVector(perp, bow * o1 + Math.sin(t * 9 + o1 * 5) * 0.04 * jitter).addScaledVector(perp2, bow * o2));
+  }
+  return pts;
+}
+
+function makeConnection(from, to, color, strands) {
+  const pos = [], u = [], seed = [];
+  const push = (p0, p1, u0, u1, s) => { pos.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z); u.push(u0, u1); seed.push(s, s); };
+  for (let k = 0; k < strands; k++) {
+    const s = Math.random();
+    const path = branchPath(from, to, 0.35 + k * 0.12);
+    for (let i = 0; i < path.length - 1; i++) push(path[i], path[i + 1], i / (path.length - 1), (i + 1) / (path.length - 1), s);
+    // dendritas laterales
+    for (let d = 0; d < 4; d++) {
+      const i0 = Math.floor(rand(3, path.length - 4));
+      let p = path[i0].clone();
+      const dir = new THREE.Vector3().randomDirection().multiplyScalar(0.07);
+      const len = Math.floor(rand(4, 10));
+      for (let j = 0; j < len; j++) {
+        const q = p.clone().add(dir).add(new THREE.Vector3().randomDirection().multiplyScalar(0.03));
+        push(p, q, i0 / (path.length - 1) + j * 0.01, i0 / (path.length - 1) + (j + 1) * 0.01, s);
+        p = q; dir.multiplyScalar(0.92);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('u', new THREE.Float32BufferAttribute(u, 1));
+  g.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 1));
+  const uniforms = { uTime: U.time, uDim: U.dim, uColor: { value: new THREE.Color(color) }, uPulse: { value: -1 }, uActive: { value: 0 } };
+  const m = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `attribute float u; attribute float seed; varying float vU; varying float vS; void main(){ vU = u; vS = seed; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying float vU; varying float vS; uniform float uTime; uniform vec3 uColor; uniform float uPulse; uniform float uActive; uniform float uDim;
+      void main(){
+        float shimmer = 0.7 + 0.3 * sin(uTime * 0.35 + vS * 6.28);           // ambiental: lento, no viaja
+        float base = (0.22 + 0.45 * uActive) * shimmer * (1.0 - 0.25 * vU);
+        float d = vU - uPulse; float pulse = uPulse < 0.0 ? 0.0 : exp(-d * d * 260.0) * 2.4;   // impulso de un evento
+        vec3 c = mix(uColor, vec3(1.0), clamp(pulse, 0.0, 1.0) * 0.7) * (base + pulse);
+        gl_FragColor = vec4(c * uDim, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  return { lines: new THREE.LineSegments(g, m), uniforms };
+}
+
+// ---------- astros (texturas pintadas por código) ----------
+function planetTexture(id, color) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  const base = new THREE.Color(color);
+  const css = (col, a = 1) => `rgba(${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)},${a})`;
+  g.fillStyle = css(base); g.fillRect(0, 0, 512, 256);
+  const darker = base.clone().multiplyScalar(0.55), lighter = base.clone().lerp(new THREE.Color('#ffffff'), 0.45);
+  if (id === 'jupiter' || id === 'saturno') {
+    for (let y = 0; y < 256; y += 2) { const v = Math.sin(y * 0.11) + Math.sin(y * 0.031 + 1.3) * 0.8 + Math.sin(y * 0.4) * 0.2; g.fillStyle = css(v > 0 ? lighter : darker, Math.min(0.55, Math.abs(v) * 0.35)); g.fillRect(0, y, 512, 2); }
+    if (id === 'jupiter') { g.fillStyle = css(new THREE.Color('#ffd6f0'), 0.5); g.beginPath(); g.ellipse(330, 160, 34, 16, 0, 0, 7); g.fill(); }
+  } else if (id === 'luna' || id === 'mercurio') {
+    for (let i = 0; i < 160; i++) { const r = rand(2, id === 'luna' ? 18 : 10); g.fillStyle = css(Math.random() < 0.5 ? darker : lighter, rand(0.15, 0.4)); g.beginPath(); g.arc(rand(0, 512), rand(0, 256), r, 0, 7); g.fill(); }
+  } else if (id === 'marte') {
+    for (let i = 0; i < 70; i++) { g.fillStyle = css(darker, rand(0.15, 0.4)); g.beginPath(); g.ellipse(rand(0, 512), rand(40, 216), rand(10, 50), rand(5, 18), rand(0, 3), 0, 7); g.fill(); }
+    g.fillStyle = 'rgba(255,240,230,.75)'; g.fillRect(0, 0, 512, 14); g.fillRect(0, 244, 512, 12);
+  } else if (id === 'venus') {
+    for (let y = 0; y < 256; y += 3) for (let x = 0; x < 512; x += 6) { const v = Math.sin(x * 0.02 + Math.sin(y * 0.05) * 3) * Math.cos(y * 0.03); g.fillStyle = css(v > 0 ? lighter : darker, Math.abs(v) * 0.25); g.fillRect(x, y, 6, 3); }
+  } else if (id === 'sol') {
+    for (let i = 0; i < 2600; i++) { g.fillStyle = css(Math.random() < 0.5 ? new THREE.Color('#fff2b0') : new THREE.Color('#ff8a1a'), rand(0.1, 0.35)); g.beginPath(); g.arc(rand(0, 512), rand(0, 256), rand(1, 4), 0, 7); g.fill(); }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+function makePlanet(a) {
+  const group = new THREE.Group();
+  const mat = planetMaterial(a, U, MIND_POS);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(a.size, 96, 64), mat);
+  body.userData.agent = a.id;
+  body.rotation.z = rand(-0.4, 0.4);
+  group.add(body);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, new THREE.Color(a.color).getStyle().replace('rgb', 'rgba').replace(')', ',0.55)')], [0.35, new THREE.Color(a.color).getStyle().replace('rgb', 'rgba').replace(')', ',0.12)')], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  glow.scale.setScalar(a.size * (a.id === 'sol' ? 7 : 4.2)); group.add(glow);
+  if (a.id === 'saturno') {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.58, 1.0, 192), ringMaterial(a.color));
+    ring.scale.setScalar(a.size * 2.4);
+    ring.rotation.x = Math.PI * 0.42; ring.rotation.y = 0.3; group.add(ring);
+  }
+  // anillo de estado (actividad real o permiso); oculto por defecto
+  const halo = new THREE.Mesh(new THREE.RingGeometry(a.size * 1.55, a.size * 1.62, 96), new THREE.MeshBasicMaterial({ color: a.color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  group.add(halo);
+  return { group, body, glow, halo, flare: 0 };
+}
+
+// ---------- el zorro de luz (provisional) ----------
+// Silueta propia dibujada en un lienzo y convertida en partículas. La cola son partículas de fuego.
+function foxSilhouette() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  const shape = (fn) => { g.beginPath(); fn(); g.closePath(); g.fill(); };
+  shape(() => g.ellipse(256, 372, 92, 104, 0, 0, 7));                         // cuerpo sentado
+  shape(() => { g.ellipse(178, 430, 52, 44, -0.3, 0, 7); });                 // ancas
+  shape(() => { g.ellipse(334, 430, 52, 44, 0.3, 0, 7); });
+  shape(() => { g.moveTo(216, 300); g.quadraticCurveTo(256, 250, 296, 300); g.lineTo(256, 352); });  // cuello
+  shape(() => { g.moveTo(184, 178); g.quadraticCurveTo(194, 118, 256, 114); g.quadraticCurveTo(318, 118, 328, 178); g.quadraticCurveTo(322, 220, 256, 266); g.quadraticCurveTo(190, 220, 184, 178); });  // cabeza
+  shape(() => { g.moveTo(184, 190); g.lineTo(156, 222); g.lineTo(196, 214); g.lineTo(182, 238); g.lineTo(226, 236); });   // mejillas
+  shape(() => { g.moveTo(328, 190); g.lineTo(356, 222); g.lineTo(316, 214); g.lineTo(330, 238); g.lineTo(286, 236); });
+  shape(() => { g.moveTo(194, 152); g.lineTo(170, 52); g.lineTo(240, 124); });   // orejas
+  shape(() => { g.moveTo(318, 152); g.lineTo(342, 52); g.lineTo(272, 124); });
+  shape(() => { g.rect(222, 390, 22, 86); g.rect(268, 390, 22, 86); });          // patas delanteras
+  shape(() => { g.ellipse(232, 478, 20, 9, 0, 0, 7); }); shape(() => { g.ellipse(280, 478, 20, 9, 0, 0, 7); });
+  // cola (canal rojo): curva amplia desde el anca derecha
+  g.fillStyle = '#f00';
+  shape(() => { g.moveTo(340, 462); g.bezierCurveTo(470, 480, 505, 360, 470, 270); g.bezierCurveTo(452, 220, 420, 214, 408, 240); g.bezierCurveTo(446, 300, 440, 412, 352, 432); });
+  // ojos y nariz (canal verde / azul)
+  g.fillStyle = '#0f0'; shape(() => g.ellipse(226, 186, 10, 6, 0.35, 0, 7)); shape(() => g.ellipse(286, 186, 10, 6, -0.35, 0, 7));
+  g.fillStyle = '#00f'; shape(() => g.ellipse(256, 236, 9, 7, 0, 0, 7));
+  return g.getImageData(0, 0, 512, 512).data;
+}
+
+function makeFox(q) {
+  const data = foxSilhouette();
+  const sample = (match, want) => {
+    const out = []; let tries = 0;
+    while (out.length < want && tries < want * 60) {
+      tries++;
+      const x = Math.floor(Math.random() * 512), y = Math.floor(Math.random() * 512);
+      const i = (y * 512 + x) * 4;
+      if (data[i + 3] > 0 && match(data[i], data[i + 1], data[i + 2])) out.push([x, y]);
+    }
+    return out;
+  };
+  const S = 2.9 / 512; // altura del zorro ≈ 2,9 unidades
+  const toWorld = ([x, y], depth) => [(x - 256) * S, (512 - y) * S, depth];
+  const group = new THREE.Group();
+  // cuerpo y ojos
+  const fur = sample((r, g, b) => r > 200 && g > 200 && b > 200, q.fox);
+  const eyes = sample((r, g, b) => g > 200 && r < 50, 160);
+  const nose = sample((r, g, b) => b > 200 && r < 50, 60);
+  const all = [...fur.map((p) => [p, 0]), ...eyes.map((p) => [p, 1]), ...nose.map((p) => [p, 2])];
+  const pos = new Float32Array(all.length * 3), kind = new Float32Array(all.length), seed = new Float32Array(all.length);
+  all.forEach(([p, k], i) => {
+    const dx = (p[0] - 256) / 110, dy = (p[1] - 360) / 140;
+    const depth = Math.sqrt(Math.max(0, 1 - dx * dx * 0.6 - dy * dy * 0.3)) * 0.55 * (Math.random() * 2 - 1);
+    pos.set(toWorld(p, k ? 0.3 : depth), i * 3); kind[i] = k; seed[i] = Math.random();
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('kind', new THREE.BufferAttribute(kind, 1));
+  g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  const furU = { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio, uAlert: { value: 0 } };
+  const body = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: furU,
+    vertexShader: `attribute float kind; attribute float seed; varying float vK; varying float vA; uniform float uTime; uniform float uPR;
+      void main(){ vK = kind; vec3 p = position;
+        p.y *= 1.0 + 0.008 * sin(uTime * 1.3);                       // respiración
+        p += 0.006 * vec3(sin(uTime * 0.8 + seed * 20.0), cos(uTime * 0.7 + seed * 17.0), 0.0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vA = kind > 0.5 ? 1.0 : 0.55 + 0.45 * sin(uTime * (0.4 + seed) + seed * 30.0);
+        gl_PointSize = (kind > 0.5 ? 3.0 : 1.1 + seed * 1.2) * uPR * (14.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vK; varying float vA; uniform float uDim;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
+        vec3 c = vK > 1.5 ? vec3(0.05, 0.07, 0.12) : vK > 0.5 ? vec3(1.6, 0.95, 0.35) : vec3(0.92, 0.96, 1.08);
+        gl_FragColor = vec4(c * a * vA * uDim * (vK > 1.5 ? 1.0 : 0.62), a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  group.add(body);
+  // fuego vivo en la cola: cada partícula sube, tiembla y renace en el shader
+  const tail = sample((r, g, b) => r > 200 && g < 50, q.fire);
+  const fp = new Float32Array(tail.length * 3), fs = new Float32Array(tail.length);
+  tail.forEach((p, i) => { fp.set(toWorld(p, rand(-0.25, 0.25)), i * 3); fs[i] = Math.random(); });
+  const fg = new THREE.BufferGeometry();
+  fg.setAttribute('position', new THREE.BufferAttribute(fp, 3));
+  fg.setAttribute('seed', new THREE.BufferAttribute(fs, 1));
+  const fireU = { uTime: U.time, uDim: U.dim, uPR: U.pixelRatio, uFire: { value: 0.7 } };
+  const fire = new THREE.Points(fg, new THREE.ShaderMaterial({
+    uniforms: fireU,
+    vertexShader: `attribute float seed; varying float vLife; uniform float uTime; uniform float uPR; uniform float uFire;
+      void main(){ float life = fract(uTime * (0.45 + seed * 0.5) + seed * 7.0); vLife = life;
+        vec3 p = position;
+        p.y += life * (0.25 + 0.45 * uFire) * (0.6 + seed);
+        p.x += sin(uTime * 3.0 + seed * 40.0) * 0.035 * life + life * 0.08;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = (3.5 + 7.0 * (1.0 - life)) * (0.6 + uFire * 0.6) * uPR * (14.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vLife; uniform float uDim; uniform float uFire;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d) * (1.0 - vLife) * uFire;
+        vec3 c = mix(vec3(1.7, 0.95, 0.3), mix(vec3(1.8, 0.48, 0.08), vec3(0.9, 0.1, 0.02), smoothstep(0.45, 1.0, vLife)), smoothstep(0.0, 0.3, vLife));
+        gl_FragColor = vec4(c * a * 0.42 * uDim, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  group.add(fire);
+  const warm = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(255,120,40,0.42)'], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  warm.position.set(1.3, 0.9, -0.2); warm.scale.setScalar(3.2); group.add(warm);
+  group.position.set(0, -3.85, 1.6);
+  return { group, furU, fireU };
+}
+
+// ---------- composición ----------
+function layout() {
+  const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
+  const w = h * camera.aspect;
+  const rx = Math.min(w * 0.38, h * 0.95), ry = h * 0.36;
+  return AGENTS.map((a, k) => {
+    const th = Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
+    return new THREE.Vector3(Math.cos(th) * rx, 0.45 + Math.sin(th) * ry, Math.sin(k * 1.7) * 1.1);
+  });
+}
+
+function build() {
+  if (world) { scene.remove(world.root); world.root.traverse((o) => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
+  const q = QUALITY[ui.quality];
+  const root = new THREE.Group();
+  root.add(makeDeepSky(U));
+  const stars = makeStarfield(q.stars, U); root.add(stars);
+  const bright = makeBrightStars(q.bright, U); root.add(bright);
+  root.add(makeGalaxies(q.galaxies));
+  const mind = makeMind(q); root.add(mind.group);
+  const light = new THREE.PointLight(0xbfe6ff, 26, 0, 1.2); light.position.copy(mind.group.position); root.add(light);
+  root.add(new THREE.AmbientLight(0x404a70, 0.35));
+  const anchors = layout();
+  const planets = AGENTS.map((a, i) => { const p = makePlanet(a); p.group.position.copy(anchors[i]); p.anchor = anchors[i].clone(); root.add(p.group); return p; });
+  const links = AGENTS.map((a, i) => { const c = makeConnection(mind.group.position, anchors[i], a.color, q.strands); root.add(c.lines); return c; });
+  // constelación entre astros vecinos
+  const cpos = [];
+  anchors.forEach((p, i) => { const n = anchors[(i + 1) % anchors.length]; for (let s = 0; s < 1; s += 0.08) { const a = p.clone().lerp(n, s), b = p.clone().lerp(n, s + 0.04); cpos.push(a.x, a.y, a.z, b.x, b.y, b.z); } });
+  const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(cpos, 3));
+  const constellation = new THREE.LineSegments(cg, new THREE.LineBasicMaterial({ color: 0x9fb4ff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }));
+  root.add(constellation);
+  const fox = makeFox(q); root.add(fox.group);
+  const thought = makeConnection(new THREE.Vector3(0, fox.group.position.y + 2.55, fox.group.position.z), new THREE.Vector3(0, 0.15, 0.2), '#ffd9a8', 3);
+  root.add(thought.lines);
+  scene.add(root);
+  world = { root, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.72, 0.55, 0.32);
+  bloom.enabled = q.bloom;
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+  buildLabels();
+  resize();
+}
+
+// ---------- etiquetas (símbolo + nombre: no dependen del color) ----------
+const labelsEl = document.getElementById('labels');
+let labelEls = [];
+function buildLabels() {
+  labelsEl.innerHTML = AGENTS.map((a) => `<div class="label" data-id="${a.id}"><b>${a.symbol}</b>${a.name}</div>`).join('') + '<div class="label kratos" data-id="kratos">KRATOS</div>';
+  labelEls = [...labelsEl.children];
+}
+const tmp = new THREE.Vector3();
+function placeLabels() {
+  world.planets.forEach((p, i) => {
+    tmp.copy(p.group.position); tmp.y -= AGENTS[i].size * 1.35; tmp.project(camera);
+    const el = labelEls[i];
+    el.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight + 6}px`;
+    el.classList.toggle('on', world.active.has(AGENTS[i].id));
+  });
+  tmp.set(0, world.mind.group.position.y - 1.25, 0).project(camera); // rótulo bajo la mente
+  const k = labelEls[labelEls.length - 1];
+  k.style.left = `${(tmp.x * 0.5 + 0.5) * innerWidth}px`; k.style.top = `${(-tmp.y * 0.5 + 0.5) * innerHeight}px`;
+}
+
+// ---------- estados y eventos ----------
+const PRESET = {
+  reposo: { tint: '#8fdcff', fire: 0.7, spin: 0.15, dim: 1 },
+  escuchando: { tint: '#9fe8ff', fire: 0.9, spin: 0.2, dim: 1 },
+  pensando: { tint: '#b6a4ff', fire: 0.85, spin: 0.55, dim: 1 },
+  hablando: { tint: '#c9f0ff', fire: 0.95, spin: 0.25, dim: 1 },
+  ejecutando: { tint: '#8fdcff', fire: 1.0, spin: 0.3, dim: 1 },
+  esperando_permiso: { tint: '#ffcf86', fire: 0.7, spin: 0.15, dim: 0.95 },
+  detenido: { tint: '#ff5a66', fire: 0.18, spin: 0.0, dim: 0.55 },
+};
+const logEl = document.getElementById('event-log');
+function log(text) { const d = document.createElement('div'); d.textContent = text; logEl.append(d); setTimeout(() => d.remove(), 6200); while (logEl.children.length > 4) logEl.firstChild.remove(); }
+
+// Impulso de delegación: solo por un evento. En este prototipo los eventos son SIMULADOS.
+function delegate(id, simulated = true) {
+  const i = AGENTS.findIndex((a) => a.id === id);
+  if (i < 0 || ui.state === 'detenido') return;
+  world.active.set(id, { start: clock.elapsedTime, until: clock.elapsedTime + 5 });
+  log(`${simulated ? 'SIMULADO · ' : ''}KRATOS → ${AGENTS[i].symbol} ${AGENTS[i].name}: delegación`);
+}
+
+function setState(s, simulated = true) {
+  ui.state = s;
+  document.getElementById('state-name').textContent = `${STATE_NAME[s]}${simulated && s !== 'reposo' ? ' · simulado' : ''}`;
+}
+
+// ---------- bucle ----------
+const clock = new THREE.Clock();
+let raf = 0, frames = 0, fpsAt = performance.now(), fps = 0, cpuMs = 0;
+const mouse = { x: 0, y: 0 };
+
+function tick() {
+  raf = 0;
+  if (document.hidden || ui.paused) return;
+  frame();
+  if (!ui.reduced) raf = requestAnimationFrame(tick);
+}
+function start() { if (!raf && !document.hidden && !ui.paused) raf = requestAnimationFrame(tick); }
+
+function frame() {
+  const t0 = performance.now();
+  const dt = Math.min(0.05, clock.getDelta());
+  const t = clock.elapsedTime;
+  U.time.value = ui.reduced ? 12.0 : t;
+  const p = PRESET[ui.state];
+  const ease = 1 - Math.pow(0.03, dt || 0.016);
+  U.dim.value += (p.dim - U.dim.value) * (ui.reduced ? 1 : ease);
+  const mu = world.mind.uniforms;
+  mu.uTint.value.lerp(new THREE.Color(p.tint), ui.reduced ? 1 : ease);
+  mu.uSpin.value += (p.spin - mu.uSpin.value) * ease;
+  // nivel de audio: en el prototipo, SIMULADO solo en escuchando / hablando
+  const lvl = ui.state === 'escuchando' ? Math.abs(Math.sin(t * 5.3) * Math.sin(t * 2.1)) : ui.state === 'hablando' ? Math.abs(Math.sin(t * 9.0)) * (0.5 + 0.5 * Math.sin(t * 1.3)) : 0;
+  mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
+  const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
+  world.mind.group.scale.setScalar(1 + breathe + mu.uLevel.value * 0.12);
+  world.mind.synMat.opacity = 0.12 + 0.12 * (ui.state === 'pensando' ? 1 : 0) + mu.uLevel.value * 0.15;
+  world.fox.fireU.uFire.value += (p.fire - world.fox.fireU.uFire.value) * ease;
+  world.light.color.copy(mu.uTint.value);
+  // astros: deriva ambiental mínima alrededor de su ancla (nunca orbitan fuera de cuadro)
+  world.planets.forEach((pl, i) => {
+    const a = AGENTS[i];
+    pl.group.position.set(pl.anchor.x + Math.sin(t * 0.21 + i) * 0.06, pl.anchor.y + Math.sin(t * 0.33 + i * 1.7) * 0.08, pl.anchor.z);
+    pl.body.rotation.y = t * (0.05 + i * 0.012);
+    const act = world.active.get(a.id);
+    const waiting = ui.state === 'esperando_permiso' && a.id === 'saturno';
+    const link = world.links[i].uniforms;
+    let target = 0;
+    if (act) {
+      const k = (t - act.start) / 1.4;                        // el impulso tarda 1,4 s en llegar
+      link.uPulse.value = k <= 1.15 ? k : -1;
+      if (k > 1 && pl.flare < 0.01 && k < 1.2) pl.flare = 1;
+      target = 1;
+      if (t > act.until) world.active.delete(a.id);
+    } else link.uPulse.value = -1;
+    if (waiting) target = 0.8;
+    link.uActive.value += (target - link.uActive.value) * ease;
+    pl.flare *= Math.pow(0.15, dt);
+    pl.glow.material.opacity = (a.id === 'sol' ? 0.55 : 0.32) + 0.55 * link.uActive.value + pl.flare;
+    pl.glow.scale.setScalar(a.size * (a.id === 'sol' ? 7 : 4.2) * (1 + 0.35 * pl.flare));
+    pl.halo.material.opacity = (waiting ? 0.9 : link.uActive.value * 0.8) * U.dim.value;
+    pl.halo.material.color.set(waiting ? '#ffb547' : a.color);
+    pl.halo.lookAt(camera.position);
+    const isHover = world.hover === a.id || world.selected === a.id;
+    const mu2 = pl.body.material.uniforms;
+    mu2.uHover.value += ((isHover ? 1 : 0) - mu2.uHover.value) * ease;
+    mu2.uActive.value = link.uActive.value;
+    pl.group.scale.setScalar(1 + 0.18 * mu2.uHover.value);
+  });
+  world.bright.userData.twinkle(t);
+  // hilo de pensamiento: se enciende al escuchar o hablar; al hablar, un impulso por frase (simulado aquí)
+  const th = world.thought.uniforms;
+  const talking = ui.state === 'hablando' || ui.state === 'escuchando';
+  th.uActive.value += ((talking ? 1 : 0) - th.uActive.value) * ease;
+  th.uPulse.value = ui.state === 'hablando' ? (t * 0.7) % 1.2 : -1;
+  // cámara: deriva lenta y paralaje leve con el ratón
+  if (!ui.reduced) {
+    camera.position.x += ((Math.sin(t * 0.05) * 0.35 + mouse.x * 0.35) - camera.position.x) * 0.02;
+    camera.position.y += ((0.25 + Math.cos(t * 0.04) * 0.15 + mouse.y * 0.2) - camera.position.y) * 0.02;
+  }
+  camera.lookAt(0, 0.2, 0);
+  renderer.info.reset();
+  if (bloom.enabled) composer.render(); else renderer.render(scene, camera);
+  placeLabels();
+  cpuMs = cpuMs * 0.9 + (performance.now() - t0) * 0.1;
+  frames++;
+  const now = performance.now();
+  if (now - fpsAt > 1000) { fps = frames; frames = 0; fpsAt = now; updateMetrics(); }
+}
+
+function resize() {
+  const q = QUALITY[ui.quality];
+  const pr = Math.min(devicePixelRatio || 1, q.dpr);
+  U.pixelRatio.value = pr;
+  renderer.setPixelRatio(pr);
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.fov = camera.aspect < 1.2 ? 58 : 42;
+  camera.updateProjectionMatrix();
+  composer?.setPixelRatio(pr); composer?.setSize(innerWidth, innerHeight);
+  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); }
+  if (ui.reduced || ui.paused) frame();
+}
+
+// ---------- consumo ----------
+const metricsEl = document.getElementById('metrics');
+function updateMetrics() {
+  if (metricsEl.hidden) return;
+  const info = renderer.info;
+  const mem = performance.memory ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)} MB JS` : 'memoria JS: n/d';
+  metricsEl.innerHTML = `${fps} fps · ${cpuMs.toFixed(2)} ms CPU/fotograma<br>${info.render.calls} llamadas · ${(info.render.triangles / 1000).toFixed(0)} k triángulos · ${(info.render.points / 1000).toFixed(1)} k puntos<br>calidad ${ui.quality} · resolución ×${U.pixelRatio.value} · ${mem}`;
+}
+
+// ---------- controles discretos ----------
+const dock = document.getElementById('dock');
+let idleTimer = 0;
+function wake() {
+  dock.classList.add('show'); document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (!dock.matches(':focus-within')) dock.classList.remove('show'); document.body.classList.add('idle'); }, 2600);
+}
+// ---------- interacción con los astros ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const card = document.getElementById('card');
+function pick(e) {
+  ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(world.planets.map((p) => p.body), false)[0];
+  return hit?.object.userData.agent ?? null;
+}
+function showCard(id, e) {
+  if (!id) { card.hidden = true; return; }
+  const a = AGENTS.find((x) => x.id === id), busy = world.active.has(id);
+  card.innerHTML = `<div class="card-h"><b>${a.symbol}</b> ${a.name}</div><div>${a.role}</div>
+    <div class="card-m">Estado: ${busy ? 'delegación SIMULADA en curso' : 'disponible'}<br>Tarea actual: —<br>Último resultado verificado: — (prototipo sin datos)</div>`;
+  card.hidden = false;
+  const x = Math.min(innerWidth - 280, e.clientX + 18), y = Math.min(innerHeight - 140, e.clientY + 18);
+  card.style.left = `${x}px`; card.style.top = `${y}px`;
+}
+addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX / innerWidth - 0.5; mouse.y = 0.5 - e.clientY / innerHeight; wake();
+  if (!world) return;
+  world.hover = pick(e);
+  document.body.style.cursor = world.hover ? 'pointer' : '';
+  showCard(world.hover ?? world.selected, e);
+  if (ui.reduced) frame();
+});
+canvas.addEventListener('click', (e) => { const id = pick(e); world.selected = id === world.selected ? null : id; showCard(world.selected, e); if (ui.reduced) frame(); });
+
+function act(a) {
+  const btn = dock.querySelector(`[data-act="${a}"]`);
+  if (a === 'mute') { ui.muted = !ui.muted; btn.setAttribute('aria-pressed', ui.muted); log(ui.muted ? 'Micrófono silenciado (en el prototipo no hay micrófono conectado)' : 'Micrófono activo (simulado)'); }
+  if (a === 'pause') { ui.paused = !ui.paused; btn.setAttribute('aria-pressed', ui.paused); if (!ui.paused) { clock.getDelta(); start(); } log(ui.paused ? 'Movimiento en pausa' : 'Movimiento reanudado'); }
+  if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); btn.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
+  if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
+  if (a === 'list') { const l = document.getElementById('list'); l.hidden = !l.hidden; btn.setAttribute('aria-pressed', !l.hidden); renderList(); }
+  if (a === 'metrics') { metricsEl.hidden = !metricsEl.hidden; btn.setAttribute('aria-pressed', !metricsEl.hidden); updateMetrics(); }
+  if (a === 'exit') exitExperience();
+}
+dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
+
+function exitExperience() {
+  // En la app de Mac: minimiza la ventana inmersiva. En el navegador: vuelve al panel.
+  if (window.webkit?.messageHandlers?.kratos) window.webkit.messageHandlers.kratos.postMessage({ event: 'exitImmersive' });
+  else if (document.fullscreenElement) document.exitFullscreen();
+  else location.href = '/';
+}
+
+function renderList() {
+  document.getElementById('list-items').innerHTML = `<li><span class="sym">✦</span><span><b>KRATOS</b><br><span class="st">Conciencia coordinadora</span></span><span class="st">${STATE_NAME[ui.state]}</span></li>` +
+    AGENTS.map((a) => `<li><span class="sym" aria-hidden="true">${a.symbol}</span><span><b>${a.name}</b><br><span class="st">${a.role}</span></span><span class="st ${world.active.has(a.id) ? 'on' : ''}">${world.active.has(a.id) ? 'delegación simulada' : 'disponible'}</span></li>`).join('');
+}
+
+addEventListener('keydown', (e) => {
+  wake();
+  const k = e.key.toLowerCase();
+  if (e.key === 'Escape') {
+    const open = ['help', 'list'].map((id) => document.getElementById(id)).find((el) => !el.hidden);
+    if (open) open.hidden = true; else exitExperience();
+    return;
+  }
+  if (e.key === ' ') { e.preventDefault(); act('pause'); }
+  if (k === 'm') act('mute');
+  if (k === 'r') act('reduced');
+  if (k === 'q') act('quality');
+  if (k === 'l') act('list');
+  if (k === 'i') act('metrics');
+  if (k === 'h' || k === '?') { const h = document.getElementById('help'); h.hidden = !h.hidden; }
+  if (k === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
+  if (k === 's') { const n = STATES[(STATES.indexOf(ui.state) + 1) % STATES.length]; setState(n); if (n === 'ejecutando') { delegate('marte'); delegate('saturno'); } frame(); }
+  if (/^[1-7]$/.test(k)) { delegate(AGENTS[Number(k) - 1].id); if (ui.reduced) frame(); }
+  if (!document.getElementById('list').hidden) renderList();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { clock.getDelta(); start(); } });
+addEventListener('resize', resize);
+
+// API para pruebas automáticas (estado y métricas, sin efectos fuera de la página)
+window.kratosProto = { setState, delegate, frame, metrics: () => ({ fps, cpuMs, calls: renderer.info.render.calls, points: renderer.info.render.points, quality: ui.quality }) };
+
+document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1);
+dock.querySelector('[data-act="reduced"]').setAttribute('aria-pressed', ui.reduced);
+build();
+setState('reposo', false);
+frame();
+start();
+wake();

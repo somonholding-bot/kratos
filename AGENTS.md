@@ -1,6 +1,6 @@
 # Agentes de KRATOS
 
-KRATOS es el único coordinador. Los siete especialistas son **perfiles con herramientas** sobre el mismo runtime (tabla `agent_functions`), no procesos ni modelos permanentes. Las restricciones viven en la base de datos y en el código; los agentes no pueden modificarlas.
+KRATOS es el único coordinador y es distinto de Sol. Los siete especialistas son **perfiles con herramientas** sobre el mismo runtime (tabla `agent_functions`), no procesos ni modelos permanentes. Las restricciones viven en la base de datos y en el código; los agentes no pueden modificarlas.
 
 Esquema simbólico inspirado en los siete astros clásicos. Sol y Luna no son planetas astronómicamente; las correspondencias organizan responsabilidades y **no** se usan para predecir, diagnosticar ni decidir por astrología.
 
@@ -26,4 +26,4 @@ KRATOS interpreta la petición, elige el **mínimo** de especialistas, recupera 
 - «¿Qué decidimos ayer?» → Luna
 - «Organiza mi día» → Saturno con contexto de Luna y prioridades de Sol
 
-Hoy los especialistas actúan como **responsables de tareas** (`owner_function`); la delegación con llamadas separadas por especialista llegará cuando una tarea lo justifique. El panel solo ilumina un agente cuando tiene una tarea real asignada o en ejecución.
+En la interfaz los siete astros están siempre visibles en posiciones fijas; cambian brillo y conexiones, no aparecen ni desaparecen. Hoy los especialistas actúan como **responsables de tareas** (`owner_function`); la delegación con llamadas separadas por especialista llegará cuando una tarea lo justifique. El panel solo ilumina un agente cuando tiene una tarea real asignada o en ejecución.
