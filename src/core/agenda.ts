@@ -19,10 +19,13 @@ export const hhmm = (d: Date) => d.toLocaleTimeString('es', { hour: 'numeric', m
 // Bienvenida al oír «Hey Kratos» sin orden detrás
 export async function greeting(db: Db): Promise<string> {
   const o = await owner(db);
+  const today = new Date().toDateString();
+  const last = (await db.query(`SELECT value FROM system_state WHERE key = 'last_greeting'`)).rows[0]?.value;
+  if (last === today) return pick(['Dígame.', 'Le escucho.', 'Aquí estoy.', '¿Sí?', 'Adelante.']);   // ya saludó hoy: sin nombre
+  await db.query(`INSERT INTO system_state (key, value, updated_by) VALUES ('last_greeting', $1, 'kratos')
+    ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`, [JSON.stringify(today)]);
   const h = new Date().getHours();
-  // «señor» solo en el saludo de la mañana; el resto del día, por su nombre
-  const hi = h < 12 ? `Buenos días, señor ${o.name}` : h < 20 ? `¿Qué tal, ${o.name}?` : `Buenas noches, ${o.name}`;
-  return pick([`${hi}. Dígame.`, `${hi}. ¿En qué le ayudo?`, `${hi}.`, `Aquí estoy, ${o.name}. ¿Qué necesita?`]);
+  return h < 12 ? `Buenos días, señor ${o.name}. Dígame.` : h < 20 ? `¿Qué tal, ${o.name}? Dígame.` : `Buenas noches, ${o.name}. Dígame.`;
 }
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');

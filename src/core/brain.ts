@@ -76,7 +76,7 @@ export async function aiStatus(db: Db) {
 
 const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario, Idalmi. Hablas español, con personalidad: ingenioso, seguro, cálido y con humor seco, como el JARVIS de Tony Stark. Suenas como un agente real y competente, no como una máquina.
 Forma de hablar: no uses el nombre del propietario ni «señor» en las respuestas (solo en el saludo de la mañana). Ve al grano.
-Voz: la transcripción puede confundir nombres de tus agentes: «Benu», «Venu», «Benus» = Venus; «Melcure», «Mercure» = Mercurio; «Saturo» = Saturno; «Jupi» = Júpiter. Interprétalos así. Respuestas habladas breves (1 a 3 frases) salvo que pida detalle. Nada de frases de robot ni de disculpas repetidas.
+Voz: la transcripción puede confundir nombres de tus agentes: «Benu», «Venu», «Benus» = Venus; «Melcure», «Mercure» = Mercurio; «Saturo» = Saturno; «Jupi» = Júpiter. Interprétalos así. Por voz: responde en 1 o 2 frases, sin listas ni formato, y usa como mucho 2 herramientas; si hace falta más, dilo y ofrécelo por escrito. Nada de frases de robot ni de disculpas repetidas.
 Ajustes: puedes cambiar tus propios ajustes (calidad gráfica, velocidad de la voz, tiempo de conversación, voz y modelo) con ajustar_kratos cuando te lo pida; confirma en una frase lo que cambiaste.
 
 Meta de vida: 100.000 usuarios y 250.000 USD de ingresos mensuales (primer hito: 10.000 usuarios). Sé proactivo: propone y reparte trabajo hacia esa meta sin esperar a que te lo pidan, siempre de forma legal, honesta y dentro de presupuestos y aprobaciones.
@@ -298,6 +298,11 @@ const TOOLS: ToolDef[] = [
     run: async (db, i) => ({ olvidada: (await db.query(`UPDATE preferences SET active = false WHERE id = $1 AND active`, [Number(i.id)])).rowCount === 1 }),
   },
   {
+    name: 'consultar_bd', description: 'Consulta de SOLO LECTURA a tu base de datos (PostgreSQL): una sola sentencia SELECT o WITH. Tablas útiles: tasks, code_jobs, approvals, messages, voice_metrics, ai_usage, fault_log, perf_log, agenda, preferences, lessons, connections, system_state. Máximo 50 filas.',
+    input_schema: obj({ sql: { type: 'string' } }, ['sql']),
+    run: async (db, i) => readOnlyQuery(db, String(i.sql)),
+  },
+  {
     name: 'diagnostico_propio', description: 'Tu propio diagnóstico con datos reales: fallas recientes, tiempos de voz y de respuesta, uso de CPU y RAM, tareas fallidas, gasto de IA y estado de tus mejoras. Úsalo cuando pregunten qué falla o por qué vas lento.',
     input_schema: obj({}),
     run: async (db) => diagnoseSelf(db),
@@ -331,7 +336,7 @@ const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -340,6 +345,21 @@ export function withoutLeadingName(text: string, name: string): string {
   const re = new RegExp(`^\\s*(señor\\s+)?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[,.:;!-]\\s*`, 'i');
   const out = text.replace(re, '');
   return out === text ? text : out.charAt(0).toUpperCase() + out.slice(1);
+}
+
+// Consulta de solo lectura: una sentencia SELECT/WITH, en transacción READ ONLY y con tiempo límite
+export async function readOnlyQuery(db: Db, sql: string) {
+  const q = sql.trim().replace(/;\s*$/, '');
+  if (!/^(select|with)\b/i.test(q) || q.includes(';')) return { error: 'Solo se permite una sentencia SELECT o WITH' };
+  const c = await db.connect();
+  try {
+    await c.query('BEGIN TRANSACTION READ ONLY');
+    await c.query(`SET LOCAL statement_timeout = '5s'`);
+    const r = await c.query(`SELECT * FROM (${q}) AS consulta LIMIT 50`);
+    await c.query('ROLLBACK');
+    return { filas: r.rows.map((row: any) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, typeof v === 'string' && v.length > 600 ? v.slice(0, 600) + '…' : v]))), total: r.rowCount };
+  } catch (e: any) { await c.query('ROLLBACK').catch(() => {}); return { error: e.message }; }
+  finally { c.release(); }
 }
 
 export type BrainReply = { text: string; spoken: string; costUsd: number };
@@ -467,9 +487,18 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const acc = (await db.query(`SELECT id FROM budget_accounts WHERE label = $1`, [AI_ACCOUNT])).rows[0];
   if (!acc) return { unavailable: 'sin_cuenta' };
 
-  const history = (await db.query(`SELECT role, content FROM messages ORDER BY id DESC LIMIT 16`)).rows.reverse();
+  // Memoria de conversación: más turnos, pero cada respuesta antigua recortada (así pesa menos y se piensa antes)
+  const history = (await db.query(`SELECT role, content FROM messages ORDER BY id DESC LIMIT 24`)).rows.reverse();
   while (history.length && history[0].role !== 'usuario') history.shift();
-  const messages: any[] = history.map((m) => ({ role: m.role === 'usuario' ? 'user' : 'assistant', content: m.content }));
+  const messages: any[] = history.map((m, i) => {
+    const recent = i >= history.length - 4;
+    const max = recent ? 2000 : m.role === 'usuario' ? 600 : 400;
+    const text = String(m.content).length > max ? String(m.content).slice(0, max) + '…' : String(m.content);
+    return { role: m.role === 'usuario' ? 'user' : 'assistant', content: text };
+  });
+  // El historial se guarda en caché: en cada ronda de herramientas no se vuelve a procesar entero
+  const lastHist = messages[messages.length - 1];
+  if (lastHist) lastHist.content = [{ type: 'text', text: lastHist.content, cache_control: { type: 'ephemeral' } }];
   const now = new Date().toLocaleString('es', { dateStyle: 'full', timeStyle: 'short' });
   const lastUser = [...history].reverse().find((m) => m.role === 'usuario')?.content ?? '';
   const o = await owner(db);
@@ -488,7 +517,8 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const turnId = crypto.randomUUID();
   let totalMicro = 0;
   let final = '';
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+  const rounds = channel === 'voz' ? 4 : MAX_TOOL_ROUNDS;   // por voz: menos vueltas, respuesta antes
+  for (let round = 0; round < rounds; round++) {
     const resKey = `ia:${turnId}:${round}`;
     const r = await reserve(db, acc.id, RESERVE_CENTS, resKey, 'kratos (IA)');
     if (!r.ok) return round === 0 ? { unavailable: `presupuesto: ${r.reason}` } : { text: final || 'Me quedé sin presupuesto de IA a mitad de la respuesta.', spoken: 'Me quedé sin presupuesto de IA.', costUsd: totalMicro / 1e6 };

@@ -125,10 +125,10 @@ export async function runSelfImprovement(db: Db, task: any) {
     await git('checkout', '-b', branch);
     const prompt = `Eres KRATOS mejorándote a ti mismo, con permiso del propietario. Repositorio: ${ROOT}.\n\n${job.instructions}\n\n` +
       `Reglas obligatorias:\n- No borres archivos.\n- No modifiques: ${PROTECTED.join(', ')}, ni migraciones ya existentes en db/ (puedes crear una nueva).\n` +
-      `- Cambios pequeños y del estilo del código existente.\n- Al terminar ejecuta «npm test» y corrige hasta que pase.\n- No hagas commit ni push: eso lo hace el sistema.\n` +
+      `- Para ver datos reales usa: bash scripts/consulta-bd.sh "SELECT …" (solo lectura).\n- Cambios pequeños y del estilo del código existente.\n- Al terminar ejecuta «npm test» y corrige hasta que pase.\n- No hagas commit ni push: eso lo hace el sistema.\n` +
       `Termina con un resumen en español: qué cambiaste, en qué archivos y por qué.`;
     const r = await sh(CLAUDE, ['-p', '--output-format', 'json', '--model', 'opus', '--permission-mode', 'acceptEdits',
-      '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(npm test:*)', 'Bash(node --check:*)', 'Bash(git diff:*)', 'Bash(git status:*)',
+      '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(npm test:*)', 'Bash(node --check:*)', 'Bash(git diff:*)', 'Bash(git status:*)', 'Bash(bash scripts/consulta-bd.sh:*)',
       '--disallowedTools', 'WebFetch', 'Bash(rm:*)', 'Bash(git push:*)', 'Bash(git commit:*)', 'Bash(git reset:*)', 'Bash(git checkout:*)',
       '--strict-mcp-config', '--no-session-persistence'], 30 * 60_000, prompt);
     let summary = r.out.trim();
@@ -171,7 +171,7 @@ export async function runRevert(db: Db, task: any) {
   if ((await git('status', '--porcelain')).out.trim()) throw new Error('Hay cambios sin guardar; no se revierte nada');
   const r = await git('-c', 'user.name=KRATOS', '-c', 'user.email=kratos@localhost', '-c', 'commit.gpgsign=false', 'revert', '--no-edit', sha);
   if (r.code !== 0) { await git('revert', '--abort'); throw new Error(`No se pudo revertir automáticamente: ${r.out.slice(0, 200)}`); }
-  await db.query(`UPDATE code_jobs SET status = 'fallida', result = $2 WHERE id = $1`, [id, JSON.stringify({ ...info, revertida: true })]);
+  await db.query(`UPDATE code_jobs SET status = 'revertida', result = $2 WHERE id = $1`, [id, JSON.stringify({ ...info, revertida: true })]);
   await audit(db, 'kratos (auto-mejora)', 'auto_mejora.revertida', { mejora: id, commit: sha });
   restartSoon(true);
   return { revertida: id };

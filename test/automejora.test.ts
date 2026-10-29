@@ -45,3 +45,13 @@ test('el diagnóstico separa reversiones de fallos y muestra el motivo', () => {
   assert.equal(failureReason('Claude Code no está instalado'), 'error general');
   assert.equal((describeJob({ ...base, status: 'completada', result: '{}' }) as any).motivo, undefined);
 });
+
+test('la consulta a la base de datos es de solo lectura', async () => {
+  const { readOnlyQuery } = await import('../src/core/brain.ts');
+  const ok: any = await readOnlyQuery(db, 'SELECT count(*)::int AS n FROM tasks');
+  assert.ok(Array.isArray(ok.filas));
+  assert.match((await readOnlyQuery(db, 'DELETE FROM preferences') as any).error, /SELECT o WITH/);
+  assert.match((await readOnlyQuery(db, 'SELECT 1; DELETE FROM preferences') as any).error, /SELECT o WITH/);
+  const w: any = await readOnlyQuery(db, `WITH x AS (DELETE FROM preferences RETURNING id) SELECT * FROM x`);
+  assert.ok(w.error, 'una escritura escondida en WITH también falla');
+});
