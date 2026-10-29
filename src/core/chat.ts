@@ -2,7 +2,8 @@ import type { Db } from '../db.ts';
 import { audit, emergencyStop, getState } from './state.ts';
 import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
-import { AI_ACCOUNT, think } from './brain.ts';
+import { AI_ACCOUNT, sentenceStream, think } from './brain.ts';
+import { localAvailable, localThink, routeLocal } from './local.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailInbox } from './mail.ts';
 import { buildReport, spokenReport } from './report.ts';
@@ -33,13 +34,22 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
     const agenda = (await reportIntent(db, t)) ?? (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
-    const ai = await think(db, channel, onSpeak);
-    if ('text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects };
+    // Lo sencillo por voz lo responde el cerebro local (gratis e inmediato); si no sabe, pasa a Claude
+    const local = (await routeLocal(db, channel, text)) ? await answerLocally(db, onSpeak) : null;
+    const ai = local ? null : await think(db, channel, onSpeak);
+    if (local) reply = local;
+    else if (ai && 'text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects };
     else {
-      reply = await interpret(db, t, text);
-      const why = ai.unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
-        ai.unavailable.startsWith('presupuesto') ? `IA en pausa: sin presupuesto disponible en «${AI_ACCOUNT}»` : `IA no disponible (${ai.unavailable})`;
-      reply = { ...reply, text: `[${why}; respondo en modo demostración]\n${reply.text}` };
+      const unavailable = ai && !('text' in ai) ? ai.unavailable : 'desconocido';
+      // Sin conexión con Claude: responde el cerebro local antes que el modo demostración
+      const offline = /conexión|API|límite/.test(unavailable) && (await localAvailable()) ? await answerLocally(db, onSpeak) : null;
+      if (offline) reply = { ...offline, text: `[Sin conexión con Claude: respondo con el cerebro local]\n${offline.text}` };
+      else {
+        reply = await interpret(db, t, text);
+        const why = unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
+          unavailable.startsWith('presupuesto') ? `IA en pausa: sin presupuesto disponible en «${AI_ACCOUNT}»` : `IA no disponible (${unavailable})`;
+        reply = { ...reply, text: `[${why}; respondo en modo demostración]\n${reply.text}` };
+      }
     }
     }
   }
@@ -55,6 +65,20 @@ function musicReply(t: string): Reply | null {
   const query = musicQuery(t);
   if (!query) return null;
   return { text: `Poniendo «${label(query)}» desde YouTube.`, spoken: `Pongo ${label(query)}.`, action: 'musica', query };
+}
+
+async function answerLocally(db: Db, onSpeak?: (s: string) => void): Promise<Reply | null> {
+  const speech = onSpeak ? sentenceStream(onSpeak) : null;
+  let said = '';
+  try {
+    const r = await localThink(db, (d) => { said += d; speech?.push(d); });
+    if ('escalate' in r) return null;
+    speech?.flush();
+    return { text: r.text, spoken: r.spoken };
+  } catch (e: any) {
+    await audit(db, 'kratos (local)', 'local.error', { error: String(e?.message ?? e).slice(0, 200) });
+    return said.trim() ? { text: said.trim(), spoken: said.trim().split('\n')[0] } : null;   // ya dijo algo: no se repite con Claude
+  }
 }
 
 async function interpret(db: Db, t: string, original: string): Promise<Reply> {

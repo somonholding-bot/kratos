@@ -254,8 +254,8 @@ const TOOLS: ToolDef[] = [
     run: async (db, i) => proposeCodeJob(db, String(i.proyecto), String(i.instrucciones), 'kratos (IA)'),
   },
   {
-    name: 'ajustar_kratos', description: 'Cambia un ajuste interno de KRATOS a petición del propietario: ui_quality (baja|media|alta, calidad gráfica), voice_speed (0.7 a 1.4, velocidad de la voz), follow_up (5 a 300 segundos de conversación sin repetir «Kratos»), tts_voice (piper|kokoro|apple|personal = la Voz Personal del propietario), voice_model (claude-haiku-5-5|claude-sonnet-5-5|claude-opus-5-5), agents_engine (suscripcion: los agentes usan la suscripción de Claude; api: usan la API con presupuesto).',
-    input_schema: obj({ clave: { type: 'string', enum: ['ui_quality', 'voice_speed', 'follow_up', 'tts_voice', 'voice_model', 'agents_engine'] }, valor: { type: 'string' } }, ['clave', 'valor']),
+    name: 'ajustar_kratos', description: 'Cambia un ajuste interno de KRATOS a petición del propietario: ui_quality (baja|media|alta, calidad gráfica), voice_speed (0.7 a 1.4, velocidad de la voz), follow_up (5 a 300 segundos de conversación sin repetir «Kratos»), tts_voice (piper|kokoro|apple|personal = la Voz Personal del propietario), voice_model (claude-haiku-5-5|claude-sonnet-5-5|claude-opus-5-5), agents_engine (suscripcion: los agentes usan la suscripción de Claude; api: usan la API con presupuesto), cerebro_local (auto: lo sencillo por voz lo responde la IA local del Mac; apagado: todo con Claude).',
+    input_schema: obj({ clave: { type: 'string', enum: ['ui_quality', 'voice_speed', 'follow_up', 'tts_voice', 'voice_model', 'agents_engine', 'cerebro_local'] }, valor: { type: 'string' } }, ['clave', 'valor']),
     run: async (db, i) => { try { return await setSetting(db, String(i.clave), i.valor, 'kratos (IA, por orden del propietario)'); } catch (e: any) { return { error: e.message }; } },
   },
   {

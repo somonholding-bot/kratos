@@ -15,6 +15,7 @@ import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
 import { recordIncoming } from './core/inbox.ts';
+import { warmLocal } from './core/local.ts';
 import { startMessageWatcher, takeAnnouncements, watcherStatus } from './core/imessage.ts';
 import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
@@ -372,7 +373,8 @@ if (import.meta.main) {
   await audit(db, 'server', 'proceso.iniciado', {});
   // Muestreo de rendimiento cada 60 s (bitácora de rendimiento)
   setInterval(() => resources().then((r) => logPerf(db, r)).catch(() => {}), 60_000);
-  startMessageWatcher(db);   // mensajes de texto que llegan: se dicen en voz alta al instante
+  startMessageWatcher(db);
+  warmLocal().catch(() => {});   // IA local en memoria desde el arranque   // mensajes de texto que llegan: se dicen en voz alta al instante
   const beat = setInterval(() => heartbeat(db, 'server').catch((e) => console.error('[server] latido:', e.message)), 15_000);
   heartbeat(db, 'server').catch(() => {});
   const stop = () => { clearInterval(beat); server.close(); db.end().finally(() => process.exit(0)); };
