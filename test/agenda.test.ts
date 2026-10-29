@@ -72,3 +72,11 @@ test('llamadas: guarda el contacto y marca solo por orden del propietario', asyn
   const n = await h(db, 'llama a Pedro', 'voz');
   assert.match(n.text, /No tengo el número/);
 });
+
+test('«dame un reporte» devuelve dinero invertido y ganado sin inventar cifras', async () => {
+  const { handleMessage: h } = await import('../src/core/chat.ts');
+  const r = await h(db, 'Kratos, dame un reporte', 'voz');
+  assert.equal(r.action, 'reporte');
+  assert.match(r.text, /Invertido: .* USD/); assert.match(r.text, /Ingresos: sin ventas registradas/);
+  assert.match(r.spoken, /Su reporte, señor Idalmi/);
+});

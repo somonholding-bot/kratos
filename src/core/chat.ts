@@ -4,6 +4,7 @@ import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { AI_ACCOUNT, think } from './brain.ts';
 import { dial, saveContact } from './phone.ts';
+import { buildReport, spokenReport } from './report.ts';
 import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from './agenda.ts';
 
 // Modo demostración (sin IA): interpreta un conjunto fijo de órdenes en español.
@@ -23,7 +24,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
   let reply: Reply;
   if (SAFETY.test(t)) reply = await interpret(db, t, text);
   else {
-    const agenda = (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
+    const agenda = (await reportIntent(db, t)) ?? (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
     const ai = await think(db, channel);
@@ -169,4 +170,15 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
   if (!r.ok) return { text: r.error!, spoken: r.error! };
   const who = r.name ?? r.phone;
   return { text: `Llamando a ${who} desde tu iPhone. Pulsa «Llamar» en la ventana de FaceTime para confirmar.`, spoken: `Llamando a ${who}, ${o.address}. Confirme en la pantalla.`, action: 'llamada' };
+}
+
+// «Dame un reporte»: dinero invertido y ganado, trabajo hecho y decisiones pendientes, en voz y en el panel izquierdo.
+async function reportIntent(db: Db, t: string): Promise<Reply | null> {
+  if (!/\b(reporte|informe|balance|reporte financiero|como vamos de dinero|cuanto hemos (gastado|ganado|invertido))\b/.test(t)) return null;
+  const r = await buildReport(db);
+  const o = await owner(db);
+  const text = `Invertido: ${r.money.investedUsd.toFixed(2)} USD de ${r.money.assignedUsd.toFixed(2)} asignados · IA (30 días): ${r.money.aiCost30dUsd.toFixed(2)} USD\n` +
+    `Ingresos: ${r.money.earnedUsd === null ? 'sin ventas registradas' : r.money.earnedUsd.toFixed(2) + ' USD'}\n` +
+    `Tareas: ${r.work.done7} completadas en 7 días, ${r.work.running} en curso, ${r.work.queued} en cola · Aprobaciones pendientes: ${r.approvals.length}`;
+  return { text, spoken: spokenReport(r, o.address), action: 'reporte' };
 }

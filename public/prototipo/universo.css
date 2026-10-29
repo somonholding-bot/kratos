@@ -48,3 +48,22 @@ body.idle { cursor: none; }
 @media (max-width: 700px) { .mission { right: 12px; left: 12px; width: auto; top: auto; bottom: 76px; transform: none; } }
 
 .embed .dock, .embed .proto-tag, .embed #event-log, .embed .whisper { display: none !important; }
+
+/* Reporte (panel izquierdo) */
+#reporte { position: fixed; top: 24px; left: 24px; bottom: 24px; width: min(380px, calc(100vw - 48px)); overflow: auto; z-index: 30;
+  padding: 18px 18px 22px; border-radius: 18px; color: #dcecff; font: 13px/1.45 system-ui, sans-serif;
+  background: rgba(8, 14, 28, 0.72); border: 1px solid rgba(160, 200, 255, 0.18); backdrop-filter: blur(14px);
+  transform: translateX(calc(-100% - 40px)); opacity: 0; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .4s; }
+#reporte.open { transform: none; opacity: 1; }
+#reporte header { display: flex; justify-content: space-between; align-items: center; letter-spacing: .32em; text-transform: uppercase; font-size: 11px; opacity: .8; margin-bottom: 12px; }
+#reporte header button { background: none; border: 0; color: inherit; font-size: 20px; cursor: pointer; }
+#reporte .rp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#reporte .rp-card { padding: 12px; border-radius: 12px; background: rgba(120, 170, 255, 0.07); border: 1px solid rgba(160, 200, 255, 0.12); display: flex; flex-direction: column; gap: 4px; }
+#reporte .rp-card b { font-size: 17px; font-weight: 600; color: #fff; }
+#reporte .rp-card.up b { color: #7dffb0; }
+#reporte .rp-card small { opacity: .65; font-size: 11px; }
+#reporte .rp-card i { display: block; height: 4px; border-radius: 4px; background: linear-gradient(90deg, #ffb547 var(--p), rgba(255,255,255,.1) var(--p)); }
+#reporte h4 { margin: 16px 0 6px; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; opacity: .7; font-weight: 500; }
+#reporte p { margin: 0; }
+#reporte ul { margin: 0; padding-left: 16px; } #reporte li { margin: 3px 0; }
+#reporte em { font-style: normal; opacity: .6; margin-right: 4px; }

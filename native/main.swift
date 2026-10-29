@@ -300,7 +300,7 @@ final class WakeListener {
       guard let self else { return }
       let thinkMs = Int(Date().timeIntervalSince(t0) * 1000)
       if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": thinkMs]) }
-      NotificationCenter.default.post(name: .kratosReplied, object: nil)
+      NotificationCenter.default.post(name: .kratosReplied, object: reply?["action"] as? String)
       guard let spoken = reply?["spoken"] as? String else { self.resume(); return }
       self.set(.speaking)
       self.speaker.say(spoken) { self.resume() }
@@ -350,8 +350,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     NotificationCenter.default.addObserver(forName: .kratosWoke, object: nil, queue: .main) { [weak self] _ in
       self?.web.evaluateJavaScript("window.kratosWoke && window.kratosWoke()")
     }
-    NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] _ in
+    NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] n in
       self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
+      if (n.object as? String) == "reporte" { self?.web.evaluateJavaScript("window.kratosReport && window.kratosReport()") }
     }
     Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
     ensureService { [weak self] ok in

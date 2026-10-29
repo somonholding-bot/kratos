@@ -1079,3 +1079,33 @@ start();
 wake();
 refreshReal();
 setInterval(refreshReal, 2500);
+
+// Reporte: al pedir «dame un reporte», un panel a la izquierda con dinero invertido y ganado, trabajo y decisiones.
+const fmtUsd = (n) => (n === null || n === undefined ? 'desconocido' : `${Number(n).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`);
+let reportTimer = null;
+window.kratosReport = async () => {
+  let r;
+  try { r = await api('/api/report'); } catch { return; }
+  let el = document.getElementById('reporte');
+  if (!el) { el = document.createElement('aside'); el.id = 'reporte'; el.setAttribute('aria-label', 'Reporte'); document.body.append(el); }
+  const pct = r.money.assignedUsd ? Math.min(100, (r.money.investedUsd / r.money.assignedUsd) * 100) : 0;
+  el.innerHTML = `
+    <header><span>Reporte</span><button type="button" data-close-report aria-label="Cerrar">×</button></header>
+    <div class="rp-grid">
+      <div class="rp-card"><small>Invertido</small><b>${fmtUsd(r.money.investedUsd)}</b><i style="--p:${pct}%"></i><small>de ${fmtUsd(r.money.assignedUsd)} asignados</small></div>
+      <div class="rp-card ${r.money.earnedUsd ? 'up' : ''}"><small>Ganado</small><b>${r.money.earnedUsd === null ? 'Sin ventas aún' : fmtUsd(r.money.earnedUsd)}</b><small>meta: 250.000 USD / mes</small></div>
+      <div class="rp-card"><small>Disponible</small><b>${fmtUsd(r.money.availableUsd)}</b><small>IA 30 días: ${fmtUsd(r.money.aiCost30dUsd)} · ${r.money.aiCalls30d} usos</small></div>
+      <div class="rp-card"><small>Usuarios</small><b>${r.goal.users === null ? 'desconocido' : Number(r.goal.users).toLocaleString('es')}</b><small>hito 10.000 · meta 100.000</small></div>
+    </div>
+    <h4>Trabajo (7 días)</h4>
+    <p>${r.work.done7} completadas · ${r.work.running} en curso · ${r.work.queued} en cola</p>
+    <ul>${r.work.recent.map((t) => `<li><em>${esc(t.owner_function)}</em> ${esc(t.title)}</li>`).join('') || '<li>Sin tareas completadas esta semana.</li>'}</ul>
+    ${r.apps.length ? `<h4>Apps en Apple</h4><ul>${r.apps.map((a) => `<li>${esc(a.name)} ${esc(a.version ?? '')} — ${esc(a.state ?? '')}</li>`).join('')}</ul>` : ''}
+    <h4>Decisiones pendientes</h4>
+    <ul>${r.approvals.map((a) => `<li>#${a.id} ${esc(a.description)}</li>`).join('') || '<li>Ninguna.</li>'}</ul>
+    ${r.lessons.length ? `<h4>Aprendizajes</h4><ul>${r.lessons.map((l) => `<li><em>${l.kind === 'funciono' ? '✓' : l.kind === 'no_funciono' ? '✗' : '•'}</em> ${esc(l.content)}</li>`).join('')}</ul>` : ''}`;
+  requestAnimationFrame(() => el.classList.add('open'));
+  clearTimeout(reportTimer);
+  reportTimer = setTimeout(() => el.classList.remove('open'), 90_000);
+};
+addEventListener('click', (e) => { if (e.target.closest?.('[data-close-report]')) document.getElementById('reporte')?.classList.remove('open'); });

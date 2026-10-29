@@ -14,6 +14,7 @@ import { cleanTmp, synthesize, transcribe, transcribeWake, voiceAvailable } from
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
+import { buildReport } from './core/report.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -93,6 +94,7 @@ const GET: Record<string, Route> = {
   '/api/ai/status': async (db) => ({ ...(await aiStatus(db)), vault: VAULT,
     recent: await q(db, `SELECT at, model, input_tokens, output_tokens, cache_read_tokens, cost_microusd, charged_cents, purpose FROM ai_usage ORDER BY id DESC LIMIT 20`) }),
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
+  '/api/report': async (db) => buildReport(db),
   '/api/apple': async (db) => appleSummary(db),
   '/api/messages': async (db) => (await q(db, `SELECT * FROM messages ORDER BY id DESC LIMIT 60`)).reverse(),
 };
