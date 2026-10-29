@@ -67,3 +67,13 @@ body.idle { cursor: none; }
 #reporte p { margin: 0; }
 #reporte ul { margin: 0; padding-left: 16px; } #reporte li { margin: 3px 0; }
 #reporte em { font-style: normal; opacity: .6; margin-right: 4px; }
+
+/* Botón de micrófono siempre visible, también a pantalla completa (no se esconde con el resto de controles) */
+#mic-float { position: fixed; top: 18px; right: 18px; z-index: 40; display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(160, 210, 255, 0.35); cursor: pointer;
+  background: rgba(8, 14, 28, 0.62); color: #cfe8ff; font: 12px/1 system-ui, sans-serif; letter-spacing: .04em;
+  backdrop-filter: blur(10px); transition: background .2s, color .2s, border-color .2s; }
+#mic-float:hover { background: rgba(20, 34, 60, 0.85); }
+#mic-float .mic-ico { font-size: 15px; }
+#mic-float[aria-pressed="true"] { color: #ffb0b0; border-color: rgba(255, 120, 120, 0.6); background: rgba(60, 10, 14, 0.7); }
+body.idle #mic-float { cursor: pointer; }

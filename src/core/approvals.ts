@@ -3,6 +3,7 @@ import { audit } from './state.ts';
 import { allocate } from './budget.ts';
 import { onApprovalDecided } from './plugins.ts';
 import { onCodeApproval } from './claudecode.ts';
+import { onSelfApproval } from './selfimprove.ts';
 
 export type ApprovalRequest = {
   businessId?: number | null;
@@ -49,5 +50,6 @@ export async function decideApproval(db: Db, id: number, approve: boolean, via: 
   }
   await onApprovalDecided(db, a, approve);
   await onCodeApproval(db, a, approve);
+  await onSelfApproval(db, a, approve);
   return { ok: true, approval: a };
 }

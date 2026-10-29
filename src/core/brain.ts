@@ -16,6 +16,7 @@ import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
 import { proposeCodeJob } from './claudecode.ts';
 import { setSetting } from './bitacora.ts';
 import { agentsContext, agentsRegistry, searchReports, systemInventory, taskResult } from './registry.ts';
+import { diagnose, proposeImprovement, proposeRevert, readCode, searchCode } from './selfimprove.ts';
 import { runWithSubscription, subscriptionAvailable } from './subscription.ts';
 
 // Inteligencia de Kratos con la API de Claude.
@@ -94,7 +95,8 @@ Tus especialistas (perfiles, no procesos): Sol (propósito, objetivos, prioridad
 
 Memoria: tienes una bóveda de Obsidian. Busca en ella antes de responder sobre decisiones, negocios o temas pasados, y guarda allí (guardar_nota) lo que el propietario te pida recordar o aprendizajes útiles.
 
-Funciones nuevas: si te piden algo que tus herramientas no cubren y se puede resolver con datos públicos de internet, programa la función con proponer_funcion y explica que queda pendiente de su aprobación en el panel. Las herramientas fn_* son funciones ya aprobadas: úsalas. Nunca intentes cambiar tu código central, tus límites ni tus permisos.`;
+Funciones nuevas: si te piden algo que tus herramientas no cubren y se puede resolver con datos públicos de internet, programa la función con proponer_funcion y explica que queda pendiente de su aprobación en el panel. Las herramientas fn_* son funciones ya aprobadas: úsalas. Nunca intentes cambiar tu código central, tus límites ni tus permisos.
+Autonomía nivel 8 (auto-mejora): si el propietario señala un fallo o preguntas por qué algo va mal, diagnostica con diagnostico_propio, leer_codigo y buscar_codigo, explica la causa probable en pocas frases y ofrece una mejora concreta con proponer_mejora (pregunta antes: «¿quieres que lo arregle?»). Nunca la apliques sin su aprobación en el panel. No puedes tocar aprobaciones, presupuesto, accesos ni borrar código.`;
 
 type ToolDef = { name: string; description: string; input_schema: Record<string, unknown>; run: (db: Db, input: any) => Promise<unknown> };
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -295,6 +297,31 @@ const TOOLS: ToolDef[] = [
     run: async (db, i) => ({ olvidada: (await db.query(`UPDATE preferences SET active = false WHERE id = $1 AND active`, [Number(i.id)])).rowCount === 1 }),
   },
   {
+    name: 'diagnostico_propio', description: 'Tu propio diagnóstico con datos reales: fallas recientes, tiempos de voz y de respuesta, uso de CPU y RAM, tareas fallidas, gasto de IA y estado de tus mejoras. Úsalo cuando pregunten qué falla o por qué vas lento.',
+    input_schema: obj({}),
+    run: async (db) => diagnose(db),
+  },
+  {
+    name: 'leer_codigo', description: 'Lee un archivo de tu propio código (ruta relativa, p. ej. src/core/brain.ts) para entender un fallo. Solo lectura.',
+    input_schema: obj({ ruta: { type: 'string' }, desde_linea: { type: 'integer' } }, ['ruta']),
+    run: async (_db, i) => { try { return readCode(String(i.ruta), Number(i.desde_linea) || 1); } catch (e: any) { return { error: e.message }; } },
+  },
+  {
+    name: 'buscar_codigo', description: 'Busca un texto en tu propio código y devuelve archivo y línea. Solo lectura.',
+    input_schema: obj({ texto: { type: 'string' } }, ['texto']),
+    run: async (_db, i) => searchCode(String(i.texto)),
+  },
+  {
+    name: 'proponer_mejora', description: 'Propone un cambio en tu propio código para corregir un fallo o mejorar (autonomía nivel 8). Va a Aprobaciones; si el propietario lo aprueba, se hace respaldo, Claude Code programa el cambio, se pasan las pruebas y se aplica (o se deshace solo si falla). Describe el problema con datos y el cambio concreto (archivos y qué hacer).',
+    input_schema: obj({ titulo: { type: 'string' }, problema: { type: 'string' }, cambio: { type: 'string' } }, ['titulo', 'problema', 'cambio']),
+    run: async (db, i) => proposeImprovement(db, { titulo: String(i.titulo), problema: String(i.problema), cambio: String(i.cambio) }, 'kratos (IA)'),
+  },
+  {
+    name: 'proponer_reversion', description: 'Propone deshacer una auto-mejora ya aplicada (por su número). Va a Aprobaciones.',
+    input_schema: obj({ mejora: { type: 'integer' } }, ['mejora']),
+    run: async (db, i) => proposeRevert(db, Number(i.mejora), 'kratos (IA)'),
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -303,7 +330,7 @@ const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 

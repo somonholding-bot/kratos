@@ -6,6 +6,7 @@ import { ceoCycle, executeSpecialistTask } from './brain.ts';
 import { appleSync } from './apple.ts';
 import { runCodeJob } from './claudecode.ts';
 import { saveReport } from './registry.ts';
+import { runRevert, runSelfImprovement } from './selfimprove.ts';
 import { audit } from './state.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
@@ -16,6 +17,12 @@ type Handler = (db: Db, task: any) => Promise<Record<string, unknown>>;
 export const handlers: Record<string, Handler> = {
   async ciclo_ceo(db) {
     return ceoCycle(db);
+  },
+  async auto_mejora(db, task) {
+    return runSelfImprovement(db, task);
+  },
+  async revertir_mejora(db, task) {
+    return runRevert(db, task);
   },
   async claude_code(db, task) {
     return runCodeJob(db, task);

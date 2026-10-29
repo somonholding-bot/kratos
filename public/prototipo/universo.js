@@ -52,7 +52,10 @@ function paintMute() {
   const label = b.querySelector('span'); if (label) label.textContent = ui.muted ? 'Mic apagado' : 'Silenciar';
   b.title = ui.muted ? 'Micrófono apagado: pulsa para que KRATOS vuelva a escuchar (M)' : 'Silenciar micrófono (M)';
   b.style.color = ui.muted ? '#ff8a8a' : '';
+  const f = document.getElementById('mic-float');
+  if (f) { f.setAttribute('aria-pressed', ui.muted); f.querySelector('.mic-ico').textContent = ui.muted ? '🔇' : '🎙︎'; f.querySelector('.mic-txt').textContent = ui.muted ? 'Mic apagado' : 'Mic activo'; f.title = b.title; }
 }
+document.getElementById('mic-float')?.addEventListener('click', () => act('mute'));
 window.kratosNativeState = (state, enabled) => {
   voice.nativeState = state; voice.enabled = enabled;
   if (state === 'Di «Kratos»' || state === 'Escucha apagada') voice.awake = false;
