@@ -28,6 +28,7 @@ Actualizada: 28-oct-2026.
 |---|---|---|
 | 1 | Universo (encuadre, cielo, nebulosa, «¡pum!»), skills de marketing y creadores | ✅ |
 | 2 | Voz natural, escucha corregida, saludo, agenda y alarmas, reporte financiero, llamadas y SMS por el iPhone, correo por Mail, Apple (lectura), navegador de conexiones, funciones nuevas con aprobación | ✅ · ⏳ tus permisos: Mail, clave de Apple, aprobar 2 funciones |
+| 2 | Autonomía nivel 8: KRATOS se diagnostica y propone mejoras de su propio código, que se aplican con tu aprobación, respaldo y pruebas | ✅ |
 | 3 | Acceso remoto con enlace propio (Cloudflare + clave remota) | ✅ código · ⏳ dominio en Cloudflare |
 | 4 | Búsqueda web para KRATOS y especialistas; encargos a Claude Code con aprobación | ✅ · ⏳ iniciar sesión en Claude Code (Terminal: `claude` → `/login`) |
 | 5 | Panel mínimo (voz, diseños, saldos, conexiones), Google Play (lectura), flujo de contratación de creadores | ⏳ siguiente |
