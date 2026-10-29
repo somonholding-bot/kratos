@@ -209,8 +209,12 @@ const screens = {
 
   async conexiones() {
     const rows = await api('/api/connections');
-    return `<h1>Conexiones y estado</h1>${meta('catálogo local')}
-      ${table([['Servicio', (c) => `<b>${esc(c.service)}</b>`], ['Capacidades', (c) => esc(c.capabilities)], ['Estado', (c) => `<span class="tag warn">${esc(c.status.replaceAll('_', ' '))}</span>`],
+    const live = { 'App Store Connect': 'apple' };   // conexiones con asistente ya disponible
+    const btn = (c) => (live[c.service] ? `<button class="ctl resume" data-connect="${live[c.service]}">${c.status === 'conectado' ? 'Reconectar' : 'Conectar'}</button>`
+      : c.status === 'conectado' ? '' : `<button class="ctl" data-howto="${esc(c.credentials_required)}">Cómo conectar</button>`);
+    const ok = rows.filter((c) => c.status === 'conectado').length;
+    return `<h1>Conexiones</h1>${meta(`${ok} de ${rows.length} conectadas · todas empiezan en solo lectura`)}
+      ${table([['', btn], ['Servicio', (c) => `<b>${esc(c.service)}</b>`], ['Capacidades', (c) => esc(c.capabilities)], ['Estado', (c) => `<span class="tag ${c.status === 'conectado' ? '' : 'warn'}">${esc(c.status.replaceAll('_', ' '))}</span>`],
         ['Acceso', (c) => esc(c.access)], ['Cuenta', (c) => esc(c.account) || '—'], ['Credenciales', (c) => esc(c.credentials_required)], ['Coste', (c) => esc(c.cost)],
         ['Última prueba', (c) => fmtDate(c.last_check)], ['Revocación', (c) => esc(c.revocation)]], rows)}`;
   },
@@ -467,6 +471,12 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.say) return say(t.dataset.say);
   if (t.id === 'tts-test') { const was = voice.speakReplies; voice.speakReplies = true; await voice.speak('Hola, soy Kratos. Así sueno.'); voice.speakReplies = was; return; }
   if (t.dataset.cancel) { await api(`/api/tasks/${t.dataset.cancel}/cancel`, {}); return render(); }
+  if (t.dataset.connect) {
+    await api(`/api/connect/${t.dataset.connect}`, {});
+    toast('Se abrió en tu Mac el asistente de conexión. Sigue sus pasos: las claves se guardan solo en el Llavero.');
+    return;
+  }
+  if (t.dataset.howto) { toast(`Para conectar esto KRATOS necesita: ${t.dataset.howto}.\n\nPídeselo por voz («Kratos, quiero conectar …») y te guiará paso a paso.`); return; }
   if (t.dataset.approve || t.dataset.reject) {
     const id = t.dataset.approve || t.dataset.reject;
     if (t.dataset.approve && !confirm(`¿Aprobar la solicitud #${id}?`)) return;

@@ -8,6 +8,8 @@ import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext } from './skills.ts';
+import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
+import { appleSummary } from './apple.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -165,6 +167,35 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'agendar', description: 'Programa una alarma, recordatorio o evento. A esa hora la app se abre y Kratos lo dice en voz alta. Usa la fecha y hora local del contexto.',
+    input_schema: { type: 'object', properties: {
+      fecha_hora: { type: 'string', description: 'Fecha y hora local ISO 8601 sin zona, p. ej. 2026-10-29T08:00' },
+      tipo: { type: 'string', enum: ['alarma', 'recordatorio', 'evento'] },
+      texto: { type: 'string', description: 'Qué decir o recordar' },
+      repetir: { type: 'string', enum: ['diaria', 'laborables', 'semanal'] },
+    }, required: ['fecha_hora', 'tipo', 'texto'], additionalProperties: false },
+    run: async (db, i) => {
+      const at = new Date(String(i.fecha_hora));
+      if (Number.isNaN(+at)) return { error: 'Fecha no válida' };
+      return { programado: describe(await addAgenda(db, { at, kind: String(i.tipo), text: String(i.texto), repeat: i.repetir ? String(i.repetir) : null }, 'kratos (IA, a petición del propietario)')) };
+    },
+  },
+  {
+    name: 'ver_agenda', description: 'Alarmas, recordatorios y eventos de las próximas horas.',
+    input_schema: { type: 'object', properties: { horas: { type: 'integer', description: 'De 1 a 720 (por defecto 48)' } }, required: [], additionalProperties: false },
+    run: async (db, i) => ({ agenda: (await upcoming(db, Number(i.horas) || 48)).map((x) => ({ id: x.id, ...x, resumen: describe(x) })) }),
+  },
+  {
+    name: 'cancelar_agenda', description: 'Cancela una alarma o recordatorio por su id (de ver_agenda).',
+    input_schema: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'], additionalProperties: false },
+    run: async (db, i) => { const c = await cancelAgenda(db, Number(i.id)); return c ? { cancelado: describe(c) } : { error: 'No encontrado o ya no está pendiente' }; },
+  },
+  {
+    name: 'estado_apple', description: 'Estado en App Store Connect de las apps del propietario: versión, estado de revisión de Apple y últimas reseñas (solo lectura).',
+    input_schema: obj({}),
+    run: async (db) => appleSummary(db),
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -260,7 +291,9 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const messages: any[] = history.map((m) => ({ role: m.role === 'usuario' ? 'user' : 'assistant', content: m.content }));
   const now = new Date().toLocaleString('es', { dateStyle: 'full', timeStyle: 'short' });
   const lastUser = [...history].reverse().find((m) => m.role === 'usuario')?.content ?? '';
-  messages.push({ role: 'system', content: `Contexto actual: ${now}. Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
+  const o = await owner(db);
+  const d = new Date(), iso = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}). Propietario: ${o.name}; trátale de «${o.address}», con respeto y cercanía. Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
 
   const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 60_000 });
   const turnId = crypto.randomUUID();

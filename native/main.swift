@@ -60,10 +60,24 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     self.done = done
     let clean = text.replacingOccurrences(of: "[¿¡*_#`]", with: "", options: .regularExpression)
     let u = AVSpeechUtterance(string: clean)
-    let es = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("es") }
-    u.voice = es.first { $0.name.hasPrefix("Paulina") } ?? es.first { $0.language == "es-MX" } ?? es.first
+    u.voice = Speaker.voice
+    u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04   // ritmo de conversación, ni lento ni atropellado
+    u.pitchMultiplier = 1.03                              // tono medio, algo juvenil
+    u.preUtteranceDelay = 0.05
     synth.speak(u)
   }
+
+  // Voz masculina, media y juvenil: la de mejor calidad instalada (Premium > Mejorada > básica).
+  // Las voces de calidad se descargan en Ajustes del Sistema › Accesibilidad › Contenido leído › Voz del sistema › Gestionar voces.
+  static let preferred = ["Juan", "Jorge", "Diego", "Carlos", "Andrés", "Pablo"]
+  static let voice: AVSpeechSynthesisVoice? = {
+    let es = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("es") && !$0.identifier.contains("eloquence") }
+    func rank(_ v: AVSpeechSynthesisVoice) -> Int {
+      let male = preferred.firstIndex { v.name.hasPrefix($0) }
+      return v.quality.rawValue * 100 + (male.map { 50 - $0 } ?? 0) + (v.language == "es-MX" ? 1 : 0)
+    }
+    return es.max { rank($0) < rank($1) }
+  }()
 
   func stop() { if synth.isSpeaking { synth.stopSpeaking(at: .immediate) } }
 
@@ -224,7 +238,7 @@ final class WakeListener {
       let command = (r["command"] as? String) ?? ""
       if command.isEmpty {
         self.set(.speaking)
-        self.speaker.say("¿Sí?") {
+        self.speaker.say((r["greeting"] as? String) ?? "¿Sí?") {
           self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)
           self.q.asyncAfter(deadline: .now() + 0.3) { self.busy = false; self.set(.followUp) }
         }
@@ -293,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] _ in
       self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
     }
-    Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat() }
+    Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
     ensureService { [weak self] ok in
       guard let self else { return }
       if ok { self.loadPanel(); self.wake.bootstrap(); self.heartbeat() }
@@ -461,6 +475,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func heartbeat() {
     let listening = wake.enabled && [.listening, .hearing, .processing, .followUp, .speaking].contains(wake.state)
     API.post("/api/voice/heartbeat", ["listening": listening, "muted": !wake.enabled])
+  }
+
+  // Alarmas y avisos de la agenda: a su hora, encender la pantalla, abrir el universo y decirlo en voz alta.
+  func checkAgenda() {
+    API.post("/api/agenda/claim", [:]) { [weak self] r in
+      guard let self, let due = r?["due"] as? [[String: Any]], !due.isEmpty else { return }
+      DispatchQueue.main.async {
+        let wake = Process(); wake.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate"); wake.arguments = ["-u", "-t", "30"]
+        try? wake.run()   // enciende la pantalla si estaba apagada
+        self.showWindow(); self.openUniverse()
+        let alarm = due.contains { ($0["kind"] as? String) == "alarma" }
+        NSSound(named: alarm ? "Glass" : "Tink")?.play()
+        let text = due.compactMap { $0["spoken"] as? String }.joined(separator: " ")
+        self.web.evaluateJavaScript("window.kratosWoke && window.kratosWoke()")
+        DispatchQueue.main.asyncAfter(deadline: .now() + (alarm ? 1.5 : 0.6)) { self.wake.speaker.say(text) }
+      }
+    }
   }
 
   @objc func openPanel() { showWindow() }

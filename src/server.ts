@@ -13,6 +13,9 @@ import { handleMessage } from './core/chat.ts';
 import { cleanTmp, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
+import { claimDue, greeting, upcoming } from './core/agenda.ts';
+import { appleCredentials, appleSummary } from './core/apple.ts';
+import { spawn } from 'node:child_process';
 
 const PUBLIC = path.join(ROOT, 'public');
 // Three.js se sirve desde node_modules (versión fijada en package.json); solo build/ y examples/jsm/.
@@ -87,6 +90,8 @@ const GET: Record<string, Route> = {
   }),
   '/api/ai/status': async (db) => ({ ...(await aiStatus(db)), vault: VAULT,
     recent: await q(db, `SELECT at, model, input_tokens, output_tokens, cache_read_tokens, cost_microusd, charged_cents, purpose FROM ai_usage ORDER BY id DESC LIMIT 20`) }),
+  '/api/agenda': async (db) => upcoming(db, 24 * 30),
+  '/api/apple': async (db) => appleSummary(db),
   '/api/messages': async (db) => (await q(db, `SELECT * FROM messages ORDER BY id DESC LIMIT 60`)).reverse(),
 };
 
@@ -132,6 +137,14 @@ const POST: Record<string, Route> = {
   '/api/voice/heartbeat': async (db, b) => {
     await heartbeat(db, 'escucha', { listening: b.listening === true, muted: b.muted === true });
     return { ok: true };
+  },
+  // La app nativa reclama los avisos vencidos para decirlos en voz alta (cada uno, una sola vez)
+  '/api/agenda/claim': async (db) => ({ due: await claimDue(db) }),
+  // Abre en este Mac el asistente que guarda en el Llavero la clave de App Store Connect (los datos nunca pasan por el panel)
+  '/api/connect/apple': async (db) => {
+    await audit(db, 'propietario (panel)', 'conexion.apple.asistente_abierto', {});
+    spawn('/bin/bash', [path.join(ROOT, 'scripts', 'conectar-apple.sh')], { detached: true, stdio: 'ignore' }).unref();
+    return { ok: true, connected: !!appleCredentials() };
   },
   '/api/emergency-stop': async (db) => emergencyStop(db, 'propietario (panel)'),
   '/api/resume': async (db) => { await resumeFromEmergency(db, 'propietario (panel)'); return { ok: true }; },
@@ -240,7 +253,10 @@ export function createServer(db: Db) {
           const abort = new AbortController();
           res.on('close', () => { if (!res.writableEnded) abort.abort(); }); // el panel canceló
           try {
-            if (url.searchParams.get('mode') === 'wake') return send(res, 200, await transcribeWake(db, wav, abort.signal));
+            if (url.searchParams.get('mode') === 'wake') {
+              const w = await transcribeWake(db, wav, abort.signal);
+              return send(res, 200, w.wake && !w.command ? { ...w, greeting: await greeting(db) } : w);
+            }
             return send(res, 200, await transcribe(db, wav, abort.signal));
           }
           catch (e: any) { throw new HttpError(400, e.message); }

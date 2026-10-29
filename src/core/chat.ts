@@ -3,6 +3,7 @@ import { audit, emergencyStop, getState } from './state.ts';
 import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { AI_ACCOUNT, think } from './brain.ts';
+import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from './agenda.ts';
 
 // Modo demostración (sin IA): interpreta un conjunto fijo de órdenes en español.
 // No puede aprobar, gastar ni reanudar: esas acciones solo existen como botones del panel.
@@ -21,6 +22,9 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
   let reply: Reply;
   if (SAFETY.test(t)) reply = await interpret(db, t, text);
   else {
+    const agenda = await agendaIntent(db, t, text);
+    if (agenda) reply = agenda;
+    else {
     const ai = await think(db, channel);
     if ('text' in ai) reply = ai;
     else {
@@ -28,6 +32,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
       const why = ai.unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
         ai.unavailable.startsWith('presupuesto') ? `IA en pausa: sin presupuesto disponible en «${AI_ACCOUNT}»` : `IA no disponible (${ai.unavailable})`;
       reply = { ...reply, text: `[${why}; respondo en modo demostración]\n${reply.text}` };
+    }
     }
   }
   await db.query(`INSERT INTO messages (role, channel, content) VALUES ('jarvis', $1, $2)`, [channel, reply.text]);
@@ -122,4 +127,24 @@ async function summary(db: Db): Promise<Reply> {
     text: `${flags ? flags + '\n' : ''}${lines}\nAprobaciones pendientes: ${pend}. Modo: demostración (sin IA, 0 USD). No hay negocios reales con datos conectados todavía.`,
     spoken: `Tienes ${biz.length} negocios registrados y ${pend} aprobaciones pendientes. Los detalles están en pantalla.`,
   };
+}
+
+// Agenda y alarmas sin IA: rápido, gratis y siempre igual.
+async function agendaIntent(db: Db, t: string, original: string): Promise<Reply | null> {
+  const o = await owner(db);
+  if (/\b(cancela|quita|borra|elimina|desactiva|apaga)\b.*\b(alarma|recordatorio|aviso)/.test(t)) {
+    const c = await cancelAgenda(db, undefined, /alarma/.test(t) ? 'alarma' : undefined);
+    return c ? { text: `Cancelado: ${describe(c)}.`, spoken: `Listo, ${o.address}. Cancelé ${c.kind === 'alarma' ? 'la alarma' : 'el recordatorio'} de las ${new Date(c.at).toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' })}.` }
+      : { text: 'No hay alarmas ni recordatorios pendientes.', spoken: `No tiene nada programado, ${o.address}.` };
+  }
+  if (/(que tengo (hoy|manana|programado)|mi agenda|mis alarmas|mis recordatorios|agenda de hoy)/.test(t)) {
+    const items = await upcoming(db, 48);
+    return items.length ? { text: items.map(describe).join('\n'), spoken: `Tiene ${items.length === 1 ? 'una cosa' : `${items.length} cosas`} en la agenda. ${items.slice(0, 3).map(describe).join('. ')}.` }
+      : { text: 'La agenda de las próximas 48 horas está vacía.', spoken: `Su agenda está libre, ${o.address}.` };
+  }
+  const p = parseAgenda(original);
+  if (!p) return null;
+  const item = await addAgenda(db, p);
+  const d = describe(item);
+  return { text: `Programado: ${d}. A esa hora abriré el universo y se lo diré en voz alta.`, spoken: `Hecho, ${o.address}. ${d.replace(/: Despertar$/, '')}.`, action: 'agenda_creada' };
 }
