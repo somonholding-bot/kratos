@@ -5,6 +5,8 @@ import { appendDaily } from './vault.ts';
 import { ceoCycle, executeSpecialistTask } from './brain.ts';
 import { appleSync } from './apple.ts';
 import { runCodeJob } from './claudecode.ts';
+import { saveReport } from './registry.ts';
+import { audit } from './state.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
 // Las tareas de tipo 'agente' quedan en 'esperando_ia' hasta conectar Claude.
@@ -22,7 +24,11 @@ export const handlers: Record<string, Handler> = {
     return appleSync(db);
   },
   async agente(db, task) {
-    return executeSpecialistTask(db, task);
+    const r = await executeSpecialistTask(db, task);
+    // Sin informe guardado y legible, la tarea no se da por completada (se reintenta o falla con su error)
+    const report = saveReport(task, r.deliverable);
+    await audit(db, `agente:${task.owner_function}`, 'informe.guardado', { tarea: task.id, archivo: report, caracteres: r.deliverable.length });
+    return { ...r, report };
   },
 
   async revision_salud(db, task) {

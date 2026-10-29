@@ -15,6 +15,7 @@ import { mailDraft, mailInbox } from './mail.ts';
 import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
 import { proposeCodeJob } from './claudecode.ts';
 import { setSetting } from './bitacora.ts';
+import { agentsContext, agentsRegistry, searchReports, systemInventory, taskResult } from './registry.ts';
 import { runWithSubscription, subscriptionAvailable } from './subscription.ts';
 
 // Inteligencia de Kratos con la API de Claude.
@@ -72,7 +73,8 @@ export async function aiStatus(db: Db) {
 }
 
 const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario, Idalmi. Hablas español, con personalidad: ingenioso, seguro, cálido y con humor seco, como el JARVIS de Tony Stark. Suenas como un agente real y competente, no como una máquina.
-Forma de hablar: trata al propietario por «Idalmi». No uses «señor» en cada frase: solo en el saludo de la mañana o en momentos formales. Respuestas habladas breves (1 a 3 frases) salvo que pida detalle. Nada de frases de robot ni de disculpas repetidas.
+Forma de hablar: no uses el nombre del propietario ni «señor» en las respuestas (solo en el saludo de la mañana). Ve al grano.
+Voz: la transcripción puede confundir nombres de tus agentes: «Benu», «Venu», «Benus» = Venus; «Melcure», «Mercure» = Mercurio; «Saturo» = Saturno; «Jupi» = Júpiter. Interprétalos así. Respuestas habladas breves (1 a 3 frases) salvo que pida detalle. Nada de frases de robot ni de disculpas repetidas.
 Ajustes: puedes cambiar tus propios ajustes (calidad gráfica, velocidad de la voz, tiempo de conversación, voz y modelo) con ajustar_kratos cuando te lo pida; confirma en una frase lo que cambiaste.
 
 Meta de vida: 100.000 usuarios y 250.000 USD de ingresos mensuales (primer hito: 10.000 usuarios). Sé proactivo: propone y reparte trabajo hacia esa meta sin esperar a que te lo pidan, siempre de forma legal, honesta y dentro de presupuestos y aprobaciones.
@@ -113,7 +115,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'listar_tareas', description: 'Lista tareas, opcionalmente filtradas por estado.',
     input_schema: obj({ estado: { type: 'string', description: 'pendiente, en_ejecucion, esperando_ia, completada, fallida, cancelada, requiere_revision o «todas»' } }, ['estado']),
-    run: async (db, i) => (await db.query(`SELECT id, title, status, owner_function, priority, run_at, last_error FROM tasks
+    run: async (db, i) => (await db.query(`SELECT id, title, status, owner_function, priority, run_at, last_error, (result->>'deliverable' IS NOT NULL) AS tiene_informe FROM tasks
       WHERE ($1 = 'todas' OR status = $1) ORDER BY updated_at DESC LIMIT 30`, [i.estado])).rows,
   },
   {
@@ -263,6 +265,36 @@ const TOOLS: ToolDef[] = [
     run: async (db) => appleSummary(db),
   },
   {
+    name: 'ver_resultado_tarea', description: 'Lee el informe que entregó un agente en una tarea (por su número). Úsala cuando pregunten qué encontró, qué respondió o qué hizo un agente.',
+    input_schema: obj({ id: { type: 'integer', description: 'Número de la tarea' } }, ['id']),
+    run: async (db, i) => taskResult(db, Number(i.id)),
+  },
+  {
+    name: 'buscar_informes', description: 'Busca entre los informes de los agentes por tema y, opcionalmente, por agente (sol, luna, mercurio, venus, marte, jupiter, saturno). Devuelve número de tarea, título y un extracto.',
+    input_schema: obj({ consulta: { type: 'string', description: 'Tema; vacío para los más recientes' }, agente: { type: 'string' } }, ['consulta']),
+    run: async (db, i) => searchReports(db, String(i.consulta ?? ''), i.agente ? String(i.agente).toLowerCase() : undefined),
+  },
+  {
+    name: 'agentes', description: 'Registro central de los agentes: función, entregables, límites, skills, tareas activas, completadas, fallos y tareas recientes. Sin id devuelve los siete.',
+    input_schema: obj({ id: { type: 'string', description: 'sol, luna, mercurio, venus, marte, jupiter o saturno' } }),
+    run: async (db, i) => agentsRegistry(db, i.id ? String(i.id).toLowerCase() : undefined),
+  },
+  {
+    name: 'herramientas_sistema', description: 'Inventario real de las herramientas de KRATOS con su estado comprobado ahora (operativa, configurada, instalada, no instalada o con error).',
+    input_schema: obj({}),
+    run: async (db) => systemInventory(db),
+  },
+  {
+    name: 'recordar_preferencia', description: 'Guarda una preferencia permanente del propietario (trato, tono, longitud, horarios…). Se cumplirá en todas las conversaciones.',
+    input_schema: obj({ preferencia: { type: 'string' } }, ['preferencia']),
+    run: async (db, i) => { const r = (await db.query(`INSERT INTO preferences (text) VALUES ($1) RETURNING id`, [String(i.preferencia).slice(0, 300)])).rows[0]; await audit(db, 'kratos (IA)', 'preferencia.guardada', { id: r.id }); return { guardada: r.id }; },
+  },
+  {
+    name: 'olvidar_preferencia', description: 'Desactiva una preferencia permanente por su número (aparecen numeradas en el contexto).',
+    input_schema: obj({ id: { type: 'integer' } }, ['id']),
+    run: async (db, i) => ({ olvidada: (await db.query(`UPDATE preferences SET active = false WHERE id = $1 AND active`, [Number(i.id)])).rowCount === 1 }),
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -270,7 +302,9 @@ const TOOLS: ToolDef[] = [
 ];
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
-export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && Object.keys(schema?.properties ?? {}).length > 0;
+// La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
+const READ_ONLY = new Set(['listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
 export type BrainReply = { text: string; spoken: string; costUsd: number };
@@ -405,7 +439,10 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const lastUser = [...history].reverse().find((m) => m.role === 'usuario')?.content ?? '';
   const o = await owner(db);
   const d = new Date(), iso = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-  messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}). Propietario: ${o.name}; trátale de «${o.address}», con respeto y cercanía. Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
+  const prefs = (await db.query(`SELECT id, text FROM preferences WHERE active ORDER BY id`).catch(() => ({ rows: [] }))).rows;
+  const prefText = prefs.length ? ` Preferencias permanentes del propietario (cúmplelas SIEMPRE): ${prefs.map((p: any) => `[${p.id}] ${p.text}`).join(' · ')}.` : '';
+  const agentText = await agentsContext(db).catch(() => '');
+  messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}).${prefText}${agentText} Propietario: ${o.name} (no lo nombres en cada respuesta; trato cercano y directo). Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
 
   // Funciones aprobadas por el propietario: herramientas extra que KRATOS se programó
   const allTools: ToolDef[] = [...TOOLS, ...(await activePlugins(db)).map((p) => ({
