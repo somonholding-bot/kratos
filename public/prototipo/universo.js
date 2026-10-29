@@ -646,7 +646,8 @@ function makeNeuralField(count) {
 function layout() {
   camera.updateMatrixWorld();
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
-  const w = h * camera.aspect;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 10;   // nunca proporciones inválidas
+  const w = h * aspect;
   const th = (k) => Math.PI / 2 - (k * 2 * Math.PI) / AGENTS.length;
   const extent = (k) => AGENTS[k].size * (AGENTS[k].id === 'saturno' ? 2.4 : 1.15) * 1.3 + 0.2;   // anillo, halo y crecimiento al trabajar
   const at = (k, rx, ry) => new THREE.Vector3(Math.cos(th(k)) * rx, 0.3 + Math.sin(th(k)) * ry, Math.sin(k * 1.7) * 0.6);
@@ -888,7 +889,32 @@ function frame() {
   if (now - fpsAt > 1000) { fps = frames; frames = 0; fpsAt = now; updateMetrics(); }
 }
 
+// Tras un cambio de tamaño: lo caro (nebulosa y conexiones) se rehace una sola vez, cuando la ventana deja de cambiar
+let settleTimer = 0, bakedSize = '';
+function settleAfterResize() {
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
+    if (!world) return;
+    const size = `${innerWidth}x${innerHeight}x${U.pixelRatio.value}`;
+    if (size !== bakedSize) { bakedSize = size; world.background.material.uniforms.uTex.value = bakeBackground(); }
+    relink();
+    frame();
+  }, 250);
+}
+// Rehace las conexiones de energía hacia la posición actual de cada planeta (conservando su estado)
+function relink() {
+  const q = QUALITY[ui.quality];
+  world.links = world.links.map((old, i) => {
+    const c = makeConnection(world.mind.group.position, world.planets[i].anchor, AGENTS[i].color, q.strands);
+    for (const k of ['uActive', 'uPulse']) c.uniforms[k].value = old.uniforms[k].value;
+    old.lines.parent?.add(c.lines); old.lines.parent?.remove(old.lines); old.lines.geometry.dispose(); old.lines.material.dispose();
+    return c;
+  });
+}
+
 function resize() {
+  // Ventana minimizada u oculta (tamaño 0): no hay nada que recalcular; evita proporciones inválidas (NaN)
+  if (innerWidth < 2 || innerHeight < 2) return;
   const q = QUALITY[ui.quality];
   const pr = Math.min(devicePixelRatio || 1, q.dpr) * (typeof fluid === 'undefined' ? 1 : fluid.scale);
   U.pixelRatio.value = pr;
@@ -898,7 +924,7 @@ function resize() {
   camera.fov = camera.aspect < 1.2 ? 58 : 42;
   camera.updateProjectionMatrix();
   composer?.setPixelRatio(pr); composer?.setSize(innerWidth, innerHeight);
-  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); if (!fluid.resizing) world.background.material.uniforms.uTex.value = bakeBackground(); }
+  if (world) { const anchors = layout(); world.planets.forEach((p, i) => p.anchor.copy(anchors[i])); settleAfterResize(); }
   if (ui.reduced || ui.paused) frame();
 }
 
