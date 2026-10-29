@@ -40,3 +40,13 @@ test('nunca más de 20 herramientas estrictas (límite de la API de Claude)', as
   const { toolCount } = await import('../src/core/brain.ts');
   assert.ok(toolCount().strict <= 20, JSON.stringify(toolCount()));
 });
+
+test('Claude Code: el encargo solo se programa tras la aprobación del propietario', async () => {
+  const { proposeCodeJob } = await import('../src/core/claudecode.ts');
+  const r: any = await proposeCodeJob(db, 'Landing prueba', 'Haz una landing simple', 'test');
+  assert.equal((await db.query(`SELECT count(*)::int AS n FROM tasks WHERE type = 'claude_code'`)).rows[0].n, 0);
+  await decideApproval(db, r.aprobacion, true, 'panel');
+  const t = (await db.query(`SELECT status, inputs FROM tasks WHERE type = 'claude_code'`)).rows[0];
+  assert.equal(t.inputs.job_id, r.encargo);
+  await db.query(`UPDATE tasks SET status = 'cancelada' WHERE type = 'claude_code'`);
+});

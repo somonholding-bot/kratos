@@ -2,6 +2,7 @@ import type { Db } from '../db.ts';
 import { audit } from './state.ts';
 import { allocate } from './budget.ts';
 import { onApprovalDecided } from './plugins.ts';
+import { onCodeApproval } from './claudecode.ts';
 
 export type ApprovalRequest = {
   businessId?: number | null;
@@ -47,5 +48,6 @@ export async function decideApproval(db: Db, id: number, approve: boolean, via: 
     await db.query(`UPDATE approvals SET status = 'ejecutada' WHERE id = $1`, [id]);
   }
   await onApprovalDecided(db, a, approve);
+  await onCodeApproval(db, a, approve);
   return { ok: true, approval: a };
 }

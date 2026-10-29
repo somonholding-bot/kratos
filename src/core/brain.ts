@@ -13,6 +13,7 @@ import { appleSummary } from './apple.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox } from './mail.ts';
 import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
+import { proposeCodeJob } from './claudecode.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -221,6 +222,11 @@ const TOOLS: ToolDef[] = [
       try { schema = i.parametros_json ? JSON.parse(String(i.parametros_json)) : undefined; } catch { return { error: 'parametros_json no es JSON válido' }; }
       return proposePlugin(db, { name: String(i.nombre), description: String(i.descripcion), whenToUse: String(i.cuando_usar), inputSchema: schema, code: String(i.codigo) }, 'kratos (IA)');
     },
+  },
+  {
+    name: 'encargar_a_claude_code', description: 'Encarga a Claude Code un trabajo de diseño o programación (web, landing, app, script, página) en una carpeta aislada ~/KratosProyectos/<proyecto>. Solo corre si el propietario lo aprueba en el panel; descríbelo con todo detalle.',
+    input_schema: obj({ proyecto: { type: 'string', description: 'Nombre corto del proyecto' }, instrucciones: { type: 'string', description: 'Qué construir, con requisitos y criterios de aceptación' } }, ['proyecto', 'instrucciones']),
+    run: async (db, i) => proposeCodeJob(db, String(i.proyecto), String(i.instrucciones), 'kratos (IA)'),
   },
   {
     name: 'mensaje_texto', description: 'Prepara un mensaje de texto (iMessage/SMS por el iPhone) a un contacto o número; se abre en Mensajes y el propietario pulsa Enviar. Solo por orden expresa del propietario.',
