@@ -180,6 +180,7 @@ final class WakeListener {
   var sensitivity: Double { UserDefaults.standard.object(forKey: "sensitivity") as? Double ?? 0.5 }    // 0 = poco sensible, 1 = muy sensible
 
   private func set(_ s: State, _ msg: String? = nil) {
+    appLog("escucha: \(s.rawValue)\(msg.map { " (\($0))" } ?? "")")
     DispatchQueue.main.async { self.state = s; self.onState?(s, msg) }
   }
 
@@ -442,6 +443,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   var stateItem: NSMenuItem!
 
   func applicationDidFinishLaunching(_ n: Notification) {
+    // Una sola copia: si ya hay otra abierta, esta se cierra (evita dos escuchas peleando por el micrófono)
+    let me = ProcessInfo.processInfo.processIdentifier
+    let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "").filter { $0.processIdentifier != me }
+    if !others.isEmpty { NSApp.terminate(nil); return }
     buildMainMenu()
     buildWindow()
     buildStatusItem()
