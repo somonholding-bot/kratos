@@ -30,6 +30,8 @@ test('reparto: charla y cultura general en local; datos y acciones con Claude', 
   assert.equal(await routeLocal(db, 'voz', '¿por qué el cielo es azul?'), true);
   assert.equal(await routeLocal(db, 'voz', 'mándale un mensaje a Juan'), false);
   assert.equal(await routeLocal(db, 'voz', '¿cómo van mis negocios?'), false);
+  assert.equal(await routeLocal(db, 'voz', 'Kratos, ponme a Romeo Santos'), false);   // música: la pone Claude, Groq no puede
+  assert.equal(await routeLocal(db, 'voz', 'quiero oír una canción de Juan Luis Guerra'), false);
   assert.equal(await routeLocal(db, 'voz', 'busca el precio del bitcoin'), false);
   assert.equal(await routeLocal(db, 'texto', 'cuéntame un chiste'), true);
   // preguntas sobre el propio KRATOS y charla con palabras comunes: cerebro rápido

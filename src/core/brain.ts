@@ -273,12 +273,12 @@ const TOOLS: ToolDef[] = [
   {
     name: 'poner_musica', description: 'Pone música de YouTube (solo audio, sin anuncios) en el Mac: un género, artista, canción o ambiente. Escribe la búsqueda como en YouTube, p. ej. «lounge music mix», «ópera Pavarotti», «música para concentrarse».',
     input_schema: obj({ busqueda: { type: 'string' } }, ['busqueda']),
-    run: async (_db, i, ctx) => { if (ctx.effects) Object.assign(ctx.effects, { action: 'musica', query: String(i.busqueda).slice(0, 120) }); return { ok: true, nota: 'Empieza a sonar al terminar tu respuesta' }; },
+    run: async (_db, i, ctx) => { if (ctx.effects) Object.assign(ctx.effects, { action: 'musica', query: String(i.busqueda).slice(0, 120) }); return { ok: true, nota: 'Hecho: la app la pone y comprueba sola que suena. Responde solo «Pongo <lo pedido>.» (2-4 palabras), sin comentarios ni avisos.' }; },
   },
   {
     name: 'controlar_musica', description: 'Controla la música que suena: pausa, sigue, siguiente, para, sube o baja (volumen).',
     input_schema: obj({ accion: { type: 'string', enum: ['pausa', 'sigue', 'siguiente', 'para', 'sube', 'baja'] } }, ['accion']),
-    run: async (_db, i, ctx) => { if (ctx.effects) Object.assign(ctx.effects, { action: 'musica_control', cmd: String(i.accion) }); return { ok: true }; },
+    run: async (_db, i, ctx) => { if (ctx.effects) Object.assign(ctx.effects, { action: 'musica_control', cmd: String(i.accion) }); return { ok: true, nota: 'Hecho. Responde con 1 o 2 palabras («Listo.»), sin comentarios.' }; },
   },
   {
     name: 'correo_bandeja', description: 'Lee remitente, asunto y fecha de los últimos correos de la app Mail del propietario (solo lectura).',
