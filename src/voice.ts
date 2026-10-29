@@ -174,8 +174,31 @@ export async function synthesize(text: string, signal?: AbortSignal): Promise<Bu
       const p = execFile(PIPER, ['-m', PIPER_VOICE, '-f', file, '--length-scale', '0.93', '--sentence-silence', '0.15'], { timeout: 60_000, signal }, (err) => (err ? reject(err) : resolve()));
       p.stdin?.end(clean);
     });
-    return fs.readFileSync(file);
+    return smoothEnds(fs.readFileSync(file));
   } finally {
     fs.rmSync(file, { force: true });
   }
+}
+
+// Piper a veces deja un chasquido o un soplido al terminar: se recorta la cola casi muda y se funden principio y final.
+export function smoothEnds(wav: Buffer): Buffer {
+  let off = 12;
+  while (off + 8 <= wav.length && wav.toString('ascii', off, off + 4) !== 'data') off += 8 + wav.readUInt32LE(off + 4);
+  if (off + 8 > wav.length || wav.readUInt16LE(34) !== 16) return wav;
+  const rate = wav.readUInt32LE(24), start = off + 8;
+  let n = Math.floor(Math.min(wav.readUInt32LE(off + 4), wav.length - start) / 2);
+  const at = (i: number) => wav.readInt16LE(start + i * 2);
+  // última muestra con voz (> ~1 % de escala) y un margen de 60 ms
+  let last = n - 1; while (last > 0 && Math.abs(at(last)) < 330) last--;
+  n = Math.min(n, last + Math.round(rate * 0.06));
+  const fadeIn = Math.round(rate * 0.012), fadeOut = Math.round(rate * 0.12), tail = Math.round(rate * 0.12);
+  const out = Buffer.alloc(start + (n + tail) * 2);
+  wav.copy(out, 0, 0, start);
+  for (let i = 0; i < n; i++) {
+    const g = Math.min(1, i / fadeIn, (n - 1 - i) / fadeOut);
+    out.writeInt16LE(Math.round(at(i) * Math.max(0, g)), start + i * 2);
+  }
+  out.writeUInt32LE((n + tail) * 2, off + 4);
+  out.writeUInt32LE(out.length - 8, 4);
+  return out;
 }

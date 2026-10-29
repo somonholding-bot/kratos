@@ -11,6 +11,13 @@ func sessionToken() -> String? {
   (try? String(contentsOfFile: ROOT + "/.jarvis/session-token", encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
+// Registro mínimo de la app (sin audio ni textos del usuario)
+func appLog(_ msg: String) {
+  let line = "\(ISO8601DateFormatter().string(from: Date())) \(msg)\n"
+  let path = ROOT + "/.jarvis/logs/app.log"
+  if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); try? h.close() }
+}
+
 // MARK: - API local
 
 enum API {
@@ -428,11 +435,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     wake.onLevel = { [weak self] v in self?.web.evaluateJavaScript("window.kratosMicLevel && window.kratosMicLevel(\(v))") }
     wake.speaker.onWord = { [weak self] in self?.web.evaluateJavaScript("window.kratosSpeechPulse && window.kratosSpeechPulse()") }
     NotificationCenter.default.addObserver(forName: .kratosWoke, object: nil, queue: .main) { [weak self] _ in
-      self?.web.evaluateJavaScript("window.kratosWoke && window.kratosWoke()")
+      self?.universeJS("window.kratosWoke && window.kratosWoke()")   // al despertar, KRATOS aparece a pantalla completa
     }
     NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] n in
       self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
-      if (n.object as? String) == "reporte" { self?.web.evaluateJavaScript("window.kratosReport && window.kratosReport()") }
+      if (n.object as? String) == "reporte" { self?.universeJS("window.kratosReport && window.kratosReport()") }
     }
     Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
     ensureService { [weak self] ok in
@@ -444,7 +451,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ s: NSApplication) -> Bool { false }
-  func applicationShouldHandleReopen(_ s: NSApplication, hasVisibleWindows: Bool) -> Bool { showWindow(); return true }
+  // Abrir KRATOS (Dock, Spotlight) siempre lleva al universo a pantalla completa; el panel queda para Esc o el menú
+  func applicationShouldHandleReopen(_ s: NSApplication, hasVisibleWindows: Bool) -> Bool { showWindow(); if !onUniverse { openUniverse() }; return true }
+  var onUniverse: Bool { web?.url?.path.hasPrefix("/prototipo") == true && web?.url?.query?.contains("embed") != true }
+  var pendingJS: [String] = []
+  // Ejecuta en el universo; si estaba en el panel, primero lo abre a pantalla completa y luego lo ejecuta
+  func universeJS(_ js: String) {
+    if onUniverse { web.evaluateJavaScript(js); return }
+    pendingJS.append(js); showWindow(); openUniverse()
+  }
 
   func ensureService(_ done: @escaping (Bool) -> Void) {
     API.healthy { ok in
@@ -500,7 +515,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     web.load(URLRequest(url: BASE.appendingPathComponent("prototipo/")))
   }
   // Al terminar de cargar: el universo va a pantalla completa; el panel, en ventana.
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { syncFullScreen() }
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    appLog("nav \(webView.url?.absoluteString ?? "-")")
+    syncFullScreen()
+    if onUniverse, !pendingJS.isEmpty {
+      let js = pendingJS; pendingJS = []
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { js.forEach { webView.evaluateJavaScript($0) } }   // tras construir la escena
+    }
+  }
   func syncFullScreen() {
     guard window.isVisible else { return }
     let immersive = (web.url?.path.hasPrefix("/prototipo") ?? false) && !(web.url?.query?.contains("embed") ?? false)
@@ -613,11 +635,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
       DispatchQueue.main.async {
         let wake = Process(); wake.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate"); wake.arguments = ["-u", "-t", "30"]
         try? wake.run()   // enciende la pantalla si estaba apagada
-        self.showWindow(); self.openUniverse()
+        self.showWindow()
         let alarm = due.contains { ($0["kind"] as? String) == "alarma" }
-        NSSound(named: alarm ? "Glass" : "Tink")?.play()
+        if alarm { NSSound(named: "Glass")?.play() }
         let text = due.compactMap { $0["spoken"] as? String }.joined(separator: " ")
-        self.web.evaluateJavaScript("window.kratosWoke && window.kratosWoke()")
+        self.universeJS("window.kratosWoke && window.kratosWoke()")
         DispatchQueue.main.asyncAfter(deadline: .now() + (alarm ? 1.5 : 0.6)) { self.wake.speaker.say(text) }
       }
     }
