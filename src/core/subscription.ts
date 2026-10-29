@@ -27,11 +27,15 @@ async function saveStatus(db: Db, s: SubStatus) {
     ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now(), updated_by = 'suscripcion'`, [JSON.stringify(s)]);
   // Aviso hablado una sola vez por cambio de estado (cerca del límite o agotado)
   if (prev?.status === s.status && prev?.resetsAt === s.resetsAt) return;
-  const at = s.resetsAt ? new Date(s.resetsAt).toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' }) : null;
+  const r = s.resetsAt ? new Date(s.resetsAt) : null;
+  const sameDay = r && r.toDateString() === new Date().toDateString();
+  const when = r ? (sameDay ? r.toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' }) : r.toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : null;
+  const kind = s.type === 'seven_day' ? 'semanal' : s.type === 'five_hour' ? 'de 5 horas' : '';
+  const at = when;
   if (s.status === 'allowed_warning') {
-    await addAgenda(db, { at: new Date(), kind: 'aviso', text: `aviso de consumo: tu suscripción de Claude se está acercando al límite${at ? `; se reinicia a las ${at}` : ''}. Si quieres, bajo el ritmo de los agentes.` }, 'suscripción');
+    await addAgenda(db, { at: new Date(), kind: 'aviso', text: `aviso de consumo: tu suscripción de Claude se está acercando al límite ${kind}${at ? `; se reinicia el ${at}` : ''}. Si quieres, bajo el ritmo de los agentes.` }, 'suscripción');
   } else if (s.status === 'rejected') {
-    await addAgenda(db, { at: new Date(), kind: 'aviso', text: `la suscripción de Claude llegó a su límite${at ? ` hasta las ${at}` : ''}. Dejo las tareas de los agentes en cola; la conversación sigue funcionando.` }, 'suscripción');
+    await addAgenda(db, { at: new Date(), kind: 'aviso', text: `la suscripción de Claude llegó a su límite ${kind}${at ? `, hasta el ${at}` : ''}. Dejo las tareas de los agentes en cola; la conversación sigue funcionando.` }, 'suscripción');
   } else if (s.status === 'sin_sesion') {
     await addAgenda(db, { at: new Date(), kind: 'aviso', text: 'Claude Code no tiene la sesión iniciada en este Mac. Abre Terminal, escribe claude y luego barra login.' }, 'suscripción');
   }
