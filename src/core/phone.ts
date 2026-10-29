@@ -37,3 +37,17 @@ export async function dial(db: Db, target: string, by = 'propietario'): Promise<
   if (process.env.KRATOS_DISABLE_AI !== '1') execFile('/usr/bin/open', [`tel:${phone}`], () => {});
   return { ok: true, name, phone };
 }
+
+// Mensaje de texto: abre Mensajes con el borrador listo (sale por el iPhone/iMessage); el propietario pulsa «Enviar».
+export async function textMessage(db: Db, target: string, body: string, by = 'propietario'): Promise<{ ok: boolean; name?: string; phone?: string; error?: string }> {
+  let name: string | undefined, phone = digits(target);
+  if (phone.replace('+', '').length < 7) {
+    const c = await findContact(db, target);
+    if (!c) return { ok: false, error: `No tengo el número de «${target}». Dígame: «guarda el número de ${target}: …»` };
+    name = c.name; phone = c.phone;
+  }
+  const text = body.trim().slice(0, 1000);
+  await audit(db, by, 'mensaje.borrador', { name: name ?? null, phone: phone.slice(0, 4) + '…', chars: text.length });
+  if (process.env.KRATOS_DISABLE_AI !== '1') execFile('/usr/bin/open', [`sms:${phone}&body=${encodeURIComponent(text)}`], () => {});
+  return { ok: true, name, phone };
+}

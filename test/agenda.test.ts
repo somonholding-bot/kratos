@@ -80,3 +80,9 @@ test('«dame un reporte» devuelve dinero invertido y ganado sin inventar cifras
   assert.match(r.text, /Invertido: .* USD/); assert.match(r.text, /Ingresos: sin ventas registradas/);
   assert.match(r.spoken, /Su reporte, señor Idalmi/);
 });
+
+test('mensajes de texto: borrador para un contacto guardado', async () => {
+  const { handleMessage: h } = await import('../src/core/chat.ts');
+  const r = await h(db, 'Kratos, mándale un mensaje a Ana diciendo que llego en diez minutos', 'voz');
+  assert.equal(r.action, 'mensaje'); assert.match(r.text, /llego en diez minutos/);
+});

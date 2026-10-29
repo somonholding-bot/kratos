@@ -3,7 +3,8 @@ import { audit, emergencyStop, getState } from './state.ts';
 import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { AI_ACCOUNT, think } from './brain.ts';
-import { dial, saveContact } from './phone.ts';
+import { dial, saveContact, textMessage } from './phone.ts';
+import { mailInbox } from './mail.ts';
 import { buildReport, spokenReport } from './report.ts';
 import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from './agenda.ts';
 
@@ -162,6 +163,19 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
       const c = await saveContact(db, save[1], save[2]);
       return { text: `Contacto guardado: ${c.name} · ${c.phone}.`, spoken: `Guardado, ${o.address}. Ya puedo llamar a ${c.name}.` };
     } catch (e: any) { return { text: e.message, spoken: 'Ese número no parece válido.' }; }
+  }
+  const sms = clean.match(/(?:manda|mándale|mandale|envía|envia|envíale|enviale|escríbele|escribele)(?:le)?\s+(?:un\s+)?(?:mensaje|texto|sms)\s+(?:de texto\s+)?(?:a|al)\s+(.+?)\s*(?:diciendo|que diga|que dice|:|,)\s*(?:que\s+)?(.+)$/i);
+  if (sms) {
+    const r = await textMessage(db, sms[1], sms[2]);
+    if (!r.ok) return { text: r.error!, spoken: r.error! };
+    return { text: `Mensaje listo para ${r.name ?? r.phone}: «${sms[2]}». Pulsa Enviar en Mensajes.`, spoken: `Mensaje para ${r.name ?? r.phone} listo, ${o.address}. Pulse enviar.`, action: 'mensaje' };
+  }
+  if (/(revisa|lee|mira|chequea|tengo)\b.*\b(correo|correos|email|emails|mail)/.test(t)) {
+    try {
+      const m = await mailInbox(db, 8);
+      const list = m.messages.map((x) => `· ${x.from.replace(/<.*>/, '').trim()}: ${x.subject}`).join('\n');
+      return { text: `${m.unread} correos sin leer.\n${list}`, spoken: m.unread ? `Tiene ${m.unread} correos sin leer, ${o.address}. ${m.messages.slice(0, 3).map((x) => `De ${x.from.replace(/<.*>/, '').trim()}: ${x.subject}`).join('. ')}.` : `No tiene correos sin leer, ${o.address}.` };
+    } catch (e: any) { return { text: `No pude leer el correo: ${e.message}`, spoken: 'No pude abrir el correo. Revise el permiso de Mail.' }; }
   }
   const call = t.match(/^(?:por favor\s+)?(?:llama|llamame a|marca|marcale|haz una llamada)\s+(?:a\s+|al\s+)?(.+?)[.!?]*$/);
   if (!call) return null;

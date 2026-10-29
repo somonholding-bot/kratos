@@ -10,7 +10,8 @@ import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext } from './skills.ts';
 import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
 import { appleSummary } from './apple.ts';
-import { dial, saveContact } from './phone.ts';
+import { dial, saveContact, textMessage } from './phone.ts';
+import { mailDraft, mailInbox } from './mail.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -195,6 +196,21 @@ const TOOLS: ToolDef[] = [
     name: 'llamar', description: 'Llama por teléfono desde el iPhone del propietario (vía el Mac). SOLO si el propietario lo ordena expresamente en este mensaje; nunca por iniciativa propia. Él confirma con «Llamar» en FaceTime.',
     input_schema: obj({ destino: { type: 'string', description: 'Nombre de un contacto guardado o número con prefijo' } }, ['destino']),
     run: async (db, i) => dial(db, String(i.destino), 'kratos (IA, por orden del propietario)'),
+  },
+  {
+    name: 'mensaje_texto', description: 'Prepara un mensaje de texto (iMessage/SMS por el iPhone) a un contacto o número; se abre en Mensajes y el propietario pulsa Enviar. Solo por orden expresa del propietario.',
+    input_schema: obj({ destino: { type: 'string' }, texto: { type: 'string' } }, ['destino', 'texto']),
+    run: async (db, i) => textMessage(db, String(i.destino), String(i.texto), 'kratos (IA, por orden del propietario)'),
+  },
+  {
+    name: 'correo_bandeja', description: 'Lee remitente, asunto y fecha de los últimos correos de la app Mail del propietario (solo lectura).',
+    input_schema: obj({ cantidad: { type: 'integer', description: 'Hasta 30 (por defecto 10)' }, solo_no_leidos: { type: 'boolean' } }),
+    run: async (db, i) => mailInbox(db, Number(i.cantidad) || 10, i.solo_no_leidos !== false).catch((e) => ({ error: e.message })),
+  },
+  {
+    name: 'correo_borrador', description: 'Abre en Mail un BORRADOR visible para que el propietario lo revise y envíe. Nunca envía.',
+    input_schema: obj({ para: { type: 'string' }, asunto: { type: 'string' }, cuerpo: { type: 'string' } }, ['para', 'asunto', 'cuerpo']),
+    run: async (db, i) => mailDraft(db, String(i.para), String(i.asunto), String(i.cuerpo), 'kratos (IA, por orden del propietario)').catch((e) => ({ error: e.message })),
   },
   {
     name: 'guardar_contacto', description: 'Guarda o actualiza un contacto (nombre y teléfono) en la libreta propia de Kratos.',
