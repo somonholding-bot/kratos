@@ -447,12 +447,12 @@ final class WakeListener {
     let begin = { [weak self] (voice: String) in
       guard let self, !started else { return }
       started = true
+      self.speaker.beginStream(voice: voice) { [weak self] in self?.resume() }   // primero: beginStream limpia el aviso anterior
       self.speaker.onFirstSound = { [weak self] in
         self?.set(.speaking)
         let ms = Int(Date().timeIntervalSince(t0) * 1000)
         if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": firstMs ?? ms, "ttsStartMs": ms]) }
       }
-      self.speaker.beginStream(voice: voice) { [weak self] in self?.resume() }
     }
     chat = ChatStream(text: text, onLine: { [weak self] obj in
       guard let self else { return }

@@ -573,6 +573,18 @@ export function sentenceStream(emit: (sentence: string) => void, maxChars = 500)
   };
 }
 
+// Por voz, el estado ya va en el contexto: «¿qué tengo pendiente?» o «¿qué hay en la agenda?» se responden
+// sin una ronda de herramientas (cada ronda son 2–4 s más). Consultas locales, sin coste.
+export async function voiceSnapshot(db: Db): Promise<string> {
+  const open = (await db.query(`SELECT id, owner_function AS agente, title, status FROM tasks
+    WHERE status NOT IN ('completada','cancelada','fallida') AND type <> 'ciclo_ceo' ORDER BY priority, id DESC LIMIT 8`)).rows;
+  const counts = (await db.query(`SELECT status, count(*)::int AS n FROM tasks WHERE status NOT IN ('completada','cancelada','fallida') AND type <> 'ciclo_ceo' GROUP BY status`)).rows;
+  const agenda = (await upcoming(db, 24)).slice(0, 4).map(describe);
+  const appr = (await db.query(`SELECT id, description FROM approvals WHERE status = 'pendiente' ORDER BY id LIMIT 3`)).rows;
+  const nAppr = (await db.query(`SELECT count(*)::int AS n FROM approvals WHERE status = 'pendiente'`)).rows[0].n;
+  return ` Estado ahora (úsalo sin herramientas si basta): tareas abiertas ${counts.map((c: any) => `${c.n} ${String(c.status).replaceAll('_', ' ')}`).join(', ') || 'ninguna'}${open.length ? ` — ${open.map((t: any) => `#${t.id} ${String(t.title).slice(0, 60)} (${t.agente}, ${String(t.status).replaceAll('_', ' ')})`).join('; ')}` : ''}. Agenda 24 h: ${agenda.join('; ') || 'vacía'}. Aprobaciones pendientes: ${nAppr}${appr.length ? ` — ${appr.map((a: any) => `#${a.id} ${String(a.description).slice(0, 60)}`).join('; ')}` : ''}.`;
+}
+
 export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentence: string) => void): Promise<BrainReply | { unavailable: string }> {
   const key = apiKey();
   if (!key) return { unavailable: 'sin_clave' };
@@ -601,7 +613,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
   const d = new Date(), iso = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   const prefs = (await db.query(`SELECT id, text FROM preferences WHERE active ORDER BY id`).catch(() => ({ rows: [] }))).rows;
   const prefText = prefs.length ? ` Preferencias permanentes del propietario (cúmplelas SIEMPRE): ${prefs.map((p: any) => `[${p.id}] ${p.text}`).join(' · ')}.` : '';
-  const agentText = (await agentsContext(db).catch(() => '')) + (await inboxContext(db));
+  const agentText = (await agentsContext(db).catch(() => '')) + (await inboxContext(db)) + (channel === 'voz' ? await voiceSnapshot(db).catch(() => '') : '');
   messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}).${prefText}${agentText} Propietario: ${o.name} (no lo nombres en cada respuesta; trato cercano y directo). Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${channel === 'voz' ? '' : skillContext('kratos', lastUser)}${await lessonsContext(db, undefined, channel === 'voz' ? 4 : 12)}` });   // por voz, contexto ligero
 
   // Funciones aprobadas por el propietario: herramientas extra que KRATOS se programó
