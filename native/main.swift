@@ -491,6 +491,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "").filter { $0.processIdentifier != me }
     if !others.isEmpty { NSApp.terminate(nil); return }
     Speaker.requestPersonalVoice()   // pide permiso para hablar con la Voz Personal del propietario
+    // Tras un reposo manual, el micrófono vuelve a escuchar al despertar el Mac
+    NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+      guard let self, UserDefaults.standard.bool(forKey: "sleptByOwner") else { return }
+      UserDefaults.standard.set(false, forKey: "sleptByOwner")
+      self.wake.enabled = true; self.render(self.wake.state, nil); self.heartbeat()
+      appLog("Mac despierto: escucha reactivada")
+    }
     buildMainMenu()
     buildWindow()
     buildStatusItem()
@@ -687,6 +694,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     menu.addItem(withTitle: "Universo KRATOS (pantalla completa)", action: #selector(openUniverseMenu), keyEquivalent: "u")
     menu.addItem(withTitle: "Panel de detalles", action: #selector(openDetailsMenu), keyEquivalent: "d")
     menu.addItem(withTitle: "Navegador de conexiones", action: #selector(openBrowserMenu), keyEquivalent: "b")
+    menu.addItem(.separator())
+    menu.addItem(withTitle: "Poner el Mac en reposo", action: #selector(sleepMac), keyEquivalent: "")
     wakeItem = menu.addItem(withTitle: "Escuchar «Kratos»", action: #selector(toggleWake), keyEquivalent: "")
     menu.addItem(.separator())
     menu.addItem(withTitle: "Parada de emergencia", action: #selector(emergency), keyEquivalent: "")
@@ -749,6 +758,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   }
 
   @objc func openBrowserMenu() { ConnectionsBrowser.shared.show(nil) }
+  // Reposo manual: el Mac no se duerme solo, pero el propietario puede dormirlo cuando quiera
+  @objc func sleepMac() {
+    let check = Process(); let pipe = Pipe()
+    check.executableURL = URL(fileURLWithPath: "/usr/bin/pmset"); check.arguments = ["-g"]; check.standardOutput = pipe
+    try? check.run(); check.waitUntilExit()
+    let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    if out.range(of: #"SleepDisabled\s+1"#, options: .regularExpression) != nil {
+      alert("El reposo está bloqueado", "El Mac tiene el reposo desactivado por completo. Para poder dormirlo desde aquí, ejecuta una vez en Terminal:\n\nsudo pmset -a disablesleep 0 sleep 0\n\n(«sleep 0» hace que no se duerma solo; solo cuando tú lo pidas.)")
+      return
+    }
+    wake.enabled = false                     // micrófono cerrado antes de dormir
+    UserDefaults.standard.set(true, forKey: "sleptByOwner")
+    appLog("reposo manual pedido por el propietario")
+    let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset"); p.arguments = ["sleepnow"]
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { try? p.run() }
+  }
   @objc func openPanel() { showWindow() }
   @objc func openUniverseMenu() { showWindow(); openUniverse() }
   @objc func openDetailsMenu() { showWindow(); openDetails() }
