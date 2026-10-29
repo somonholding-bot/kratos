@@ -4,7 +4,8 @@ import { audit } from './state.ts';
 
 // Correo a través de la app Mail de este Mac (las cuentas que el propietario ya tiene configuradas).
 // macOS pide permiso la primera vez («Kratos quiere controlar Mail»): el propietario decide.
-// KRATOS lee remitente, asunto y fecha; solo crea BORRADORES visibles: enviar es siempre un clic del propietario.
+// KRATOS lee remitente, asunto y fecha. Envía solo por orden expresa del propietario (autonomía amplia);
+// con autonomía estricta crea BORRADORES visibles y enviar es un clic del propietario.
 
 function jxa(script: string, args: string[] = []): Promise<string> {
   if (process.env.KRATOS_DISABLE_AI === '1') return Promise.reject(new Error('Correo desactivado en pruebas'));
@@ -36,4 +37,18 @@ export async function mailDraft(db: Db, to: string, subject: string, body: strin
   }`, [to, subject.slice(0, 200), body.slice(0, 20_000)]);
   await audit(db, by, 'correo.borrador', { to: to.replace(/^(.).*@/, '$1…@'), subject: subject.slice(0, 80) });
   return { borrador: true, nota: 'Borrador abierto en Mail: el propietario lo revisa y pulsa Enviar' };
+}
+
+// Envío directo por orden del propietario (desde la cuenta predeterminada de Mail)
+export async function mailSend(db: Db, to: string, subject: string, body: string, by = 'propietario') {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error('Dirección de correo no válida');
+  await jxa(`function run(argv) {
+    const Mail = Application('Mail');
+    const m = Mail.OutgoingMessage({ subject: argv[1], content: argv[2], visible: false });
+    Mail.outgoingMessages.push(m); m.toRecipients.push(Mail.Recipient({ address: argv[0] }));
+    m.send();
+    return 'ok';
+  }`, [to, subject.slice(0, 200), body.slice(0, 20_000)]);
+  await audit(db, by, 'correo.enviado', { to: to.replace(/^(.).*@/, '$1…@'), subject: subject.slice(0, 80) });
+  return { enviado: true };
 }

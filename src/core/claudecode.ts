@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
-import { requestApproval } from './approvals.ts';
+import { autoApprove, requestApproval } from './approvals.ts';
 import { createTask } from './tasks.ts';
 import { addAgenda } from './agenda.ts';
 import { slugify } from './plugins.ts';
 
 // Encargos a Claude Code (diseño y programación):
-// - KRATOS propone el encargo; solo corre si el propietario lo aprueba en el panel.
+// - KRATOS propone el encargo; corre si el propietario lo aprueba en el panel o, con autonomía amplia, en el acto.
 // - Trabaja en ~/KratosProyectos/<proyecto> (nunca en ~/Jarvis ni en otras carpetas), sin terminal (Bash) ni web,
 //   con tope de gasto y de tiempo. Cada resultado queda en un commit de git dentro de esa carpeta.
 
@@ -28,6 +28,7 @@ export async function proposeCodeJob(db: Db, project: string, instructions: stri
     [slug, instructions.slice(0, 8000), a.id, by])).rows[0];
   await db.query(`UPDATE approvals SET scope = scope || jsonb_build_object('job_id', $2::int) WHERE id = $1`, [a.id, j.id]);
   await audit(db, by, 'claude_code.propuesto', { job: j.id, proyecto: slug });
+  if (await autoApprove(db, a.id)) return { encargo: j.id, estado: 'en marcha (autonomía amplia): avisaré en voz alta cuando termine' };
   return { encargo: j.id, aprobacion: a.id, estado: 'pendiente: el propietario debe aprobarlo en el panel' };
 }
 

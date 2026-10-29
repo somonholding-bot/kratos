@@ -16,7 +16,8 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 
 export type Reply = { text: string; spoken: string; action?: string };
 
-export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto'): Promise<Reply> {
+// onSpeak: voz en tiempo real; recibe cada frase de la respuesta de Claude en cuanto está lista.
+export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto', onSpeak?: (sentence: string) => void): Promise<Reply> {
   const text = raw.slice(0, 2000);
   await db.query(`INSERT INTO messages (role, channel, content) VALUES ('usuario', $1, $2)`, [channel, text]);
   const t = norm(text);
@@ -28,7 +29,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
     const agenda = (await reportIntent(db, t)) ?? (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
-    const ai = await think(db, channel);
+    const ai = await think(db, channel, onSpeak);
     if ('text' in ai) reply = ai;
     else {
       reply = await interpret(db, t, text);
@@ -166,8 +167,10 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
   }
   const sms = clean.match(/(?:manda|mándale|mandale|envía|envia|envíale|enviale|escríbele|escribele)(?:le)?\s+(?:un\s+)?(?:mensaje|texto|sms)\s+(?:de texto\s+)?(?:a|al)\s+(.+?)\s*(?:diciendo|que diga|que dice|:|,)\s*(?:que\s+)?(.+)$/i);
   if (sms) {
-    const r = await textMessage(db, sms[1], sms[2]);
+    const st = await getState(db);
+    const r = await textMessage(db, sms[1], sms[2], 'propietario', st.autonomia !== 'estricta');   // la orden es del propietario: con autonomía amplia se envía
     if (!r.ok) return { text: r.error!, spoken: r.error! };
+    if (r.sent) return { text: `Mensaje enviado a ${r.name ?? r.phone} por ${r.via === 'sms' ? 'SMS' : 'iMessage'}: «${sms[2]}».`, spoken: `Enviado a ${r.name ?? r.phone}.`, action: 'mensaje' };
     return { text: `Mensaje listo para ${r.name ?? r.phone}: «${sms[2]}». Pulsa Enviar en Mensajes.`, spoken: `Mensaje para ${r.name ?? r.phone} listo, ${o.address}. Pulse enviar.`, action: 'mensaje' };
   }
   if (/(revisa|lee|mira|chequea|tengo)\b.*\b(correo|correos|email|emails|mail)/.test(t)) {
@@ -188,11 +191,11 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
 
 // «Dame un reporte»: dinero invertido y ganado, trabajo hecho y decisiones pendientes, en voz y en el panel izquierdo.
 async function reportIntent(db: Db, t: string): Promise<Reply | null> {
-  const v = t.match(/\b(?:cambia|pon|usa)\b.*\bvoz\b.*\b(kokoro|piper|normal|anterior)\b/);
+  const v = t.match(/\b(?:cambia|pon|usa)\b.*\bvoz\b.*\b(kokoro|piper|normal|anterior|personal|mia|grabada|idalmi)\b/);
   if (v) {
-    const voice = v[1] === 'kokoro' ? 'kokoro' : 'piper';
+    const voice = v[1] === 'kokoro' ? 'kokoro' : ['personal', 'mia', 'grabada', 'idalmi'].includes(v[1]) ? 'personal' : 'piper';
     await db.query(`INSERT INTO system_state (key, value, updated_by) VALUES ('tts_voice', $1, 'propietario') ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now(), updated_by = 'propietario'`, [JSON.stringify(voice)]);
-    return { text: `Voz cambiada a ${voice === 'kokoro' ? 'Kokoro' : 'Piper'}.`, spoken: 'Listo, ¿qué tal suena así?' };
+    return { text: `Voz cambiada a ${voice === 'kokoro' ? 'Kokoro' : voice === 'personal' ? 'tu Voz Personal de Apple' : 'Piper'}.`, spoken: 'Listo, ¿qué tal suena así?' };
   }
   if (/^(que hora es|que horas son|dime la hora|la hora)\b/.test(t)) {
     const o = await owner(db); const d = new Date();

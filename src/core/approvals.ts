@@ -1,5 +1,5 @@
 import type { Db } from '../db.ts';
-import { audit } from './state.ts';
+import { audit, getState } from './state.ts';
 import { allocate } from './budget.ts';
 import { onApprovalDecided } from './plugins.ts';
 import { onCodeApproval } from './claudecode.ts';
@@ -17,7 +17,8 @@ export type ApprovalRequest = {
   taskId?: number | null;
 };
 
-// Cualquiera (incluido Jarvis) puede SOLICITAR. Solo el panel, con sesión local, puede DECIDIR.
+// Cualquiera (incluido Jarvis) puede SOLICITAR. Solo el panel, con sesión local, puede DECIDIR,
+// salvo lo que el propietario delegó con la autonomía amplia (ver autoApprove).
 export async function requestApproval(db: Db, r: ApprovalRequest) {
   const { rows } = await db.query(
     `INSERT INTO approvals (business_id, kind, description, scope, account_label, max_amount_cents, valid_until, requested_by, task_id)
@@ -33,17 +34,29 @@ export async function expireApprovals(db: Db, actor: string) {
   return rows.length;
 }
 
-export async function decideApproval(db: Db, id: number, approve: boolean, via: 'panel') {
-  if (via !== 'panel') throw new Error('Las aprobaciones solo se deciden en el panel');
+// Autonomía amplia (decisión del propietario, 29-oct-2026): KRATOS aprueba solo estos tipos, que ya corren aislados:
+// funciones nuevas (proceso sin archivos ni red local) y encargos a Claude Code (solo ~/KratosProyectos, sin terminal).
+// Dinero, accesos, publicaciones y cambios en su propio código siguen exigiendo el panel.
+const DELEGATED = new Set(['nueva_funcion', 'claude_code']);
+export async function autoApprove(db: Db, id: number): Promise<boolean> {
+  const st = await getState(db);
+  if (st.autonomia === 'estricta' || st.emergency_stop === true || st.automations_paused === true) return false;
+  const a = (await db.query(`SELECT kind, scope FROM approvals WHERE id = $1 AND status = 'pendiente'`, [id])).rows[0];
+  if (!a || a.kind !== 'otro' || !DELEGATED.has(a.scope?.tipo)) return false;
+  return (await decideApproval(db, id, true, 'autonomia')).ok;
+}
+
+export async function decideApproval(db: Db, id: number, approve: boolean, via: 'panel' | 'autonomia') {
+  if (via !== 'panel' && via !== 'autonomia') throw new Error('Las aprobaciones solo se deciden en el panel');
   const { rows } = await db.query(
     `UPDATE approvals SET status = $2, decided_at = now(), decided_via = $3
      WHERE id = $1 AND status = 'pendiente' AND valid_until >= now() RETURNING *`,
     [id, approve ? 'aprobada' : 'rechazada', via]);
   const a = rows[0];
   if (!a) return { ok: false, reason: 'No existe, ya se decidió o caducó' };
-  await audit(db, 'propietario', approve ? 'aprobacion.aprobada' : 'aprobacion.rechazada', { id, kind: a.kind }, a.business_id);
+  await audit(db, via === 'panel' ? 'propietario' : 'kratos (autonomía delegada)', approve ? 'aprobacion.aprobada' : 'aprobacion.rechazada', { id, kind: a.kind }, a.business_id);
 
-  if (approve && a.kind === 'asignacion_presupuesto') {
+  if (approve && a.kind === 'asignacion_presupuesto' && via === 'panel') {
     const validUntil = (a.scope?.valid_until as string | undefined) ?? null;
     await allocate(db, a.account_label, Number(a.max_amount_cents), validUntil, `aprobacion:${a.id}`, 'propietario', a.business_id);
     await db.query(`UPDATE approvals SET status = 'ejecutada' WHERE id = $1`, [id]);

@@ -77,7 +77,9 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
   private var lastPower: Float = -60
   private var done: (() -> Void)?
   var onWord: (() -> Void)?   // una palabra pronunciada: pulso real para la escena
-  var isSpeaking: Bool { loading || synth.isSpeaking || (player?.isPlaying ?? false) }
+  var onFirstSound: (() -> Void)?   // la primera frase de una respuesta en tiempo real empieza a sonar
+  // durante una respuesta en tiempo real cuenta como hablando también entre frases (el micrófono no se oye a sí mismo)
+  var isSpeaking: Bool { loading || streamMode || synth.isSpeaking || (player?.isPlaying ?? false) }
 
   override init() { super.init(); synth.delegate = self }
 
@@ -112,6 +114,63 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     }
   }
 
+  // MARK: Voz en tiempo real: las frases llegan una a una mientras Claude escribe y se dicen en orden.
+  // Con la voz del sistema (Voz Personal o Apple) cada frase suena al instante; con Piper/Kokoro se sintetizan
+  // en paralelo y se reproducen en orden, sin esperar a la respuesta completa.
+  private enum Kind { case natural(String), system(AVSpeechSynthesisVoice?) }
+  private var streamKind = Kind.natural("piper")
+  private var streamMode = false, streamEnded = false, current = false
+  private var items: [(text: String, audio: Data?, failed: Bool)] = []
+  private var next = 0
+
+  func beginStream(voice: String, done: (() -> Void)? = nil) {
+    stop()
+    self.done = done
+    streamMode = true; streamEnded = false; current = false; items = []; next = 0
+    if voice == "personal", let v = Speaker.personalVoice { streamKind = .system(v); appLog("voz: personal \(v.name) (tiempo real)") }
+    else if voice == "apple" { streamKind = .system(nil) }
+    else { streamKind = .natural(voice == "kokoro" ? "kokoro" : "piper") }   // Voz Personal sin autorizar: Piper
+  }
+
+  func enqueue(_ text: String) {
+    guard streamMode, !streamEnded, !text.isEmpty else { return }
+    let i = items.count
+    items.append((text, nil, false))
+    if case .natural(let name) = streamKind {
+      let my = token
+      API.speech(text, voice: name) { [weak self] data, _ in
+        guard let self, my == self.token, i < self.items.count else { return }
+        if let data { self.items[i].audio = data } else { self.items[i].failed = true }
+        self.advance()
+      }
+    }
+    advance()
+  }
+
+  func endStream() { guard streamMode else { return }; streamEnded = true; advance() }
+
+  private func advance() {
+    guard streamMode, !current else { return }
+    guard next < items.count else { if streamEnded { streamMode = false; finish() }; return }
+    let it = items[next]
+    switch streamKind {
+    case .system(let v):
+      current = true; systemVoice(it.text, voice: v)
+    case .natural:
+      if let d = it.audio, let p = try? AVAudioPlayer(data: d) {
+        current = true; player = p; p.delegate = self; p.isMeteringEnabled = true; p.play()
+        meter?.invalidate(); meter = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in self?.pulse() }
+      } else if it.failed || it.audio != nil { current = true; systemVoice(it.text) }   // sin audio natural: voz del sistema para esa frase
+    }
+    if current && next == 0 { let f = onFirstSound; onFirstSound = nil; f?() }
+  }
+
+  // Terminó una frase del flujo: pasa a la siguiente (false si no hay flujo en curso)
+  private func stepped() -> Bool {
+    guard streamMode else { return false }
+    current = false; next += 1; advance(); return true
+  }
+
   private func pulse() {
     guard let p = player, p.isPlaying else { return }
     p.updateMeters()
@@ -130,7 +189,8 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
 
   func stop() {
     token += 1
-    let interrupted = loading || (player?.isPlaying ?? false)
+    let interrupted = loading || streamMode || (player?.isPlaying ?? false)
+    streamMode = false; streamEnded = false; current = false; items = []; next = 0; onFirstSound = nil
     loading = false
     if player?.isPlaying ?? false { player?.stop() }
     player = nil
@@ -175,8 +235,8 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
   }
 
   private func finish() { meter?.invalidate(); meter = nil; let d = done; done = nil; d?() }
-  func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully ok: Bool) { player = nil; finish() }
-  func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) { finish() }
+  func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully ok: Bool) { player = nil; if !stepped() { finish() } }
+  func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) { if !stepped() { finish() } }
   func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel u: AVSpeechUtterance) { finish() }
   func speechSynthesizer(_ s: AVSpeechSynthesizer, willSpeakRangeOfSpeechString r: NSRange, utterance u: AVSpeechUtterance) {
     DispatchQueue.main.async { self.onWord?() }
@@ -313,7 +373,7 @@ final class WakeListener {
       } else {
         segment += f
         quiet = rms > thr * 0.7 ? 0 : quiet + 1
-        if quiet >= 30 || segment.count >= 16000 * 8 { endSegment() }
+        if quiet >= 25 || segment.count >= 16000 * 8 { endSegment() }   // 0,5 s de silencio cierra la frase
       }
     }
   }
@@ -361,23 +421,47 @@ final class WakeListener {
     }
   }
 
+  // Respuesta en tiempo real: cada frase se dice en cuanto llega del servidor, mientras Claude sigue escribiendo
+  private var chat: ChatStream?
   private func handle(_ text: String, metricId: Any?) {
     let t0 = Date()
-    API.post("/api/chat", ["text": text, "channel": "voz"]) { [weak self] reply in
-      guard let self else { return }
-      self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)   // la conversación sigue abierta
-      let thinkMs = Int(Date().timeIntervalSince(t0) * 1000)
-      if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": thinkMs]) }
-      NotificationCenter.default.post(name: .kratosReplied, object: nil, userInfo: reply ?? [:])
-      guard let spoken = reply?["spoken"] as? String else { self.resume(); return }
-      self.set(.speaking)
-      self.speaker.say(spoken) { self.resume() }
+    var started = false
+    var firstMs: Int?
+    let begin = { [weak self] (voice: String) in
+      guard let self, !started else { return }
+      started = true
+      self.speaker.onFirstSound = { [weak self] in
+        self?.set(.speaking)
+        let ms = Int(Date().timeIntervalSince(t0) * 1000)
+        if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": firstMs ?? ms, "ttsStartMs": ms]) }
+      }
+      self.speaker.beginStream(voice: voice) { [weak self] in self?.resume() }
     }
+    chat = ChatStream(text: text, onLine: { [weak self] obj in
+      guard let self else { return }
+      switch obj["type"] as? String {
+      case "voice": begin(obj["tts"] as? String ?? "piper")
+      case "sentence":
+        if firstMs == nil { firstMs = Int(Date().timeIntervalSince(t0) * 1000) }
+        begin("piper")
+        if let s = obj["text"] as? String { self.speaker.enqueue(s) }
+      case "done":
+        self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)   // la conversación sigue abierta
+        NotificationCenter.default.post(name: .kratosReplied, object: nil, userInfo: obj)
+        self.speaker.endStream()
+      default: break
+      }
+    }, onEnd: { [weak self] _ in
+      guard let self else { return }
+      self.chat = nil
+      if started { self.speaker.endStream() }   // conexión cortada: se termina de decir lo que llegó
+      else { self.resume() }                    // no llegó nada: vuelve a escuchar
+    })
   }
 
   private func resume() {
     // Pequeña pausa para que la cola de su propia voz no entre por el micrófono.
-    q.asyncAfter(deadline: .now() + 0.7) {
+    q.asyncAfter(deadline: .now() + 0.4) {
       self.busy = false; self.pending = []
       if let next = self.queued, !self.speaker.isSpeaking { self.queued = nil; self.submit(next); return }
       self.queued = nil
@@ -396,6 +480,40 @@ final class WakeListener {
     var pcm = s.map { Int16(max(-1, min(1, $0)) * 32767).littleEndian }
     d.append(Data(bytes: &pcm, count: pcm.count * 2))
     return d
+  }
+}
+
+// Lee la respuesta del servidor línea a línea (JSON por línea) a medida que llega
+final class ChatStream: NSObject, URLSessionDataDelegate {
+  private var buffer = Data()
+  private let onLine: ([String: Any]) -> Void
+  private let onEnd: (Bool) -> Void
+  private var gotDone = false
+
+  init(text: String, onLine: @escaping ([String: Any]) -> Void, onEnd: @escaping (Bool) -> Void) {
+    self.onLine = onLine; self.onEnd = onEnd
+    super.init()
+    let session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: .main)   // la sesión retiene este objeto hasta terminar
+    var r = API.request("/api/chat/stream", method: "POST", body: try? JSONSerialization.data(withJSONObject: ["text": text, "channel": "voz"]))
+    r.timeoutInterval = 90
+    session.dataTask(with: r).resume()
+  }
+
+  func urlSession(_ s: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    buffer.append(data)
+    while let nl = buffer.firstIndex(of: 0x0A) {
+      let line = buffer.subdata(in: buffer.startIndex..<nl)
+      buffer.removeSubrange(buffer.startIndex...nl)
+      guard let obj = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any] else { continue }
+      if obj["type"] as? String == "done" { gotDone = true }
+      onLine(obj)
+    }
+  }
+
+  func urlSession(_ s: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    if let error { appLog("chat en tiempo real: \(error.localizedDescription)") }
+    onEnd(gotDone)
+    s.finishTasksAndInvalidate()
   }
 }
 

@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
-import { requestApproval } from './approvals.ts';
+import { autoApprove, requestApproval } from './approvals.ts';
 
 // Funciones nuevas («autoprogramación» con permiso):
 // - KRATOS propone una función (código pequeño en JavaScript) y una solicitud de aprobación.
@@ -38,6 +38,7 @@ export async function proposePlugin(db: Db, p: { name: string; description: stri
     [p.name.slice(0, 80), slug, p.description.slice(0, 500), p.whenToUse.slice(0, 500), schema ? JSON.stringify(schema) : null, p.code, (prev?.v ?? 0) + 1, a.id, by])).rows[0];
   await db.query(`UPDATE approvals SET scope = scope || jsonb_build_object('plugin_id', $2::int) WHERE id = $1`, [a.id, r.id]);
   await audit(db, by, 'funcion.propuesta', { plugin: r.id, slug, approval: a.id });
+  if (await autoApprove(db, a.id)) return { propuesta: r.id, slug, estado: `activa ya (autonomía amplia): úsala como fn_${slug} en el próximo mensaje` };
   return { propuesta: r.id, aprobacion: a.id, estado: 'pendiente: el propietario debe revisar el código y aprobarlo en el panel' };
 }
 

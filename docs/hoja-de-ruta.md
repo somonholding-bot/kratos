@@ -31,6 +31,7 @@ Actualizada: 28-oct-2026.
 | 2 | Autonomía nivel 8: KRATOS se diagnostica y propone mejoras de su propio código, que se aplican con tu aprobación, respaldo y pruebas | ✅ |
 | 3 | Acceso remoto con enlace propio (Cloudflare + clave remota) | ✅ código · ⏳ dominio en Cloudflare |
 | 4 | Búsqueda web para KRATOS y especialistas; encargos a Claude Code con aprobación | ✅ · ⏳ iniciar sesión en Claude Code (Terminal: `claude` → `/login`) |
+| 4b | Voz en tiempo real (frase a frase), modo voz ligero, Voz Personal por defecto y autonomía amplia (mensajes y correos por orden, funciones y Claude Code sin aprobación) | ✅ código · ⏳ tu prueba con micrófono real |
 | 5 | Panel mínimo (voz, diseños, saldos, conexiones), Google Play (lectura), flujo de contratación de creadores | ⏳ siguiente |
 | 6 | Finanzas reales: ingresos (Stripe / RevenueCat / App Store), banco en solo lectura; el reporte usa cifras reales | ⏳ |
 | 7 | Publicación y anuncios con aprobación por canal y presupuesto; llamadas con voz IA (Vapi / Retell) | ⏳ |

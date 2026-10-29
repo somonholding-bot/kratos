@@ -307,6 +307,26 @@ export function createServer(db: Db) {
           return res.end(wav);
         }
         if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Se requiere JSON' });
+        if (url.pathname === '/api/chat/stream') {   // voz en tiempo real: una línea JSON por frase y la respuesta completa al final
+          const b = await readBody(req);
+          if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
+          const st: any = await getState(db);
+          res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-store', 'x-accel-buffering': 'no' });
+          res.flushHeaders();
+          const line = (o: unknown) => { if (!res.writableEnded) res.write(JSON.stringify(o) + '\n'); };
+          line({ type: 'voice', tts: st.tts_voice ?? 'piper' });   // la app sabe de antemano con qué voz hablar
+          let n = 0;
+          try {
+            const reply = await handleMessage(db, b.text, b.channel === 'texto' ? 'texto' : 'voz', (text) => { n++; line({ type: 'sentence', text }); });
+            if (!n) line({ type: 'sentence', text: reply.spoken });   // respuestas rápidas sin IA: una sola frase
+            line({ type: 'done', ...reply });
+          } catch (e: any) {
+            console.error('[server] chat/stream', e); logFault(db, 'servidor', 'error', String(e?.message ?? e)).catch(() => {});
+            if (!n) line({ type: 'sentence', text: 'Tuve un problema para responder.' });
+            line({ type: 'done', text: 'Error interno (ver registro)', spoken: '' });
+          }
+          return res.end();
+        }
         const m = match(POST, url.pathname);
         if (!m) return send(res, 404, { error: 'No existe' });
         return send(res, 200, await m[0](db, await readBody(req), m[1]));
