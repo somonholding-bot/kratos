@@ -34,16 +34,16 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
     const agenda = (await reportIntent(db, t)) ?? (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
-    // Lo sencillo por voz lo responde el cerebro local (gratis e inmediato); si no sabe, pasa a Claude
-    const local = (await routeLocal(db, channel, text)) ? await answerLocally(db, onSpeak) : null;
+    // Lo sencillo lo responde el cerebro rápido y gratis (Groq o el modelo local); si no sabe, pasa a Claude
+    const local = (await routeLocal(db, channel, text)) ? await answerLocally(db, channel, onSpeak) : null;
     const ai = local ? null : await think(db, channel, onSpeak);
     if (local) reply = local;
     else if (ai && 'text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects };
     else {
       const unavailable = ai && !('text' in ai) ? ai.unavailable : 'desconocido';
       // Sin conexión con Claude: responde el cerebro local antes que el modo demostración
-      const offline = /conexión|API|límite/.test(unavailable) && (await localAvailable()) ? await answerLocally(db, onSpeak) : null;
-      if (offline) reply = { ...offline, text: `[Sin conexión con Claude: respondo con el cerebro local]\n${offline.text}` };
+      const offline = /conexión|API|límite/.test(unavailable) && (await localAvailable()) ? await answerLocally(db, channel, onSpeak) : null;
+      if (offline) reply = { ...offline, text: `[Sin conexión con Claude: respondo con el cerebro rápido]\n${offline.text}` };
       else {
         reply = await interpret(db, t, text);
         const why = unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
@@ -67,11 +67,11 @@ function musicReply(t: string): Reply | null {
   return { text: `Poniendo «${label(query)}» desde YouTube.`, spoken: `Pongo ${label(query)}.`, action: 'musica', query };
 }
 
-async function answerLocally(db: Db, onSpeak?: (s: string) => void): Promise<Reply | null> {
+async function answerLocally(db: Db, channel: 'texto' | 'voz', onSpeak?: (s: string) => void): Promise<Reply | null> {
   const speech = onSpeak ? sentenceStream(onSpeak) : null;
   let said = '';
   try {
-    const r = await localThink(db, (d) => { said += d; speech?.push(d); });
+    const r = await localThink(db, (d) => { said += d; speech?.push(d); }, channel);
     if ('escalate' in r) return null;
     speech?.flush();
     return { text: r.text, spoken: r.spoken };

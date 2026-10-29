@@ -15,7 +15,7 @@ import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
 import { recordIncoming } from './core/inbox.ts';
-import { warmLocal } from './core/local.ts';
+import { fastStatus, warmLocal } from './core/local.ts';
 import { startMessageWatcher, takeAnnouncements, watcherStatus } from './core/imessage.ts';
 import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
@@ -110,6 +110,7 @@ const GET: Record<string, Route> = {
     rendimiento: await q(db, `SELECT at, cpu_busy, ram_used_pct, kratos_ram_mb, kratos_cpu, top_app, top_app_ram_mb FROM perf_log ORDER BY id DESC LIMIT 120`),
   }),
   '/api/mensajes/estado': async () => watcherStatus,
+  '/api/ia-rapida/estado': async () => fastStatus(),
   '/api/voz/ajustes': async (db) => { const st = await getState(db); return { tts_voice: st.tts_voice ?? 'kokoro', voice_model: st.voice_model ?? 'claude-haiku-5-5' }; },
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),

@@ -34,6 +34,7 @@ Actualizada: 28-oct-2026.
 | 4b | Voz en tiempo real (frase a frase), modo voz ligero, Voz Personal por defecto y autonomía amplia (mensajes y correos por orden, funciones y Claude Code sin aprobación) | ✅ código · ⏳ tu prueba con micrófono real |
 | 4c | Mensajes de texto que llegan, leídos en voz alta al instante; música de YouTube por voz (solo audio, sin anuncios) con ventanita en el universo | ✅ código · ⏳ Acceso total al disco para node · yt-dlp |
 | 4d | IA local de código abierto (Ollama) para lo sencillo por voz y como respaldo sin internet; actualización semanal automática | ✅ código · ⏳ `bash scripts/instalar-ia-local.sh` en el Mac |
+| 4e | Groq (gratis, casi instantáneo) como primer cerebro para lo sencillo, con la IA local de respaldo y Claude para acciones y agentes | ✅ código · ⏳ clave gratis de Groq (`bash scripts/conectar-groq.sh`) |
 | 5 | Panel mínimo (voz, diseños, saldos, conexiones), Google Play (lectura), flujo de contratación de creadores | ⏳ siguiente |
 | 6 | Finanzas reales: ingresos (Stripe / RevenueCat / App Store), banco en solo lectura; el reporte usa cifras reales | ⏳ |
 | 7 | Publicación y anuncios con aprobación por canal y presupuesto; llamadas con voz IA (Vapi / Retell) | ⏳ |

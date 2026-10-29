@@ -31,7 +31,7 @@ test('reparto: charla y cultura general en local; datos y acciones con Claude', 
   assert.equal(await routeLocal(db, 'voz', 'mándale un mensaje a Juan'), false);
   assert.equal(await routeLocal(db, 'voz', '¿cómo van mis negocios?'), false);
   assert.equal(await routeLocal(db, 'voz', 'busca el precio del bitcoin'), false);
-  assert.equal(await routeLocal(db, 'texto', 'cuéntame un chiste'), false);
+  assert.equal(await routeLocal(db, 'texto', 'cuéntame un chiste'), true);   // también por escrito
 });
 
 test('la respuesta local llega frase a frase', async () => {

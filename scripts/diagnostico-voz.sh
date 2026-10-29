@@ -15,6 +15,7 @@ bash scripts/consulta-bd.sh "SELECT model, count(*) AS llamadas, round(avg(input
 echo; echo "== Voz Personal (registro de la app)"; grep -E "voz personal|voz: personal" .jarvis/logs/app.log 2>/dev/null | tail -5 || echo "sin registros"
 echo; echo "== Mensajes de texto"; T=$(cat .jarvis/session-token 2>/dev/null); curl -s -m 3 -H "Cookie: jarvis=$T" http://127.0.0.1:7420/api/mensajes/estado; echo
 echo; echo "== Música"; command -v yt-dlp >/dev/null && echo "yt-dlp instalado: $(yt-dlp --version)" || echo "falta yt-dlp: brew install yt-dlp"
+echo; echo "== Cerebro rápido (Groq + local)"; curl -s -m 5 -H "Cookie: jarvis=$T" http://127.0.0.1:7420/api/ia-rapida/estado; echo
 echo; echo "== IA local (Ollama)"; [ -f .jarvis/local-model ] && echo "modelo: $(cat .jarvis/local-model)" || echo "sin instalar: bash scripts/instalar-ia-local.sh"
 curl -s -m 2 http://127.0.0.1:11434/api/ps 2>/dev/null | python3 -c 'import sys,json; m=json.load(sys.stdin).get("models",[]); print("en memoria: " + (", ".join(x["name"] for x in m) or "ninguno"))' 2>/dev/null || echo "Ollama no responde"
 bash scripts/consulta-bd.sh "SELECT model, count(*) AS respuestas FROM ai_usage WHERE at > now() - interval '1 day' GROUP BY model ORDER BY 2 DESC" 2>&1

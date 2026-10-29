@@ -43,6 +43,10 @@ El servidor mira cada 2 s la base de la app Mensajes (`~/Library/Messages/chat.d
 
 «Kratos, pon música lounge / techno / ópera», «ponme una canción de …», «pausa la música», «siguiente», «sube / baja el volumen», «quita la música». La app busca en YouTube con `yt-dlp` y reproduce solo el audio con AVPlayer (no carga la página de YouTube, así que no hay anuncios). Arriba a la izquierda del universo aparece una ventanita con el título, el canal y los botones. Mientras KRATOS te escucha o habla, la música baja; con música sonando, la conversación abierta dura 8 s para que la canción no se tome por órdenes.
 
+## Cerebro rápido y gratis (Groq + IA local)
+
+Lo sencillo (charla, cultura general, explicaciones), por voz o por escrito, lo responde primero **Groq** (modelos abiertos como Llama, casi instantáneos, plan gratis con límites; clave en el Llavero con `bash scripts/conectar-groq.sh`). Si Groq llega a su límite gratis o no hay internet, responde la **IA local** (Ollama). Lo que necesita tus datos o una acción sigue yendo a **Claude**. Groq recibe solo la pregunta y las últimas frases de la conversación, nunca tus mensajes, negocios ni claves.
+
 ## IA local (Ollama)
 
 `bash scripts/instalar-ia-local.sh` instala Ollama y descarga el modelo de código abierto más moderno que cabe en la memoria del Mac (familias Qwen y Gemma; prueba primero las versiones más nuevas y, si aún no están publicadas, usa la siguiente). Por voz, lo sencillo (charla, cultura general, explicaciones) lo responde este modelo: gratis, sin internet y sin esperar a la red. Lo que necesita tus datos o una acción (mensajes, agenda, tareas, negocios, internet, agentes) va a Claude; si el modelo local no está seguro, responde «[CLAUDE]» en silencio y pasa a Claude. Si se cae la conexión con Claude, responde el local en vez del modo demostración.
