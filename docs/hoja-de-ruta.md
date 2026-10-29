@@ -22,18 +22,20 @@ Actualizada: 28-oct-2026.
 | 11 | Universo 3D a pantalla completa; panel interno con el mismo universo | ✅ |
 | 12 | Repositorio público en GitHub | ✅ |
 
-## 🚀 Plan actual
+## 🚀 Plan actual (29-oct-2026)
 
 | Etapa | Qué incluye | Estado |
 |---|---|---|
-| 1 | Universo encuadrado, cielo en movimiento, más nebulosa, «¡pum!» al hablar; skills de creadores, comunidades y prensa | ✅ |
-| 2 | Apple App Store Connect (solo lectura): estado de revisión cada 15 min y aviso hablado si cambia | ✅ código · ⏳ falta tu clave (`scripts/conectar-apple.sh` o botón «Conectar» en Conexiones) |
-| 2b | Saludo «señor Idalmi», agenda y alarmas habladas («despiértame a las 8») | ✅ |
-| 2c | Llamadas desde tu iPhone vía el Mac, solo por tu orden («guarda el número de Ana: …», «llama a Ana») | ✅ |
-| 2d | Acceso remoto con enlace propio (túnel Cloudflare + clave remota + código al correo) | ✅ código · ⏳ falta mover el dominio a Cloudflare y ejecutar `scripts/acceso-remoto.sh` |
-| 3 | Correo y lista de correo (leer, borradores; enviar solo con aprobación) | ⏳ |
-| 4 | Búsqueda web para los agentes y delegación en Claude Code | ⏳ |
-| 5 | Creadores reales, Google Play, panel mínimo, voz más humana | ⏳ |
+| 1 | Universo encuadrado, cielo en movimiento, nebulosa, «¡pum!» al hablar; skills de creadores y prensa | ✅ |
+| 2 | Saludo «señor Idalmi», agenda y alarmas habladas, reporte financiero por voz (panel izquierdo) | ✅ |
+| 2 | Voz natural masculina local (Piper es_MX), micrófono más sensible | ✅ |
+| 2 | Llamadas y mensajes de texto por el iPhone (tú confirmas), libreta de contactos | ✅ |
+| 2 | Correo por la app Mail (leer y borradores) | ✅ · ⏳ aceptar el permiso de Automatización |
+| 2 | Apple App Store Connect (solo lectura, aviso hablado al cambiar la revisión) | ✅ código · ⏳ tu clave (asistente en pantalla) |
+| 2 | Navegador de conexiones (inicias sesión en YouTube, redes, Google Play…) | ✅ |
+| 3 | Acceso remoto con enlace propio | ✅ código · ⏳ dominio en Cloudflare y `scripts/acceso-remoto.sh` |
+| 4 | Búsqueda web para los agentes y delegación en Claude Code | ⏳ siguiente |
+| 5 | Creadores reales (flujo de contratación), Google Play API, panel mínimo, llamadas con voz IA (Vapi/Retell) | ⏳ |
 
 ## ⏳ Falta (en orden)
 
