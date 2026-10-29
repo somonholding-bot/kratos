@@ -12,6 +12,7 @@ import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts'
 import { appleSummary } from './apple.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox } from './mail.ts';
+import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -77,7 +78,9 @@ Límites que no puedes cambiar:
 
 Tus especialistas (perfiles, no procesos): Sol (propósito, objetivos, prioridades), Luna (memoria en Obsidian, rutinas, continuidad), Mercurio (investigación, síntesis, borradores), Venus (arte, diseño, tono, experiencia humana), Marte (convertir decisiones en tareas y ejecutar lo autorizado), Júpiter (estrategia y oportunidades con riesgos), Saturno (calendario, dependencias, presupuesto, riesgos, verificación). Asigna tareas al mínimo de especialistas necesario; no invoques a todos. Son un esquema simbólico de organización, nunca astrología.
 
-Memoria: tienes una bóveda de Obsidian. Busca en ella antes de responder sobre decisiones, negocios o temas pasados, y guarda allí (guardar_nota) lo que el propietario te pida recordar o aprendizajes útiles.`;
+Memoria: tienes una bóveda de Obsidian. Busca en ella antes de responder sobre decisiones, negocios o temas pasados, y guarda allí (guardar_nota) lo que el propietario te pida recordar o aprendizajes útiles.
+
+Funciones nuevas: si te piden algo que tus herramientas no cubren y se puede resolver con datos públicos de internet, programa la función con proponer_funcion y explica que queda pendiente de su aprobación en el panel. Las herramientas fn_* son funciones ya aprobadas: úsalas. Nunca intentes cambiar tu código central, tus límites ni tus permisos.`;
 
 type ToolDef = { name: string; description: string; input_schema: Record<string, unknown>; run: (db: Db, input: any) => Promise<unknown> };
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -196,6 +199,21 @@ const TOOLS: ToolDef[] = [
     name: 'llamar', description: 'Llama por teléfono desde el iPhone del propietario (vía el Mac). SOLO si el propietario lo ordena expresamente en este mensaje; nunca por iniciativa propia. Él confirma con «Llamar» en FaceTime.',
     input_schema: obj({ destino: { type: 'string', description: 'Nombre de un contacto guardado o número con prefijo' } }, ['destino']),
     run: async (db, i) => dial(db, String(i.destino), 'kratos (IA, por orden del propietario)'),
+  },
+  {
+    name: 'proponer_funcion', description: 'Cuando el propietario pide algo que aún no sabes hacer (clima, tiempo de viaje, cálculos, consultar una web pública…), programa una función nueva y pide su aprobación. El código es JavaScript moderno y debe definir «async function main(input)» que devuelve un objeto JSON. Solo puede usar fetch a internet público (sin claves, sin archivos, sin red local, sin require/import). Prefiere APIs gratuitas sin clave (p. ej. Open-Meteo para clima, Nominatim/OSRM para rutas). No se activa hasta que el propietario la aprueba en el panel; díselo.',
+    input_schema: obj({
+      nombre: { type: 'string', description: 'Nombre corto en español, p. ej. «Clima»' },
+      descripcion: { type: 'string', description: 'Qué hace' },
+      cuando_usar: { type: 'string', description: 'Qué peticiones del propietario debe resolver' },
+      parametros_json: { type: 'string', description: 'JSON Schema de las propiedades de entrada, p. ej. {"properties":{"ciudad":{"type":"string"}},"required":["ciudad"]}' },
+      codigo: { type: 'string', description: 'Código JavaScript con async function main(input) { … }' },
+    }, ['nombre', 'descripcion', 'cuando_usar', 'codigo']),
+    run: async (db, i) => {
+      let schema: Record<string, unknown> | undefined;
+      try { schema = i.parametros_json ? JSON.parse(String(i.parametros_json)) : undefined; } catch { return { error: 'parametros_json no es JSON válido' }; }
+      return proposePlugin(db, { name: String(i.nombre), description: String(i.descripcion), whenToUse: String(i.cuando_usar), inputSchema: schema, code: String(i.codigo) }, 'kratos (IA)');
+    },
   },
   {
     name: 'mensaje_texto', description: 'Prepara un mensaje de texto (iMessage/SMS por el iPhone) a un contacto o número; se abre en Mensajes y el propietario pulsa Enviar. Solo por orden expresa del propietario.',
@@ -322,6 +340,11 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const d = new Date(), iso = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}). Propietario: ${o.name}; trátale de «${o.address}», con respeto y cercanía. Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
 
+  // Funciones aprobadas por el propietario: herramientas extra que KRATOS se programó
+  const allTools: ToolDef[] = [...TOOLS, ...(await activePlugins(db)).map((p) => ({
+    name: `fn_${p.slug}`, description: `${p.description} Úsala cuando: ${p.when_to_use}`.slice(0, 1000), input_schema: p.input_schema,
+    run: (db2: Db, i: any) => runPlugin(db2, p.slug, i),
+  }))];
   const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 60_000 });
   const turnId = crypto.randomUUID();
   let totalMicro = 0;
@@ -337,7 +360,7 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
         betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
         output_config: { effort },
         system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-        tools: TOOLS.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: true })),
+        tools: allTools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: !name.startsWith('fn_') })),
         messages,
       } as any);
     } catch (err: any) {
@@ -361,7 +384,7 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
 
     const results = [];
     for (const block of resp.content.filter((b: any) => b.type === 'tool_use')) {
-      const tool = TOOLS.find((t) => t.name === block.name);
+      const tool = allTools.find((t) => t.name === block.name);
       try {
         if (!tool) throw new Error('herramienta desconocida');
         const out = await tool.run(db, block.input);

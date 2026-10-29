@@ -227,9 +227,10 @@ const screens = {
   },
 
   async aprobaciones() {
-    const rows = await api('/api/approvals');
+    const [rows, plugins] = await Promise.all([api('/api/approvals'), api('/api/plugins')]);
+    const fn = (a) => { const p = plugins.find((x) => x.approval_id === a.id); return p ? `<details><summary>Ver código de «${esc(p.name)}» (v${p.version})</summary><p class="note">Úsala cuando: ${esc(p.when_to_use)}</p><pre class="code">${esc(p.code)}</pre></details>` : ''; };
     return `<h1>Aprobaciones</h1>${meta('local · solo se deciden aquí, nunca por voz o chat')}
-      ${table([['#', (a) => a.id], ['Tipo', (a) => esc(a.kind)], ['Descripción', (a) => esc(a.description)], ['Cuenta', (a) => esc(a.account_label) || '—'],
+      ${table([['#', (a) => a.id], ['Tipo', (a) => esc(a.kind)], ['Descripción', (a) => `${esc(a.description)}${fn(a)}`], ['Cuenta', (a) => esc(a.account_label) || '—'],
         ['Importe máx.', (a) => (a.max_amount_cents == null ? '—' : usd(a.max_amount_cents))], ['Válida hasta', (a) => fmtDate(a.valid_until)], ['Solicitada por', (a) => esc(a.requested_by)],
         ['Estado', (a) => `<span class="tag">${esc(a.status)}</span>`],
         ['', (a) => (a.status === 'pendiente' ? `<button class="ctl resume" data-approve="${a.id}">Aprobar</button> <button class="ctl" data-reject="${a.id}">Rechazar</button>` : '')]], rows)}`;

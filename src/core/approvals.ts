@@ -1,6 +1,7 @@
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
 import { allocate } from './budget.ts';
+import { onApprovalDecided } from './plugins.ts';
 
 export type ApprovalRequest = {
   businessId?: number | null;
@@ -45,5 +46,6 @@ export async function decideApproval(db: Db, id: number, approve: boolean, via: 
     await allocate(db, a.account_label, Number(a.max_amount_cents), validUntil, `aprobacion:${a.id}`, 'propietario', a.business_id);
     await db.query(`UPDATE approvals SET status = 'ejecutada' WHERE id = $1`, [id]);
   }
+  await onApprovalDecided(db, a, approve);
   return { ok: true, approval: a };
 }

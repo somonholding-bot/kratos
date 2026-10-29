@@ -95,6 +95,7 @@ const GET: Record<string, Route> = {
     recent: await q(db, `SELECT at, model, input_tokens, output_tokens, cache_read_tokens, cost_microusd, charged_cents, purpose FROM ai_usage ORDER BY id DESC LIMIT 20`) }),
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
+  '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
   '/api/apple': async (db) => appleSummary(db),
   '/api/messages': async (db) => (await q(db, `SELECT * FROM messages ORDER BY id DESC LIMIT 60`)).reverse(),
 };

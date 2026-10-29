@@ -188,6 +188,11 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
 
 // «Dame un reporte»: dinero invertido y ganado, trabajo hecho y decisiones pendientes, en voz y en el panel izquierdo.
 async function reportIntent(db: Db, t: string): Promise<Reply | null> {
+  if (/^(que hora es|que horas son|dime la hora|la hora)\b/.test(t)) {
+    const o = await owner(db); const d = new Date();
+    const h = d.toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' }), day = d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+    return { text: `Son las ${h}, ${day}.`, spoken: `Son las ${h}, ${o.address}.` };
+  }
   if (!/\b(reporte|informe|balance|reporte financiero|como vamos de dinero|cuanto hemos (gastado|ganado|invertido))\b/.test(t)) return null;
   const r = await buildReport(db);
   const o = await owner(db);
