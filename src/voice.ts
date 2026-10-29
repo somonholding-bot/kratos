@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA_DIR, config } from './config.ts';
+import { DATA_DIR, ROOT, config } from './config.ts';
 import type { Db } from './db.ts';
 
 // Transcripción 100 % local con whisper.cpp. El audio se escribe en un archivo temporal
@@ -167,4 +167,25 @@ export async function transcribeWake(db: Db, wav: Buffer, signal?: AbortSignal):
   const sttMs = Date.now() - started;
   const r = await db.query(`INSERT INTO voice_metrics (audio_ms, stt_ms, outcome) VALUES ($1,$2,'ok') RETURNING id`, [a.audioMs, sttMs]).catch(() => null);
   return { wake, mentions, command, text, audioMs: a.audioMs, sttMs, metricId: r ? Number(r.rows[0].id) : undefined };
+}
+
+// Voz natural local (Piper, voz masculina es_MX «claude», calidad alta). Sin coste ni datos fuera del Mac.
+const PIPER = path.join(ROOT, '.jarvis', 'tts', 'venv', 'bin', 'piper');
+const PIPER_VOICE = path.join(ROOT, '.jarvis', 'tts', 'es_MX-claude-high.onnx');
+export const naturalVoiceAvailable = () => fs.existsSync(PIPER) && fs.existsSync(PIPER_VOICE);
+
+export async function synthesize(text: string, signal?: AbortSignal): Promise<Buffer> {
+  if (!naturalVoiceAvailable()) throw new Error('Voz natural no instalada');
+  const clean = text.replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 2000);
+  fs.mkdirSync(TMP, { recursive: true, mode: 0o700 });
+  const file = path.join(TMP, `${crypto.randomUUID()}-tts.wav`);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const p = execFile(PIPER, ['-m', PIPER_VOICE, '-f', file, '--length-scale', '0.93', '--sentence-silence', '0.15'], { timeout: 60_000, signal }, (err) => (err ? reject(err) : resolve()));
+      p.stdin?.end(clean);
+    });
+    return fs.readFileSync(file);
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
 }

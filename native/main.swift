@@ -36,6 +36,16 @@ enum API {
     send(request(path, method: "POST", body: try? JSONSerialization.data(withJSONObject: obj)), done)
   }
 
+  // Audio WAV de la voz natural (nil si no está disponible)
+  static func speech(_ text: String, _ done: @escaping (Data?) -> Void) {
+    var r = request("/api/voice/speak", method: "POST", body: try? JSONSerialization.data(withJSONObject: ["text": text]))
+    r.timeoutInterval = 30
+    URLSession.shared.dataTask(with: r) { data, resp, _ in
+      let ok = (resp as? HTTPURLResponse)?.statusCode == 200 && (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") == "audio/wav"
+      DispatchQueue.main.async { done(ok ? data : nil) }
+    }.resume()
+  }
+
   static func healthy(_ done: @escaping (Bool) -> Void) {
     var r = URLRequest(url: BASE.appendingPathComponent("api/health"))
     r.timeoutInterval = 2
@@ -47,28 +57,65 @@ enum API {
 
 // MARK: - Voz de respuesta (voces locales de macOS)
 
-final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
+final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
   private let synth = AVSpeechSynthesizer()
+  private var player: AVAudioPlayer?
+  private var meter: Timer?
+  private var loading = false
+  private var token = 0
+  private var lastPower: Float = -60
   private var done: (() -> Void)?
   var onWord: (() -> Void)?   // una palabra pronunciada: pulso real para la escena
-  var isSpeaking: Bool { synth.isSpeaking }
+  var isSpeaking: Bool { loading || synth.isSpeaking || (player?.isPlaying ?? false) }
 
   override init() { super.init(); synth.delegate = self }
 
+  // Voz natural local (Piper, servidor en 127.0.0.1); si no está disponible, la voz del sistema.
   func say(_ text: String, done: (() -> Void)? = nil) {
     stop()
     self.done = done
+    token += 1; let my = token
+    loading = true
+    API.speech(text) { [weak self] data in
+      guard let self, my == self.token else { return }
+      self.loading = false
+      if let data, let p = try? AVAudioPlayer(data: data) {
+        self.player = p; p.delegate = self; p.isMeteringEnabled = true; p.play()
+        self.meter = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in self?.pulse() }
+      } else {
+        self.systemVoice(text)
+      }
+    }
+  }
+
+  private func pulse() {
+    guard let p = player, p.isPlaying else { return }
+    p.updateMeters()
+    let pw = p.averagePower(forChannel: 0)
+    if pw > -30 && pw - lastPower > 4 { onWord?() }   // golpe de sílaba: la escena late con la voz real
+    lastPower = pw
+  }
+
+  private func systemVoice(_ text: String) {
     let clean = text.replacingOccurrences(of: "[¿¡*_#`]", with: "", options: .regularExpression)
     let u = AVSpeechUtterance(string: clean)
     u.voice = Speaker.voice
-    u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04   // ritmo de conversación, ni lento ni atropellado
-    u.pitchMultiplier = 1.03                              // tono medio, algo juvenil
-    u.preUtteranceDelay = 0.05
+    u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04
+    u.pitchMultiplier = 1.03
     synth.speak(u)
   }
 
-  // Voz masculina, media y juvenil: la de mejor calidad instalada (Premium > Mejorada > básica).
-  // Las voces de calidad se descargan en Ajustes del Sistema › Accesibilidad › Contenido leído › Voz del sistema › Gestionar voces.
+  func stop() {
+    token += 1
+    let interrupted = loading || (player?.isPlaying ?? false)
+    loading = false
+    if player?.isPlaying ?? false { player?.stop() }
+    player = nil
+    if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }   // didCancel cierra el turno
+    if interrupted { finish() }                                   // quien esperaba el final puede seguir escuchando
+  }
+
+  // Respaldo: voz masculina de mejor calidad instalada en macOS
   static let preferred = ["Juan", "Jorge", "Diego", "Carlos", "Andrés", "Pablo"]
   static let voice: AVSpeechSynthesisVoice? = {
     let es = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("es") && !$0.identifier.contains("eloquence") }
@@ -79,9 +126,8 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     return es.max { rank($0) < rank($1) }
   }()
 
-  func stop() { if synth.isSpeaking { synth.stopSpeaking(at: .immediate) } }
-
-  private func finish() { let d = done; done = nil; d?() }
+  private func finish() { meter?.invalidate(); meter = nil; let d = done; done = nil; d?() }
+  func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully ok: Bool) { player = nil; finish() }
   func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) { finish() }
   func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel u: AVSpeechUtterance) { finish() }
   func speechSynthesizer(_ s: AVSpeechSynthesizer, willSpeakRangeOfSpeechString r: NSRange, utterance u: AVSpeechUtterance) {

@@ -18,3 +18,7 @@ KRATOS applies its own lighting, color grading, interaction states and agent vis
 ## Referencia visual
 
 - La imagen de referencia aportada por el propietario (28-oct-2026) se usa solo como guía de estilo; no se incluye en la aplicación.
+
+## Voz natural
+- Piper TTS (rhasspy/piper, licencia MIT), instalado con `scripts/instalar-voz.sh` en `.jarvis/tts/` (no se incluye en el repositorio).
+- Voz `es_MX-claude-high` de rhasspy/piper-voices (consulta su ficha MODEL_CARD para la licencia del conjunto de datos).

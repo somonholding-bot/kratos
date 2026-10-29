@@ -10,7 +10,7 @@ import { audit, emergencyStop, getState, heartbeat, resumeFromEmergency, setAuto
 import { cancelTask, createTask } from './core/tasks.ts';
 import { decideApproval } from './core/approvals.ts';
 import { handleMessage } from './core/chat.ts';
-import { cleanTmp, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
+import { cleanTmp, synthesize, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
@@ -274,6 +274,14 @@ export function createServer(db: Db) {
             return send(res, 200, await transcribe(db, wav, abort.signal));
           }
           catch (e: any) { throw new HttpError(400, e.message); }
+        }
+        if (url.pathname === '/api/voice/speak') {   // voz natural: devuelve audio WAV
+          if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Se requiere JSON' });
+          const b = JSON.parse((await readRaw(req, 20_000)).toString('utf8') || '{}');
+          if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
+          const wav = await synthesize(b.text).catch((e) => { throw new HttpError(503, e.message); });
+          res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'no-store', 'content-length': String(wav.length) });
+          return res.end(wav);
         }
         if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Se requiere JSON' });
         const m = match(POST, url.pathname);
