@@ -153,7 +153,9 @@ export async function localThink(db: Db, onToken: (delta: string) => void, chann
   // 2) Ollama en este Mac
   const model = localModel();
   if (!model) throw new Error('Sin IA rápida disponible');
-  const body = (think: boolean) => JSON.stringify({ model, messages, stream: true, keep_alive: '24h', options: { num_ctx: 4096, temperature: 0.6 }, ...(think ? {} : { think: false }) });
+  // Con Groq conectado, el modelo local es solo respaldo: se libera de la memoria a los 10 min (en un Mac de 16 GB ocupa ~8 GB)
+  const keep = groqKey() ? '10m' : '24h';
+  const body = (think: boolean) => JSON.stringify({ model, messages, stream: true, keep_alive: keep, options: { num_ctx: 4096, temperature: 0.6 }, ...(think ? {} : { think: false }) });
   let r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: body(false), signal: AbortSignal.timeout(30_000) });
   if (r.status === 400) r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: body(true), signal: AbortSignal.timeout(30_000) });   // modelos sin opción «think»
   if (!r.ok || !r.body) throw new Error(`Ollama respondió ${r.status}`);
@@ -189,6 +191,6 @@ export async function fastStatus() {
 // Precarga el modelo local en memoria al arrancar el servidor: la primera pregunta no espera a cargarlo
 export async function warmLocal() {
   const model = localModel();
-  if (!model || !(await ollamaAvailable())) return;
+  if (!model || groqKey() || !(await ollamaAvailable())) return;   // con Groq no se precarga: no ocupa memoria sin necesidad
   await fetch(`${OLLAMA}/api/generate`, { method: 'POST', body: JSON.stringify({ model, prompt: '', keep_alive: '24h' }), signal: AbortSignal.timeout(120_000) }).catch(() => {});
 }
