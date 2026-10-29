@@ -506,7 +506,7 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const prefs = (await db.query(`SELECT id, text FROM preferences WHERE active ORDER BY id`).catch(() => ({ rows: [] }))).rows;
   const prefText = prefs.length ? ` Preferencias permanentes del propietario (cúmplelas SIEMPRE): ${prefs.map((p: any) => `[${p.id}] ${p.text}`).join(' · ')}.` : '';
   const agentText = await agentsContext(db).catch(() => '');
-  messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}).${prefText}${agentText} Propietario: ${o.name} (no lo nombres en cada respuesta; trato cercano y directo). Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${skillContext('kratos', lastUser)}${await lessonsContext(db)}` });
+  messages.push({ role: 'system', content: `Contexto actual: ${now} (hora local ISO ${iso}).${prefText}${agentText} Propietario: ${o.name} (no lo nombres en cada respuesta; trato cercano y directo). Canal: ${channel}. Nivel de autonomía: ${st.autonomy_level}.${st.automations_paused ? ' Automatizaciones en pausa.' : ''}${channel === 'voz' ? '' : skillContext('kratos', lastUser)}${await lessonsContext(db, undefined, channel === 'voz' ? 4 : 12)}` });   // por voz, contexto ligero
 
   // Funciones aprobadas por el propietario: herramientas extra que KRATOS se programó
   const allTools: ToolDef[] = [...TOOLS, ...(await activePlugins(db)).map((p) => ({
@@ -528,7 +528,7 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
         model, max_tokens: 4000,
         betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
         output_config: { effort },
-        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral', ttl: '1h' } }],   // instrucciones y herramientas en caché 1 h: sin arranque en frío tras unos minutos sin hablar
         tools: [...allTools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: isStrict(name, input_schema) })), ...webTools(3)],
         messages,
       } as any);
@@ -609,7 +609,7 @@ Termina con un resumen de 3 líneas.${skillContext('kratos', 'estrategia delega 
     let resp: any;
     try {
       resp = await client.beta.messages.create({ model, max_tokens: 3000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', output_config: { effort: 'low' },
-        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral', ttl: '1h' } }],   // instrucciones y herramientas en caché 1 h: sin arranque en frío tras unos minutos sin hablar
         tools: [...tools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: true })), ...webTools(3)], messages } as any);
     } catch (err: any) { await settle(db, resKey, 0, 'kratos (ciclo CEO)'); throw new Error(`Ciclo CEO: ${err?.status ?? 'sin conexión'}`); }
     const micro = costMicroUsd(resp.model ?? model, resp.usage ?? {}); cost += micro / 1e6;
