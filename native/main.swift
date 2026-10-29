@@ -44,12 +44,16 @@ enum API {
   }
 
   // Audio WAV de la voz natural (nil si no está disponible)
-  static func speech(_ text: String, _ done: @escaping (Data?) -> Void) {
-    var r = request("/api/voice/speak", method: "POST", body: try? JSONSerialization.data(withJSONObject: ["text": text]))
+  // Audio de la voz natural; si el ajuste es una voz del sistema («apple» o «personal»), devuelve cuál usar
+  static func speech(_ text: String, voice: String? = nil, _ done: @escaping (Data?, String?) -> Void) {
+    var body: [String: Any] = ["text": text]; if let voice { body["voice"] = voice }
+    var r = request("/api/voice/speak", method: "POST", body: try? JSONSerialization.data(withJSONObject: body))
     r.timeoutInterval = 30
     URLSession.shared.dataTask(with: r) { data, resp, _ in
-      let ok = (resp as? HTTPURLResponse)?.statusCode == 200 && (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") == "audio/wav"
-      DispatchQueue.main.async { done(ok ? data : nil) }
+      let http = resp as? HTTPURLResponse
+      let ok = http?.statusCode == 200 && http?.value(forHTTPHeaderField: "Content-Type") == "audio/wav"
+      let system = http?.statusCode == 204 ? http?.value(forHTTPHeaderField: "X-Kratos-Voz") : nil
+      DispatchQueue.main.async { done(ok ? data : nil, system) }
     }.resume()
   }
 
@@ -83,10 +87,21 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     self.done = done
     token += 1; let my = token
     loading = true
-    API.speech(text) { [weak self] data in
+    API.speech(text) { [weak self] data, system in
       guard let self, my == self.token else { return }
       self.loading = false
-      if let data, let p = try? AVAudioPlayer(data: data) {
+      if system == "personal", let v = Speaker.personalVoice {
+        self.systemVoice(text, voice: v)
+      } else if system == "personal" {
+        // Voz Personal sin autorizar: se usa Piper (nunca la voz básica del sistema)
+        self.loading = true
+        API.speech(text, voice: "piper") { [weak self] d, _ in
+          guard let self, my == self.token else { return }
+          self.loading = false
+          if let d, let p = try? AVAudioPlayer(data: d) { self.player = p; p.delegate = self; p.isMeteringEnabled = true; p.play(); self.meter = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in self?.pulse() } }
+          else { self.systemVoice(text) }
+        }
+      } else if let data, let p = try? AVAudioPlayer(data: data) {
         self.player = p; p.delegate = self; p.isMeteringEnabled = true; p.volume = 0; p.play(); p.setVolume(1, fadeDuration: 0.06)
         self.meter = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in self?.pulse() }
       } else {
@@ -103,12 +118,11 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     lastPower = pw
   }
 
-  private func systemVoice(_ text: String) {
+  private func systemVoice(_ text: String, voice: AVSpeechSynthesisVoice? = nil) {
     let clean = text.replacingOccurrences(of: "[¿¡*_#`]", with: "", options: .regularExpression)
     let u = AVSpeechUtterance(string: clean)
-    u.voice = Speaker.voice
-    u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04
-    u.pitchMultiplier = 1.03
+    u.voice = voice ?? Speaker.voice
+    if voice == nil { u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.04; u.pitchMultiplier = 1.03 }   // la voz personal suena mejor a su ritmo natural
     synth.speak(u)
   }
 
@@ -120,6 +134,20 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     player = nil
     if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }   // didCancel cierra el turno
     if interrupted { finish() }                                   // quien esperaba el final puede seguir escuchando
+  }
+
+  // Voz Personal de Apple del propietario (p. ej. «Idalmi»): solo si autorizó su uso en el aviso de macOS
+  static var personalVoice: AVSpeechSynthesisVoice? {
+    guard #available(macOS 14.0, *), AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .authorized else { return nil }
+    let mine = AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }
+    return mine.first { $0.name.localizedCaseInsensitiveContains("Idalmi") } ?? mine.first
+  }
+  static func requestPersonalVoice() {
+    guard #available(macOS 14.0, *) else { return }
+    AVSpeechSynthesizer.requestPersonalVoiceAuthorization { status in
+      let names = AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }.map { "\($0.name) (\($0.language))" }
+      appLog("voz personal: autorización \(status.rawValue) · voces \(names)")
+    }
   }
 
   // Respaldo: voz masculina de mejor calidad instalada en macOS
@@ -450,6 +478,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     let me = ProcessInfo.processInfo.processIdentifier
     let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "").filter { $0.processIdentifier != me }
     if !others.isEmpty { NSApp.terminate(nil); return }
+    Speaker.requestPersonalVoice()   // pide permiso para hablar con la Voz Personal del propietario
     buildMainMenu()
     buildWindow()
     buildStatusItem()

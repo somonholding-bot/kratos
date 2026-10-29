@@ -298,8 +298,8 @@ export function createServer(db: Db) {
           const b = JSON.parse((await readRaw(req, 20_000)).toString('utf8') || '{}');
           if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
           const st: any = await getState(db);
-          const voice = st.tts_voice ?? 'kokoro';
-          if (voice === 'apple') { res.writeHead(204); return res.end(); }   // la app de Mac usa la voz del sistema (mejorada de Apple)
+          const voice = typeof b.voice === 'string' && ['piper', 'kokoro'].includes(b.voice) ? b.voice : (st.tts_voice ?? 'kokoro');   // la app puede pedir Piper si la voz del sistema no está disponible
+          if (voice === 'apple' || voice === 'personal') { res.writeHead(204, { 'X-Kratos-Voz': voice }); return res.end(); }   // la app de Mac usa una voz del sistema (mejorada o tu Voz Personal)
           const wav = await synthesize(b.text, undefined, voice, Number(st.voice_speed) || 1).catch((e) => { throw new HttpError(503, e.message); });
           res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'no-store', 'content-length': String(wav.length) });
           return res.end(wav);
