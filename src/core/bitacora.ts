@@ -8,7 +8,7 @@ export const SETTINGS = {
   ui_reduced: { enum: ['0', '1'] },
   voice_speed: { min: 0.7, max: 1.4 },
   follow_up: { min: 5, max: 300 },
-  tts_voice: { enum: ['piper', 'kokoro'] },
+  tts_voice: { enum: ['piper', 'kokoro', 'apple'] },
   voice_model: { enum: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'] },
   agents_engine: { enum: ['suscripcion', 'api'] },
 } as const;

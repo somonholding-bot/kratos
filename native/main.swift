@@ -124,14 +124,15 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
 
   // Respaldo: voz masculina de mejor calidad instalada en macOS
   static let preferred = ["Juan", "Jorge", "Diego", "Carlos", "Andrés", "Pablo"]
-  static let voice: AVSpeechSynthesisVoice? = {
+  // Se elige cada vez (no al arrancar): así una voz descargada después se usa sin reiniciar la app
+  static var voice: AVSpeechSynthesisVoice? {
     let es = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("es") && !$0.identifier.contains("eloquence") }
     func rank(_ v: AVSpeechSynthesisVoice) -> Int {
       let male = preferred.firstIndex { v.name.hasPrefix($0) }
       return v.quality.rawValue * 100 + (male.map { 50 - $0 } ?? 0) + (v.language == "es-MX" ? 1 : 0)
     }
     return es.max { rank($0) < rank($1) }
-  }()
+  }
 
   private func finish() { meter?.invalidate(); meter = nil; let d = done; done = nil; d?() }
   func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully ok: Bool) { player = nil; finish() }
