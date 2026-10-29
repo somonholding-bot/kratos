@@ -33,6 +33,7 @@ Actualizada: 28-oct-2026.
 | 2 | Correo por la app Mail (leer y borradores) | ✅ · ⏳ aceptar el permiso de Automatización |
 | 2 | Apple App Store Connect (solo lectura, aviso hablado al cambiar la revisión) | ✅ código · ⏳ tu clave (asistente en pantalla) |
 | 2 | Navegador de conexiones (inicias sesión en YouTube, redes, Google Play…) | ✅ |
+| 2 | Escucha corregida (ruido de fondo, «Hey Kratos» en cualquier punto, sin pitido) y funciones nuevas que KRATOS se programa con tu aprobación (clima y tiempo de viaje de ejemplo) | ✅ · ⏳ aprobar las 2 funciones en Aprobaciones |
 | 3 | Acceso remoto con enlace propio | ✅ código · ⏳ dominio en Cloudflare y `scripts/acceso-remoto.sh` |
 | 4 | Búsqueda web para los agentes y delegación en Claude Code | ⏳ siguiente |
 | 5 | Creadores reales (flujo de contratación), Google Play API, panel mínimo, llamadas con voz IA (Vapi/Retell) | ⏳ |
