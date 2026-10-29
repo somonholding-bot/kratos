@@ -10,6 +10,7 @@ import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext } from './skills.ts';
 import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
 import { appleSummary } from './apple.ts';
+import { dial, saveContact } from './phone.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -189,6 +190,16 @@ const TOOLS: ToolDef[] = [
     name: 'cancelar_agenda', description: 'Cancela una alarma o recordatorio por su id (de ver_agenda).',
     input_schema: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'], additionalProperties: false },
     run: async (db, i) => { const c = await cancelAgenda(db, Number(i.id)); return c ? { cancelado: describe(c) } : { error: 'No encontrado o ya no está pendiente' }; },
+  },
+  {
+    name: 'llamar', description: 'Llama por teléfono desde el iPhone del propietario (vía el Mac). SOLO si el propietario lo ordena expresamente en este mensaje; nunca por iniciativa propia. Él confirma con «Llamar» en FaceTime.',
+    input_schema: obj({ destino: { type: 'string', description: 'Nombre de un contacto guardado o número con prefijo' } }, ['destino']),
+    run: async (db, i) => dial(db, String(i.destino), 'kratos (IA, por orden del propietario)'),
+  },
+  {
+    name: 'guardar_contacto', description: 'Guarda o actualiza un contacto (nombre y teléfono) en la libreta propia de Kratos.',
+    input_schema: obj({ nombre: { type: 'string' }, telefono: { type: 'string' }, notas: { type: 'string' } }, ['nombre', 'telefono']),
+    run: async (db, i) => saveContact(db, String(i.nombre), String(i.telefono), i.notas ? String(i.notas) : undefined),
   },
   {
     name: 'estado_apple', description: 'Estado en App Store Connect de las apps del propietario: versión, estado de revisión de Apple y últimas reseñas (solo lectura).',

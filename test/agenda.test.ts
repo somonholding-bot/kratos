@@ -25,7 +25,7 @@ test('interpreta alarmas y recordatorios en español', () => {
 });
 
 test('saluda al propietario por su nombre', async () => {
-  assert.match(await greeting(db), /señor Idalmi/);
+  assert.match(await greeting(db), /[Ss]eñor Idalmi/);
 });
 
 test('una alarma por voz se programa y se entrega una sola vez, hablada', async () => {
@@ -61,4 +61,14 @@ test('el token de App Store Connect es ES256 válido y de corta duración', () =
   const body = JSON.parse(Buffer.from(b, 'base64url').toString());
   assert.equal(body.aud, 'appstoreconnect-v1'); assert.ok(body.exp - body.iat <= 20 * 60);
   assert.ok(crypto.verify('sha256', Buffer.from(`${h}.${b}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(s, 'base64url')));
+});
+
+test('llamadas: guarda el contacto y marca solo por orden del propietario', async () => {
+  const { handleMessage: h } = await import('../src/core/chat.ts');
+  const s = await h(db, 'Kratos, guarda el número de Ana: +1 809 555 1234', 'voz');
+  assert.match(s.text, /Ana · \+18095551234/);
+  const c = await h(db, 'Kratos, llama a Ana', 'voz');
+  assert.equal(c.action, 'llamada'); assert.match(c.spoken, /Llamando a Ana/);
+  const n = await h(db, 'llama a Pedro', 'voz');
+  assert.match(n.text, /No tengo el número/);
 });

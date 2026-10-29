@@ -3,6 +3,7 @@ import { audit, emergencyStop, getState } from './state.ts';
 import { createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { AI_ACCOUNT, think } from './brain.ts';
+import { dial, saveContact } from './phone.ts';
 import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from './agenda.ts';
 
 // Modo demostración (sin IA): interpreta un conjunto fijo de órdenes en español.
@@ -22,7 +23,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
   let reply: Reply;
   if (SAFETY.test(t)) reply = await interpret(db, t, text);
   else {
-    const agenda = await agendaIntent(db, t, text);
+    const agenda = (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
     const ai = await think(db, channel);
@@ -147,4 +148,25 @@ async function agendaIntent(db: Db, t: string, original: string): Promise<Reply 
   const item = await addAgenda(db, p);
   const d = describe(item);
   return { text: `Programado: ${d}. A esa hora abriré el universo y se lo diré en voz alta.`, spoken: `Hecho, ${o.address}. ${d.replace(/: Despertar$/, '')}.`, action: 'agenda_creada' };
+}
+
+// Llamadas por el iPhone vía el Mac, solo por orden directa del propietario.
+async function phoneIntent(db: Db, t: string, original: string): Promise<Reply | null> {
+  const o = await owner(db);
+  const clean = original.replace(/^\W*((hey|oye|ey)\W+)?kratos\W*/i, '');
+  const save = clean.match(/(?:guarda|anota|apunta|agrega|añade)\s+(?:el\s+)?(?:numero|número|telefono|teléfono|contacto)\s+(?:de\s+)?([^:,\d+]+?)[\s:,]+(?:es\s+)?(\+?[\d][\d\s().-]{6,})/i)
+    ?? clean.match(/el\s+(?:numero|número|telefono|teléfono)\s+de\s+([^:,\d+]+?)\s+es\s+(\+?[\d][\d\s().-]{6,})/i);
+  if (save) {
+    try {
+      const c = await saveContact(db, save[1], save[2]);
+      return { text: `Contacto guardado: ${c.name} · ${c.phone}.`, spoken: `Guardado, ${o.address}. Ya puedo llamar a ${c.name}.` };
+    } catch (e: any) { return { text: e.message, spoken: 'Ese número no parece válido.' }; }
+  }
+  const call = t.match(/^(?:por favor\s+)?(?:llama|llamame a|marca|marcale|haz una llamada)\s+(?:a\s+|al\s+)?(.+?)[.!?]*$/);
+  if (!call) return null;
+  const target = clean.match(/(?:llama|llámame a|llamame a|marca|márcale|marcale|haz una llamada)\s+(?:a\s+|al\s+)?(.+?)[.!?]*$/i)?.[1] ?? call[1];
+  const r = await dial(db, target);
+  if (!r.ok) return { text: r.error!, spoken: r.error! };
+  const who = r.name ?? r.phone;
+  return { text: `Llamando a ${who} desde tu iPhone. Pulsa «Llamar» en la ventana de FaceTime para confirmar.`, spoken: `Llamando a ${who}, ${o.address}. Confirme en la pantalla.`, action: 'llamada' };
 }
