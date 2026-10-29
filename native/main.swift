@@ -277,7 +277,9 @@ final class WakeListener {
 
   // Ajustes (configurables desde el panel)
   var wakeWindow: Double { UserDefaults.standard.object(forKey: "wakeWindow") as? Double ?? 3.0 }      // s entre «Kratos» y «Kratos»
-  var followUpSeconds: Double { UserDefaults.standard.object(forKey: "followUp") as? Double ?? 60.0 }  // ventana sin volver a decir «Kratos» (se renueva en cada respuesta)
+  // ventana sin volver a decir «Kratos» (se renueva en cada respuesta); con música sonando, 8 s para que la canción no se tome por órdenes
+  var followUpSeconds: Double { let v = UserDefaults.standard.object(forKey: "followUp") as? Double ?? 60.0; return musicOn ? min(v, 8) : v }
+  var musicOn = false
   var sensitivity: Double { UserDefaults.standard.object(forKey: "sensitivity") as? Double ?? 0.5 }    // 0 = poco sensible, 1 = muy sensible
 
   private func set(_ s: State, _ msg: String? = nil) {
@@ -375,6 +377,21 @@ final class WakeListener {
         quiet = rms > thr * 0.7 ? 0 : quiet + 1
         if quiet >= 25 || segment.count >= 16000 * 8 { endSegment() }   // 0,5 s de silencio cierra la frase
       }
+    }
+  }
+
+  // Ocupado: oyendo, procesando o hablando (los avisos esperan a que termine)
+  var isBusy: Bool { busy || speaker.isSpeaking || state == .hearing || state == .processing || state == .speaking }
+  func endFollowUp() { followUpUntil = nil }
+
+  // Aviso hablado (agenda o mensaje recibido); thenListen deja la conversación abierta para responder sin repetir «Kratos»
+  func announce(_ text: String, thenListen: Bool) {
+    q.async { self.busy = true }
+    set(.speaking)
+    speaker.say(text) { [weak self] in
+      guard let self else { return }
+      if thenListen { self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds) }
+      self.resume()
     }
   }
 
@@ -480,6 +497,108 @@ final class WakeListener {
     var pcm = s.map { Int16(max(-1, min(1, $0)) * 32767).littleEndian }
     d.append(Data(bytes: &pcm, count: pcm.count * 2))
     return d
+  }
+}
+
+// MARK: - Música: YouTube solo audio, sin anuncios
+// yt-dlp busca en YouTube y da la dirección directa del audio; AVPlayer lo reproduce. Como no se carga la página
+// de YouTube, no hay anuncios ni vídeo. Se instala con «brew install yt-dlp».
+final class MusicPlayer {
+  static var ytdlp: String? { ["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp", NSHomeDirectory() + "/.local/bin/yt-dlp"].first { FileManager.default.isExecutableFile(atPath: $0) } }
+  private let player = AVPlayer()
+  private var list: [(id: String, title: String, channel: String)] = []
+  private var index = 0, failures = 0, generation = 0
+  private var volume: Float = UserDefaults.standard.object(forKey: "musicVolume") as? Float ?? 0.7
+  private(set) var ducked = false
+  var onChange: (([String: Any]?) -> Void)?   // ventanita del universo (nil = se oculta)
+  var onError: ((String) -> Void)?
+  var isPlaying: Bool { player.timeControlStatus != .paused && !list.isEmpty }
+
+  init() {
+    NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main) { [weak self] n in
+      guard let self, (n.object as? AVPlayerItem) === self.player.currentItem else { return }
+      self.skip()
+    }
+  }
+
+  func play(_ query: String) {
+    guard let bin = MusicPlayer.ytdlp else { onError?("Para poner música me falta yt-dlp. En Terminal escribe: brew install yt-dlp"); return }
+    generation += 1; let gen = generation
+    player.pause()
+    onChange?(["title": "Buscando «\(query)»…", "channel": "YouTube", "playing": false])
+    MusicPlayer.run(bin, ["--flat-playlist", "-j", "--no-warnings", "ytsearch10:\(query)"]) { [weak self] out in
+      guard let self, gen == self.generation else { return }
+      self.list = out.split(separator: "\n").compactMap { line -> (id: String, title: String, channel: String)? in
+        guard let d = String(line).data(using: .utf8), let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any], let id = j["id"] as? String else { return nil }
+        if let dur = j["duration"] as? Double, dur < 90 { return nil }   // sin cortos
+        return (id, j["title"] as? String ?? "Sin título", (j["channel"] ?? j["uploader"]) as? String ?? "YouTube")
+      }
+      appLog("música: «\(query)» → \(self.list.count) resultados")
+      guard !self.list.isEmpty else { self.onChange?(nil); self.onError?("No encontré música de \(query)."); return }
+      self.index = 0; self.failures = 0; self.start()
+    }
+  }
+
+  private func start() {
+    guard let bin = MusicPlayer.ytdlp, index < list.count else { stop(); return }
+    generation += 1; let gen = generation
+    let item = list[index]
+    onChange?(info(playing: false, loading: true))
+    MusicPlayer.run(bin, ["-f", "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/18", "-g", "--no-playlist", "--no-warnings", "https://www.youtube.com/watch?v=\(item.id)"]) { [weak self] out in
+      guard let self, gen == self.generation else { return }
+      guard let line = out.split(separator: "\n").first, let url = URL(string: String(line)) else {
+        self.failures += 1
+        if self.failures < 4 { self.index += 1; self.start() } else { self.stop(); self.onError?("YouTube no me dejó reproducir esa música.") }
+        return
+      }
+      self.failures = 0
+      self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+      self.applyVolume()
+      self.player.play()
+      self.onChange?(self.info(playing: true))
+    }
+  }
+
+  private func info(playing: Bool, loading: Bool = false) -> [String: Any] {
+    let it = list[index]
+    return ["title": it.title, "channel": it.channel, "id": it.id, "playing": playing, "loading": loading, "n": index + 1, "of": list.count]
+  }
+
+  func control(_ cmd: String) {
+    switch cmd {
+    case "pausa": player.pause(); if !list.isEmpty { onChange?(info(playing: false)) }
+    case "sigue": if list.isEmpty { return }; player.play(); onChange?(info(playing: true))
+    case "siguiente": skip()
+    case "para": stop()
+    case "sube": volume = min(1, volume + 0.15); applyVolume(); UserDefaults.standard.set(volume, forKey: "musicVolume")
+    case "baja": volume = max(0.05, volume - 0.15); applyVolume(); UserDefaults.standard.set(volume, forKey: "musicVolume")
+    default: break
+    }
+  }
+
+  private func skip() { guard !list.isEmpty else { return }; index = (index + 1) % list.count; start() }
+
+  func stop() {
+    generation += 1
+    player.pause(); player.replaceCurrentItem(with: nil); list = []
+    onChange?(nil)
+  }
+
+  // Mientras KRATOS escucha o habla, la música baja; al terminar vuelve
+  func duck(_ on: Bool) { guard on != ducked else { return }; ducked = on; applyVolume() }
+  private func applyVolume() { player.volume = ducked ? volume * 0.12 : volume }
+
+  static func run(_ bin: String, _ args: [String], _ done: @escaping (String) -> Void) {
+    DispatchQueue.global(qos: .userInitiated).async {
+      let p = Process(); p.executableURL = URL(fileURLWithPath: bin); p.arguments = args
+      var env = ProcessInfo.processInfo.environment; env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"; p.environment = env
+      let pipe = Pipe(); p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
+      do { try p.run() } catch { DispatchQueue.main.async { done("") }; return }
+      let data = pipe.fileHandleForReading.readDataToEndOfFile()
+      p.waitUntilExit()
+      let out = String(data: data, encoding: .utf8) ?? ""
+      DispatchQueue.main.async { done(out) }
+    }
   }
 }
 
@@ -600,6 +719,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   var showingPanel = false
   var status: NSStatusItem!
   let wake = WakeListener()
+  let music = MusicPlayer()
+  var announcements: [[String: Any]] = []   // avisos esperando a que KRATOS termine de hablar
   var wakeItem: NSMenuItem!
   var stateItem: NSMenuItem!
 
@@ -622,13 +743,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     wake.onState = { [weak self] s, msg in self?.render(s, msg) }
     wake.onLevel = { [weak self] v in self?.web.evaluateJavaScript("window.kratosMicLevel && window.kratosMicLevel(\(v))") }
     wake.speaker.onWord = { [weak self] in self?.web.evaluateJavaScript("window.kratosSpeechPulse && window.kratosSpeechPulse()") }
+    music.onChange = { [weak self] info in
+      guard let self else { return }
+      self.wake.musicOn = info?["playing"] as? Bool ?? false
+      let json = info.flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { String(data: $0, encoding: .utf8) } ?? "null"
+      self.web.evaluateJavaScript("window.kratosMusic && window.kratosMusic(\(json))")
+    }
+    music.onError = { [weak self] msg in self?.announcements.append(["kind": "aviso", "spoken": msg]); self?.sayAnnouncements() }
     NotificationCenter.default.addObserver(forName: .kratosWoke, object: nil, queue: .main) { [weak self] _ in
+      self?.music.duck(true)
       self?.universeJS("window.kratosWoke && window.kratosWoke()")   // al despertar, KRATOS aparece a pantalla completa
     }
     NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] n in
       self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()"); self?.panel.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
       guard let self else { return }
       let info = n.userInfo ?? [:]
+      // Música: se pone o se controla; tras «pon música» no queda conversación abierta (la canción no son órdenes)
+      if (info["action"] as? String) == "musica", let q = info["query"] as? String { self.music.play(q); self.wake.endFollowUp() }
+      if (info["action"] as? String) == "musica_control", let c = info["cmd"] as? String { self.music.control(c); if ["sigue", "siguiente"].contains(c) { self.wake.endFollowUp() } }
       if (info["action"] as? String) == "reporte" { self.universeJS("window.kratosReport && window.kratosReport()") }
       // Si la respuesta escrita trae más que lo que se dice en voz, se abre la ventana de lectura en el universo
       else if let text = info["text"] as? String, let spoken = info["spoken"] as? String, text.count > spoken.count + 40 {
@@ -636,7 +768,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         self.web.evaluateJavaScript("window.kratosSetText && window.kratosSetText(\(self.jsString(text)))")
       }
     }
-    Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
+    Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat() }
+    Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkAgenda() }   // avisos y mensajes de texto, casi al instante
     ensureService { [weak self] ok in
       guard let self else { return }
       if ok { self.loadPanel(); self.wake.bootstrap(); self.heartbeat() }
@@ -790,6 +923,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         self?.panel.evaluateJavaScript("window.kratosSpoke && window.kratosSpoke()")
       }
     case "hush": wake.speaker.stop()
+    case "music": music.control(body["cmd"] as? String ?? "")
     case "openBrowser": ConnectionsBrowser.shared.show(body["url"] as? String)
     case "exitImmersive": openDetails()
     case "wake", "mute":
@@ -833,6 +967,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     case .processing: symbol = "ellipsis.circle"
     case .speaking: symbol = "speaker.wave.2.circle"
     }
+    if s == .listening || s == .off { music.duck(false) }   // terminó la conversación: la música vuelve a su volumen
     status.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Kratos: \(s.rawValue)")
     status.button?.title = " Kratos"
     status.button?.imagePosition = .imageLeft
@@ -862,17 +997,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func checkAgenda() {
     API.post("/api/agenda/claim", [:]) { [weak self] r in
       guard let self, let due = r?["due"] as? [[String: Any]], !due.isEmpty else { return }
-      DispatchQueue.main.async {
-        let wake = Process(); wake.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate"); wake.arguments = ["-u", "-t", "30"]
-        try? wake.run()   // enciende la pantalla si estaba apagada
-        self.showWindow()
-        let alarm = due.contains { ($0["kind"] as? String) == "alarma" }
-        if alarm { NSSound(named: "Glass")?.play() }
-        let text = due.compactMap { $0["spoken"] as? String }.joined(separator: " ")
-        self.universeJS("window.kratosWoke && window.kratosWoke()")
-        DispatchQueue.main.asyncAfter(deadline: .now() + (alarm ? 1.5 : 0.6)) { self.wake.speaker.say(text) }
-      }
+      self.announcements += due
+      self.sayAnnouncements()
     }
+  }
+
+  // Dice los avisos pendientes sin cortar a KRATOS: si está oyendo o hablando, espera a que termine.
+  // Un mensaje de texto se lee sin abrir la ventana y deja la conversación abierta para responder («respóndele que…»).
+  func sayAnnouncements() {
+    guard !announcements.isEmpty else { return }
+    if wake.isBusy { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.sayAnnouncements() }; return }
+    let due = announcements; announcements = []
+    let onlyMessages = due.allSatisfy { ["mensaje", "aviso"].contains($0["kind"] as? String ?? "") }
+    let alarm = due.contains { ($0["kind"] as? String) == "alarma" }
+    if !onlyMessages {
+      let wake = Process(); wake.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate"); wake.arguments = ["-u", "-t", "30"]
+      try? wake.run()   // enciende la pantalla si estaba apagada
+      showWindow()
+      universeJS("window.kratosWoke && window.kratosWoke()")
+    }
+    NSSound(named: alarm ? "Glass" : "Tink")?.play()
+    music.duck(true)
+    let text = due.compactMap { $0["spoken"] as? String }.joined(separator: " ")
+    let isMessage = due.contains { ($0["kind"] as? String) == "mensaje" }
+    DispatchQueue.main.asyncAfter(deadline: .now() + (alarm ? 1.5 : 0.6)) { [weak self] in self?.wake.announce(text, thenListen: isMessage) }
   }
 
   @objc func openBrowserMenu() { ConnectionsBrowser.shared.show(nil) }

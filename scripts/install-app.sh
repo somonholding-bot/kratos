@@ -6,6 +6,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$HOME/Applications/Kratos.app"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
+# Música desde YouTube (solo audio, sin anuncios): necesita yt-dlp
+if ! command -v yt-dlp >/dev/null && command -v brew >/dev/null; then brew install yt-dlp || echo "No pude instalar yt-dlp: la música no funcionará hasta instalarlo (brew install yt-dlp)"; fi
+
 swiftc -O -o "$WORK/Kratos" "$ROOT/native/main.swift" -framework AppKit -framework WebKit -framework AVFoundation
 swift "$ROOT/scripts/make-icon.swift" "$WORK/icon.png"
 mkdir "$WORK/Kratos.iconset"

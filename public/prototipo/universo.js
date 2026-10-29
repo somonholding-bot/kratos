@@ -1237,3 +1237,22 @@ document.getElementById('chat-box')?.addEventListener('submit', async (e) => {
   catch (err) { window.kratosShowText(`**Tú:** ${text}\n\nNo pude responder: ${err.message}`); }
   finally { f.classList.remove('busy'); setState(real.state ?? 'reposo', false); refreshReal(); input.focus(); }
 });
+
+// ---------- música que suena (la pone y la controla la app de Mac) ----------
+let musicNow = null;
+window.kratosMusic = (m) => {
+  musicNow = m;
+  const box = document.getElementById('musica');
+  if (!m) { box.hidden = true; return; }
+  box.hidden = false;
+  box.classList.toggle('cargando', !!m.loading || !m.id);
+  document.getElementById('musica-titulo').textContent = m.loading ? `Cargando: ${m.title}` : m.title;
+  document.getElementById('musica-canal').textContent = m.of ? `${m.channel} · ${m.n} de ${m.of}` : m.channel;
+  document.getElementById('musica-img').src = m.id ? `https://i.ytimg.com/vi/${encodeURIComponent(m.id)}/mqdefault.jpg` : '';
+  const t = box.querySelector('[data-m="toggle"]'); t.textContent = m.playing ? '❚❚' : '▶'; t.title = m.playing ? 'Pausa' : 'Sigue';
+};
+document.getElementById('musica').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-m]'); if (!b || !nativeBridge) return;
+  const cmd = b.dataset.m === 'toggle' ? (musicNow?.playing ? 'pausa' : 'sigue') : b.dataset.m;
+  nativeBridge.postMessage({ event: 'music', cmd });
+});

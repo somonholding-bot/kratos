@@ -14,6 +14,8 @@ import { cleanTmp, synthesize, transcribe, transcribeWake, voiceAvailable } from
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
+import { recordIncoming } from './core/inbox.ts';
+import { startMessageWatcher, takeAnnouncements, watcherStatus } from './core/imessage.ts';
 import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
 import { allSettings, logFault, logPerf, setSetting } from './core/bitacora.ts';
@@ -106,6 +108,7 @@ const GET: Record<string, Route> = {
     fallas: await q(db, `SELECT at, source, level, message FROM fault_log ORDER BY id DESC LIMIT 100`),
     rendimiento: await q(db, `SELECT at, cpu_busy, ram_used_pct, kratos_ram_mb, kratos_cpu, top_app, top_app_ram_mb FROM perf_log ORDER BY id DESC LIMIT 120`),
   }),
+  '/api/mensajes/estado': async () => watcherStatus,
   '/api/voz/ajustes': async (db) => { const st = await getState(db); return { tts_voice: st.tts_voice ?? 'kokoro', voice_model: st.voice_model ?? 'claude-haiku-5-5' }; },
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
@@ -157,7 +160,13 @@ const POST: Record<string, Route> = {
     return { ok: true };
   },
   // La app nativa reclama los avisos vencidos para decirlos en voz alta (cada uno, una sola vez)
-  '/api/agenda/claim': async (db) => ({ due: await claimDue(db) }),
+  // y los mensajes de texto recién llegados (kind «mensaje»)
+  '/api/agenda/claim': async (db) => ({ due: [...(await claimDue(db)), ...takeAnnouncements()] }),
+  // La app de Mac registra cada mensaje de texto recibido y recibe la frase que debe decir
+  '/api/mensajes/recibido': async (db, b) => {
+    if (typeof b.from !== 'string' || typeof b.text !== 'string') throw new HttpError(400, 'Faltan remitente o texto');
+    return recordIncoming(db, { rowid: Number.isFinite(Number(b.rowid)) ? Number(b.rowid) : undefined, from: b.from, name: typeof b.name === 'string' ? b.name : null, text: b.text, service: typeof b.service === 'string' ? b.service : undefined });
+  },
   // Abre en este Mac el asistente que guarda en el Llavero la clave de App Store Connect (los datos nunca pasan por el panel)
   '/api/connect/apple': async (db) => {
     await audit(db, 'propietario (panel)', 'conexion.apple.asistente_abierto', {});
@@ -210,7 +219,7 @@ function send(res: http.ServerResponse, status: number, body: unknown, headers: 
     'content-type': typeof body === 'string' ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
-    'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'`,
+    'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'`,
     ...headers,
   });
   res.end(data);
@@ -339,7 +348,7 @@ export function createServer(db: Db) {
         if (vendor && !(file.startsWith(path.join(THREE_DIR, 'build')) || file.startsWith(path.join(THREE_DIR, 'examples', 'jsm')))) return send(res, 404, { error: 'No existe' });
         if (!file.startsWith(base) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: 'No existe' });
         res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store',
-          'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'`, 'x-content-type-options': 'nosniff' });
+          'content-security-policy': `default-src 'self'; script-src 'self' ${IMPORTMAP_HASHES}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'`, 'x-content-type-options': 'nosniff' });
         return fs.createReadStream(file).pipe(res);
       }
       send(res, 405, { error: 'Método no permitido' });
@@ -363,6 +372,7 @@ if (import.meta.main) {
   await audit(db, 'server', 'proceso.iniciado', {});
   // Muestreo de rendimiento cada 60 s (bitácora de rendimiento)
   setInterval(() => resources().then((r) => logPerf(db, r)).catch(() => {}), 60_000);
+  startMessageWatcher(db);   // mensajes de texto que llegan: se dicen en voz alta al instante
   const beat = setInterval(() => heartbeat(db, 'server').catch((e) => console.error('[server] latido:', e.message)), 15_000);
   heartbeat(db, 'server').catch(() => {});
   const stop = () => { clearInterval(beat); server.close(); db.end().finally(() => process.exit(0)); };

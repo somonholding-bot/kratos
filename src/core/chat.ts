@@ -7,6 +7,7 @@ import { dial, saveContact, textMessage } from './phone.ts';
 import { mailInbox } from './mail.ts';
 import { buildReport, spokenReport } from './report.ts';
 import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from './agenda.ts';
+import { label, musicControl, musicQuery, type MusicCmd } from './music.ts';
 
 // Modo demostración (sin IA): interpreta un conjunto fijo de órdenes en español.
 // No puede aprobar, gastar ni reanudar: esas acciones solo existen como botones del panel.
@@ -14,7 +15,8 @@ import { addAgenda, cancelAgenda, describe, owner, parseAgenda, upcoming } from 
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?(kratos|jarvis)(\W+kratos)?\b\W*/, '').trim();
 
-export type Reply = { text: string; spoken: string; action?: string };
+// action «musica» / «musica_control»: la app de Mac pone la música (query) o la controla (cmd)
+export type Reply = { text: string; spoken: string; action?: string; query?: string; cmd?: MusicCmd };
 
 // onSpeak: voz en tiempo real; recibe cada frase de la respuesta de Claude en cuanto está lista.
 export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto', onSpeak?: (sentence: string) => void): Promise<Reply> {
@@ -24,13 +26,15 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
   // Seguridad primero y sin IA: parar, reanudar y aprobar se resuelven siempre igual.
   const SAFETY = /\b(deten|detener|detenga|parar|alto)\b.*\b(todo|todas|acciones)\b|emergencia|\b(reanuda|reanudar)\b|(aprueba|autoriza|autorizo|apruebo)/;
   let reply: Reply;
-  if (SAFETY.test(t)) reply = await interpret(db, t, text);
+  const music = musicReply(t);   // antes que la seguridad: «reanuda la música» no es reanudar a KRATOS
+  if (music) reply = music;
+  else if (SAFETY.test(t)) reply = await interpret(db, t, text);
   else {
     const agenda = (await reportIntent(db, t)) ?? (await phoneIntent(db, t, text)) ?? (await agendaIntent(db, t, text));
     if (agenda) reply = agenda;
     else {
     const ai = await think(db, channel, onSpeak);
-    if ('text' in ai) reply = ai;
+    if ('text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects };
     else {
       reply = await interpret(db, t, text);
       const why = ai.unavailable === 'sin_clave' ? 'IA sin conectar: falta la clave de Claude' :
@@ -41,6 +45,16 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
   }
   await db.query(`INSERT INTO messages (role, channel, content) VALUES ('jarvis', $1, $2)`, [channel, reply.text]);
   return reply;
+}
+
+// Música sin IA: inmediata y gratis
+const CMD_SPOKEN: Record<MusicCmd, string> = { pausa: 'En pausa.', sigue: 'Seguimos.', siguiente: 'Otra.', para: 'Música apagada.', sube: 'Más alto.', baja: 'Más bajo.' };
+function musicReply(t: string): Reply | null {
+  const cmd = musicControl(t);
+  if (cmd) return { text: CMD_SPOKEN[cmd], spoken: CMD_SPOKEN[cmd], action: 'musica_control', cmd };
+  const query = musicQuery(t);
+  if (!query) return null;
+  return { text: `Poniendo «${label(query)}» desde YouTube.`, spoken: `Pongo ${label(query)}.`, action: 'musica', query };
 }
 
 async function interpret(db: Db, t: string, original: string): Promise<Reply> {

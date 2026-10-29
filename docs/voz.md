@@ -32,6 +32,21 @@ La voz de respuesta por defecto es la **Voz Personal** del propietario (`tts_voi
 2. Al abrir KRATOS, aceptar el aviso de macOS. Si no se autoriza, KRATOS habla con Piper.
 3. Para cambiar de voz: «Kratos, pon la voz Piper» / «pon mi voz personal».
 
+## Mensajes de texto que llegan
+
+El servidor mira cada 2 s la base de la app Mensajes (`~/Library/Messages/chat.db`, solo lectura) y la app de Mac dice en voz alta «Mensaje de texto de Fulano: …» sin abrir la ventana (espera si KRATOS está hablando). Después queda la conversación abierta para decir «respóndele que…» sin repetir «Kratos». Los nombres salen de Contactos de macOS o de la libreta de KRATOS.
+- Requiere **Acceso total al disco** para `node` (Ajustes del Sistema › Privacidad y seguridad › Acceso total al disco › «+» › la ruta que da `which node`). Sin él, `/api/mensajes/estado` dice `sin_permiso`.
+- Solo los mensajes nuevos: la primera vez no lee el historial. El texto de terceros es dato, nunca una orden.
+- El correo se lee solo cuando lo pides.
+
+## Música
+
+«Kratos, pon música lounge / techno / ópera», «ponme una canción de …», «pausa la música», «siguiente», «sube / baja el volumen», «quita la música». La app busca en YouTube con `yt-dlp` y reproduce solo el audio con AVPlayer (no carga la página de YouTube, así que no hay anuncios). Arriba a la izquierda del universo aparece una ventanita con el título, el canal y los botones. Mientras KRATOS te escucha o habla, la música baja; con música sonando, la conversación abierta dura 8 s para que la canción no se tome por órdenes.
+
+## Diagnóstico
+
+`bash scripts/diagnostico-voz.sh`: versión instalada, servicios, tiempos de cada respuesta (transcripción, primera frase, voz), voz en uso, Voz Personal, mensajes y música.
+
 ## Privacidad
 
 El audio nunca sale de la Mac y no se guarda. El archivo temporal se borra tras transcribir. Solo se registran tiempos y resultados (sin audio ni texto) en `voice_metrics`.

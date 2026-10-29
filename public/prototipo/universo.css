@@ -94,3 +94,18 @@ body.idle { cursor: none; }
 #tareas-lista li { margin: 6px 0; } #tareas-lista .st { font-size: 11px; opacity: .7; margin-left: 6px; }
 #tareas-lista button { all: unset; cursor: pointer; color: #9fd0ff; text-decoration: underline; font-size: 12px; margin-left: 6px; }
 .dock button.nuevo { color: #7dd3fc; }   /* hay texto nuevo para leer */
+
+/* Música que suena: arriba a la izquierda, pequeña */
+.musica { position: fixed; left: 20px; top: 20px; z-index: 38; display: flex; align-items: center; gap: 10px; width: min(360px, calc(100vw - 40px)); box-sizing: border-box;
+  padding: 8px 10px 8px 8px; border-radius: 14px; background: rgba(8, 14, 28, 0.78); border: 1px solid rgba(160, 200, 255, 0.22); backdrop-filter: blur(12px); color: #e2eeff; font: 12px/1.35 system-ui, sans-serif; }
+.musica[hidden] { display: none; }
+.musica img { width: 64px; height: 36px; object-fit: cover; border-radius: 6px; background: rgba(255,255,255,.06); flex: none; }
+.musica img[src=""] { visibility: hidden; }
+.musica-info { flex: 1; min-width: 0; }
+.musica-kicker { font-size: 9px; letter-spacing: .22em; color: #7dd3fc; }
+#musica-titulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+#musica-canal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .65; font-size: 11px; }
+.musica-ctl { display: flex; gap: 2px; flex: none; }
+.musica-ctl button { all: unset; cursor: pointer; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; font-size: 12px; color: #dbe8ff; }
+.musica-ctl button:hover, .musica-ctl button:focus-visible { background: rgba(120,160,255,.18); }
+.musica.cargando #musica-titulo { opacity: .7; }

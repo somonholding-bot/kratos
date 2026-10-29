@@ -6,7 +6,7 @@
   <title>KRATOS · Prototipo de universo</title>
   <link rel="icon" href="/icon.png">
   <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
-  <link rel="stylesheet" href="/prototipo/universo.css?v=cinema-5">
+  <link rel="stylesheet" href="/prototipo/universo.css?v=cinema-6">
 </head>
 <body>
   <canvas id="universo" aria-label="Universo de KRATOS: su mente en el centro y siete especialistas alrededor"></canvas>
@@ -33,6 +33,17 @@
     </form>
   </aside>
 
+  <!-- Música que suena (YouTube, solo audio): la pone la app de Mac por voz -->
+  <div id="musica" class="musica" hidden aria-live="polite">
+    <img id="musica-img" alt="">
+    <div class="musica-info"><div class="musica-kicker">SONANDO</div><div id="musica-titulo"></div><div id="musica-canal"></div></div>
+    <div class="musica-ctl">
+      <button type="button" data-m="toggle" title="Pausa / sigue">❚❚</button>
+      <button type="button" data-m="siguiente" title="Siguiente">⏭</button>
+      <button type="button" data-m="para" title="Quitar música">✕</button>
+    </div>
+  </div>
+
   <!-- Controles discretos: aparecen al mover el ratón o pulsar una tecla -->
   <nav id="dock" class="dock" aria-label="Controles de KRATOS">
     <button data-act="mute" title="Micrófono (M)">🎙︎<span>Micrófono</span></button>
@@ -58,6 +69,6 @@
     <p><b>Esc</b> salir · <b>Espacio</b> pausar · <b>M</b> silenciar · <b>R</b> movimiento reducido · <b>Q</b> calidad · <b>L</b> lista · <b>I</b> consumo · <b>F</b> pantalla completa · <b>1–7</b> delegación simulada · <b>S</b> estado simulado</p>
   </div>
 
-  <script type="module" src="/prototipo/universo.js?v=cinema-5"></script>
+  <script type="module" src="/prototipo/universo.js?v=cinema-6"></script>
 </body>
 </html>
