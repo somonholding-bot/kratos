@@ -91,8 +91,10 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
       guard let self, my == self.token else { return }
       self.loading = false
       if system == "personal", let v = Speaker.personalVoice {
+        appLog("voz: personal \(v.name)")
         self.systemVoice(text, voice: v)
       } else if system == "personal" {
+        appLog("voz: personal no disponible, uso Piper")
         // Voz Personal sin autorizar: se usa Piper (nunca la voz básica del sistema)
         self.loading = true
         API.speech(text, voice: "piper") { [weak self] d, _ in
@@ -140,13 +142,23 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
   static var personalVoice: AVSpeechSynthesisVoice? {
     guard #available(macOS 14.0, *), AVSpeechSynthesizer.personalVoiceAuthorizationStatus == .authorized else { return nil }
     let mine = AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }
-    return mine.first { $0.name.localizedCaseInsensitiveContains("Idalmi") } ?? mine.first
+    let named = mine.filter { $0.name.localizedCaseInsensitiveContains("Idalmi") }
+    // Si hay varias «Idalmi», la elegida en ajustes («personal_voice_id») o la de mejor calidad
+    if let id = UserDefaults.standard.string(forKey: "personalVoiceId"), let v = mine.first(where: { $0.identifier == id }) { return v }
+    return (named.isEmpty ? mine : named).max { $0.quality.rawValue < $1.quality.rawValue }
   }
   static func requestPersonalVoice() {
     guard #available(macOS 14.0, *) else { return }
     AVSpeechSynthesizer.requestPersonalVoiceAuthorization { status in
-      let names = AVSpeechSynthesisVoice.speechVoices().filter { $0.voiceTraits.contains(.isPersonalVoice) }.map { "\($0.name) (\($0.language))" }
-      appLog("voz personal: autorización \(status.rawValue) · voces \(names)")
+      appLog("voz personal: autorización \(status.rawValue)")
+      // macOS puede tardar en ofrecer las voces personales tras el permiso: se revisa varias veces
+      for delay in [1.0, 5.0, 15.0, 40.0] {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+          let all = AVSpeechSynthesisVoice.speechVoices()
+          let mine = all.filter { $0.voiceTraits.contains(.isPersonalVoice) }.map { "\($0.name) [\($0.language), calidad \($0.quality.rawValue), \($0.identifier)]" }
+          appLog("voz personal (+\(Int(delay)) s): \(mine.count) de \(all.count) voces · \(mine)")
+        }
+      }
     }
   }
 
