@@ -22,21 +22,17 @@ Actualizada: 28-oct-2026.
 | 11 | Universo 3D a pantalla completa; panel interno con el mismo universo | ✅ |
 | 12 | Repositorio público en GitHub | ✅ |
 
-## 🚀 Plan actual (29-oct-2026)
+## 🚀 Plan actual (29-oct-2026) — 7 etapas en total
 
 | Etapa | Qué incluye | Estado |
 |---|---|---|
-| 1 | Universo encuadrado, cielo en movimiento, nebulosa, «¡pum!» al hablar; skills de creadores y prensa | ✅ |
-| 2 | Saludo «señor Idalmi», agenda y alarmas habladas, reporte financiero por voz (panel izquierdo) | ✅ |
-| 2 | Voz natural masculina local (Piper es_MX), micrófono más sensible | ✅ |
-| 2 | Llamadas y mensajes de texto por el iPhone (tú confirmas), libreta de contactos | ✅ |
-| 2 | Correo por la app Mail (leer y borradores) | ✅ · ⏳ aceptar el permiso de Automatización |
-| 2 | Apple App Store Connect (solo lectura, aviso hablado al cambiar la revisión) | ✅ código · ⏳ tu clave (asistente en pantalla) |
-| 2 | Navegador de conexiones (inicias sesión en YouTube, redes, Google Play…) | ✅ |
-| 2 | Escucha corregida (ruido de fondo, «Hey Kratos» en cualquier punto, sin pitido) y funciones nuevas que KRATOS se programa con tu aprobación (clima y tiempo de viaje de ejemplo) | ✅ · ⏳ aprobar las 2 funciones en Aprobaciones |
-| 3 | Acceso remoto con enlace propio | ✅ código · ⏳ dominio en Cloudflare y `scripts/acceso-remoto.sh` |
-| 4 | Búsqueda web para los agentes y delegación en Claude Code | ⏳ siguiente |
-| 5 | Creadores reales (flujo de contratación), Google Play API, panel mínimo, llamadas con voz IA (Vapi/Retell) | ⏳ |
+| 1 | Universo (encuadre, cielo, nebulosa, «¡pum!»), skills de marketing y creadores | ✅ |
+| 2 | Voz natural, escucha corregida, saludo, agenda y alarmas, reporte financiero, llamadas y SMS por el iPhone, correo por Mail, Apple (lectura), navegador de conexiones, funciones nuevas con aprobación | ✅ · ⏳ tus permisos: Mail, clave de Apple, aprobar 2 funciones |
+| 3 | Acceso remoto con enlace propio (Cloudflare + clave remota) | ✅ código · ⏳ dominio en Cloudflare |
+| 4 | Búsqueda web para KRATOS y especialistas; encargos a Claude Code con aprobación | ✅ · ⏳ iniciar sesión en Claude Code (Terminal: `claude` → `/login`) |
+| 5 | Panel mínimo (voz, diseños, saldos, conexiones), Google Play (lectura), flujo de contratación de creadores | ⏳ siguiente |
+| 6 | Finanzas reales: ingresos (Stripe / RevenueCat / App Store), banco en solo lectura; el reporte usa cifras reales | ⏳ |
+| 7 | Publicación y anuncios con aprobación por canal y presupuesto; llamadas con voz IA (Vapi / Retell) | ⏳ |
 
 ## ⏳ Falta (en orden)
 
