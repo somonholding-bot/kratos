@@ -210,10 +210,17 @@ const screens = {
   async conexiones() {
     const rows = await api('/api/connections');
     const live = { 'App Store Connect': 'apple' };   // conexiones con asistente ya disponible
+    const sites = { 'Gmail': 'https://mail.google.com', 'Google Calendar': 'https://calendar.google.com', 'YouTube': 'https://studio.youtube.com', 'Instagram / Facebook': 'https://business.facebook.com',
+      'TikTok': 'https://www.tiktok.com', 'X (Twitter)': 'https://x.com', 'LinkedIn': 'https://www.linkedin.com', 'Google Play Console': 'https://play.google.com/console', 'Vercel': 'https://vercel.com/dashboard',
+      'GitHub': 'https://github.com', 'Stripe': 'https://dashboard.stripe.com', 'Upwork / Fiverr': 'https://www.upwork.com', 'Collabstr / Insense': 'https://collabstr.com', 'Notion': 'https://www.notion.so',
+      'Slack': 'https://app.slack.com', 'Apple Search Ads': 'https://searchads.apple.com', 'Google Ads': 'https://ads.google.com', 'Meta Ads': 'https://adsmanager.facebook.com', 'Lista de correo (Mailchimp / Brevo / Kit)': 'https://app.brevo.com' };
+    const native = !!window.webkit?.messageHandlers?.kratos;
     const btn = (c) => (live[c.service] ? `<button class="ctl resume" data-connect="${live[c.service]}">${c.status === 'conectado' ? 'Reconectar' : 'Conectar'}</button>`
-      : c.status === 'conectado' ? '' : `<button class="ctl" data-howto="${esc(c.credentials_required)}">Cómo conectar</button>`);
+      : c.status === 'conectado' ? '' : native && sites[c.service] ? `<button class="ctl" data-browse="${esc(sites[c.service])}">Iniciar sesión</button>`
+      : `<button class="ctl" data-howto="${esc(c.credentials_required)}">Cómo conectar</button>`);
     const ok = rows.filter((c) => c.status === 'conectado').length;
     return `<h1>Conexiones</h1>${meta(`${ok} de ${rows.length} conectadas · todas empiezan en solo lectura`)}
+      ${native ? '<p><button class="ctl resume" data-browse="">Abrir navegador de conexiones</button> <span class="note">Inicia sesión en tus servicios dentro de KRATOS; las sesiones quedan guardadas en este Mac.</span></p>' : ''}
       ${table([['', btn], ['Servicio', (c) => `<b>${esc(c.service)}</b>`], ['Capacidades', (c) => esc(c.capabilities)], ['Estado', (c) => `<span class="tag ${c.status === 'conectado' ? '' : 'warn'}">${esc(c.status.replaceAll('_', ' '))}</span>`],
         ['Acceso', (c) => esc(c.access)], ['Cuenta', (c) => esc(c.account) || '—'], ['Credenciales', (c) => esc(c.credentials_required)], ['Coste', (c) => esc(c.cost)],
         ['Última prueba', (c) => fmtDate(c.last_check)], ['Revocación', (c) => esc(c.revocation)]], rows)}`;
@@ -476,6 +483,7 @@ document.addEventListener('click', async (e) => {
     toast('Se abrió en tu Mac el asistente de conexión. Sigue sus pasos: las claves se guardan solo en el Llavero.');
     return;
   }
+  if (t.dataset.browse !== undefined) { window.webkit?.messageHandlers?.kratos?.postMessage({ event: 'openBrowser', url: t.dataset.browse || null }); return; }
   if (t.dataset.howto) { toast(`Para conectar esto KRATOS necesita: ${t.dataset.howto}.\n\nPídeselo por voz («Kratos, quiero conectar …») y te guiará paso a paso.`); return; }
   if (t.dataset.approve || t.dataset.reject) {
     const id = t.dataset.approve || t.dataset.reject;

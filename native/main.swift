@@ -330,6 +330,75 @@ extension Notification.Name {
   static let kratosWoke = Notification.Name("kratosWoke")
 }
 
+// MARK: - Navegador de conexiones
+// Ventana propia para que el propietario inicie sesión en sus servicios (YouTube, redes, correo, Apple, Google Play…).
+// Las sesiones quedan guardadas en un almacén separado del panel. KRATOS no lee contraseñas ni controla esta ventana.
+
+final class ConnectionsBrowser: NSObject, WKNavigationDelegate, WKUIDelegate, NSTextFieldDelegate {
+  static let shared = ConnectionsBrowser()
+  static let sites: [(String, String)] = [
+    ("Gmail", "https://mail.google.com"), ("YouTube Studio", "https://studio.youtube.com"), ("Instagram", "https://www.instagram.com"),
+    ("Facebook / Meta", "https://business.facebook.com"), ("TikTok", "https://www.tiktok.com"), ("X", "https://x.com"), ("LinkedIn", "https://www.linkedin.com"),
+    ("App Store Connect", "https://appstoreconnect.apple.com"), ("Google Play Console", "https://play.google.com/console"), ("Cloudflare", "https://dash.cloudflare.com"),
+    ("Namecheap", "https://ap.www.namecheap.com"), ("Vercel", "https://vercel.com/dashboard"), ("GitHub", "https://github.com"), ("Stripe", "https://dashboard.stripe.com"),
+    ("Upwork", "https://www.upwork.com"), ("Fiverr", "https://www.fiverr.com"), ("Collabstr", "https://collabstr.com"),
+  ]
+  private var window: NSWindow?
+  private var web: WKWebView!
+  private let address = NSTextField()
+
+  func show(_ url: String?) {
+    if window == nil { build() }
+    NSApp.activate(ignoringOtherApps: true)
+    window?.makeKeyAndOrderFront(nil)
+    if let url, let u = URL(string: url), ["https", "http"].contains(u.scheme ?? "") { web.load(URLRequest(url: u)) }
+    else if web.url == nil { web.load(URLRequest(url: URL(string: ConnectionsBrowser.sites[0].1)!)) }
+  }
+
+  private func build() {
+    let cfg = WKWebViewConfiguration()
+    cfg.websiteDataStore = WKWebsiteDataStore(forIdentifier: UUID(uuidString: "6B1E3C2A-4D5F-4A7B-9C8D-0E1F2A3B4C5D")!)   // sesiones propias y persistentes
+    web = WKWebView(frame: .zero, configuration: cfg)
+    web.navigationDelegate = self; web.uiDelegate = self
+    web.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+    let sites = NSPopUpButton(frame: .zero, pullsDown: true)
+    sites.addItem(withTitle: "Servicios")
+    for (name, _) in ConnectionsBrowser.sites { sites.addItem(withTitle: name) }
+    sites.target = self; sites.action = #selector(pick(_:))
+    let back = NSButton(title: "‹", target: web, action: #selector(WKWebView.goBack(_:)))
+    let fwd = NSButton(title: "›", target: web, action: #selector(WKWebView.goForward(_:)))
+    let reload = NSButton(title: "↻", target: web, action: #selector(WKWebView.reload(_:)))
+    address.placeholderString = "Dirección (https://…)"; address.delegate = self; address.target = self; address.action = #selector(go)
+    let bar = NSStackView(views: [back, fwd, reload, sites, address]); bar.spacing = 6; bar.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
+    let note = NSTextField(labelWithString: "Inicia sesión aquí en lo que quieras conectar. Las sesiones se guardan solo en este Mac; KRATOS nunca ve tus contraseñas.")
+    note.font = .systemFont(ofSize: 11); note.textColor = .secondaryLabelColor
+    let stack = NSStackView(views: [bar, note, web]); stack.orientation = .vertical; stack.spacing = 0; stack.alignment = .leading
+    note.leadingAnchor.constraint(equalTo: stack.leadingAnchor, constant: 12).isActive = true
+    bar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    web.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 820), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+    w.title = "KRATOS · Navegador de conexiones"; w.contentView = stack; w.center(); w.isReleasedWhenClosed = false
+    window = w
+  }
+
+  @objc private func pick(_ b: NSPopUpButton) {
+    let i = b.indexOfSelectedItem - 1
+    guard i >= 0, i < ConnectionsBrowser.sites.count else { return }
+    web.load(URLRequest(url: URL(string: ConnectionsBrowser.sites[i].1)!))
+  }
+  @objc private func go() {
+    var t = address.stringValue.trimmingCharacters(in: .whitespaces)
+    if !t.contains("://") { t = "https://" + t }
+    if let u = URL(string: t), ["https", "http"].contains(u.scheme ?? "") { web.load(URLRequest(url: u)) }
+  }
+  func webView(_ w: WKWebView, didFinish n: WKNavigation!) { address.stringValue = w.url?.absoluteString ?? ""; window?.title = "KRATOS · \(w.title ?? "Navegador de conexiones")" }
+  // Ventanas emergentes de inicio de sesión (Google, Apple, Meta…): se abren en la misma vista
+  func webView(_ w: WKWebView, createWebViewWith c: WKWebViewConfiguration, for a: WKNavigationAction, windowFeatures f: WKWindowFeatures) -> WKWebView? {
+    if a.targetFrame == nil { w.load(a.request) }
+    return nil
+  }
+}
+
 // MARK: - Aplicación
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
@@ -464,6 +533,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         self?.web.evaluateJavaScript("window.kratosSpoke && window.kratosSpoke()")
       }
     case "hush": wake.speaker.stop()
+    case "openBrowser": ConnectionsBrowser.shared.show(body["url"] as? String)
     case "exitImmersive": openDetails()
     case "wake", "mute":
       // Silenciar apaga también el detector: el micrófono queda cerrado del todo.
@@ -484,6 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     menu.addItem(.separator())
     menu.addItem(withTitle: "Universo KRATOS (pantalla completa)", action: #selector(openUniverseMenu), keyEquivalent: "u")
     menu.addItem(withTitle: "Panel de detalles", action: #selector(openDetailsMenu), keyEquivalent: "d")
+    menu.addItem(withTitle: "Navegador de conexiones", action: #selector(openBrowserMenu), keyEquivalent: "b")
     wakeItem = menu.addItem(withTitle: "Escuchar «Kratos»", action: #selector(toggleWake), keyEquivalent: "")
     menu.addItem(.separator())
     menu.addItem(withTitle: "Parada de emergencia", action: #selector(emergency), keyEquivalent: "")
@@ -541,6 +612,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     }
   }
 
+  @objc func openBrowserMenu() { ConnectionsBrowser.shared.show(nil) }
   @objc func openPanel() { showWindow() }
   @objc func openUniverseMenu() { showWindow(); openUniverse() }
   @objc func openDetailsMenu() { showWindow(); openDetails() }
