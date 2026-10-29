@@ -22,7 +22,7 @@ export async function greeting(db: Db): Promise<string> {
   const h = new Date().getHours();
   // «señor» solo en el saludo de la mañana; el resto del día, por su nombre
   const hi = h < 12 ? `Buenos días, señor ${o.name}` : h < 20 ? `¿Qué tal, ${o.name}?` : `Buenas noches, ${o.name}`;
-  return pick([`${hi}. Dígame.`, `${hi}. ¿En qué le ayudo?`, `${hi}.`, `Aquí estoy. ¿Qué necesita?`]);
+  return pick([`${hi}. Dígame.`, `${hi}. ¿En qué le ayudo?`, `${hi}.`, `Aquí estoy, ${o.name}. ¿Qué necesita?`]);
 }
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
