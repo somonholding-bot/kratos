@@ -125,11 +125,13 @@ export async function runSelfImprovement(db: Db, task: any) {
     await git('checkout', '-b', branch);
     const prompt = `Eres KRATOS mejorándote a ti mismo, con permiso del propietario. Repositorio: ${ROOT}.\n\n${job.instructions}\n\n` +
       `Reglas obligatorias:\n- No borres archivos.\n- No modifiques: ${PROTECTED.join(', ')}, ni migraciones ya existentes en db/ (puedes crear una nueva).\n` +
-      `- Para ver datos reales usa: bash scripts/consulta-bd.sh "SELECT …" (solo lectura).\n- Cambios pequeños y del estilo del código existente.\n- Al terminar ejecuta «npm test» y corrige hasta que pase.\n- No hagas commit ni push: eso lo hace el sistema.\n` +
+      `- Para ver datos reales usa: bash scripts/consulta-bd.sh "SELECT …" (solo lectura). Para ampliar la base de datos crea una migración nueva en db/ (NNN_nombre.sql); se aplica sola al reiniciar.\n- Cambios pequeños y del estilo del código existente.\n- Al terminar ejecuta «npm test» y corrige hasta que pase.\n- No hagas commit ni push: eso lo hace el sistema.\n` +
       `Termina con un resumen en español: qué cambiaste, en qué archivos y por qué.`;
+    // Terminal con lista de prohibidos: puede ejecutar y probar, pero no borrar, instalar, publicar, usar sudo ni tocar servicios
     const r = await sh(CLAUDE, ['-p', '--output-format', 'json', '--model', 'opus', '--permission-mode', 'acceptEdits',
-      '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(npm test:*)', 'Bash(node --check:*)', 'Bash(git diff:*)', 'Bash(git status:*)', 'Bash(bash scripts/consulta-bd.sh:*)',
-      '--disallowedTools', 'WebFetch', 'Bash(rm:*)', 'Bash(git push:*)', 'Bash(git commit:*)', 'Bash(git reset:*)', 'Bash(git checkout:*)',
+      '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'WebSearch', 'Bash',
+      '--disallowedTools', 'Bash(rm:*)', 'Bash(sudo:*)', 'Bash(git push:*)', 'Bash(git commit:*)', 'Bash(git reset:*)', 'Bash(git checkout:*)', 'Bash(git clean:*)', 'Bash(git branch:*)',
+      'Bash(npm install:*)', 'Bash(npm i:*)', 'Bash(brew:*)', 'Bash(pip:*)', 'Bash(curl:*)', 'Bash(wget:*)', 'Bash(launchctl:*)', 'Bash(security:*)', 'Bash(psql:*)', 'Bash(dropdb:*)', 'Bash(chmod:*)', 'Bash(mv:*)',
       '--strict-mcp-config', '--no-session-persistence'], 30 * 60_000, prompt);
     let summary = r.out.trim();
     try { const j = JSON.parse(r.out.slice(r.out.indexOf('{'))); summary = String(j.result ?? summary); } catch {}

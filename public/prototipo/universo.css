@@ -77,3 +77,19 @@ body.idle { cursor: none; }
 #mic-float .mic-ico { font-size: 15px; }
 #mic-float[aria-pressed="true"] { color: #ffb0b0; border-color: rgba(255, 120, 120, 0.6); background: rgba(60, 10, 14, 0.7); }
 body.idle #mic-float { cursor: pointer; }
+
+/* Ventana de lectura (abajo, centrada): el texto completo de una respuesta de KRATOS */
+#lectura { position: fixed; left: 50%; bottom: 96px; width: min(760px, calc(100vw - 32px)); max-height: 46vh; z-index: 35;
+  display: flex; flex-direction: column; border-radius: 18px; color: #e3f0ff; font: 14px/1.55 system-ui, sans-serif;
+  background: rgba(8, 14, 28, 0.82); border: 1px solid rgba(160, 200, 255, 0.22); backdrop-filter: blur(16px);
+  transform: translate(-50%, 24px); opacity: 0; pointer-events: none; transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .35s; }
+#lectura.open { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+#lectura header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 6px; font-size: 11px; letter-spacing: .3em; opacity: .8; }
+#lectura header button { background: none; border: 0; color: inherit; cursor: pointer; font-size: 12px; margin-left: 10px; letter-spacing: .05em; }
+#lectura header button[data-close-text] { font-size: 20px; }
+#lectura .lectura-body { overflow: auto; padding: 4px 18px 16px; }
+#lectura h4, #lectura h5 { margin: 10px 0 4px; font-size: 13px; letter-spacing: .04em; color: #9fd0ff; }
+#lectura ul { margin: 4px 0; padding-left: 18px; } #lectura li { margin: 3px 0; }
+#lectura code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; }
+#text-float { position: fixed; top: 18px; right: 156px; z-index: 40; padding: 9px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(160, 210, 255, 0.35); background: rgba(8, 14, 28, 0.62); color: #cfe8ff; font: 12px/1 system-ui, sans-serif; backdrop-filter: blur(10px); }

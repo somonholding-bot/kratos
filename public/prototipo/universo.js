@@ -1172,3 +1172,29 @@ window.kratosReport = async () => {
   reportTimer = setTimeout(() => el.classList.remove('open'), 90_000);
 };
 addEventListener('click', (e) => { if (e.target.closest?.('[data-close-report]')) document.getElementById('reporte')?.classList.remove('open'); });
+
+// Ventana de lectura: cuando KRATOS responde con más detalle del que dice en voz, se muestra aquí (también a pantalla completa)
+let lastText = '';
+const mdLite = (t) => esc(t)
+  .replace(/^### (.*)$/gm, '<h5>$1</h5>').replace(/^## (.*)$/gm, '<h4>$1</h4>').replace(/^# (.*)$/gm, '<h4>$1</h4>')
+  .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/^\s*[-•·] (.*)$/gm, '<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m.replace(/\n/g, '')}</ul>`)
+  .replace(/(<\/h[45]>|<\/ul>)\n+/g, '$1').replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+window.kratosShowText = (text) => {
+  lastText = String(text ?? '');
+  let el = document.getElementById('lectura');
+  if (!el) {
+    el = document.createElement('aside'); el.id = 'lectura'; el.setAttribute('aria-label', 'Texto de KRATOS');
+    el.innerHTML = '<header><span>KRATOS</span><span><button type="button" data-copy-text title="Copiar">Copiar</button><button type="button" data-close-text aria-label="Cerrar">×</button></span></header><div class="lectura-body"></div>';
+    document.body.append(el);
+  }
+  el.querySelector('.lectura-body').innerHTML = mdLite(lastText);
+  el.querySelector('.lectura-body').scrollTop = 0;
+  requestAnimationFrame(() => el.classList.add('open'));
+};
+addEventListener('click', (e) => {
+  if (e.target.closest?.('[data-close-text]')) document.getElementById('lectura')?.classList.remove('open');
+  if (e.target.closest?.('[data-copy-text]')) navigator.clipboard?.writeText(lastText).then(() => log('Texto copiado')).catch(() => {});
+  if (e.target.closest?.('#text-float') && lastText) window.kratosShowText(lastText);
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('lectura')?.classList.contains('open')) { e.stopImmediatePropagation(); document.getElementById('lectura').classList.remove('open'); } }, true);

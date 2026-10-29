@@ -327,7 +327,7 @@ final class WakeListener {
       self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)   // la conversación sigue abierta
       let thinkMs = Int(Date().timeIntervalSince(t0) * 1000)
       if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": thinkMs]) }
-      NotificationCenter.default.post(name: .kratosReplied, object: reply?["action"] as? String)
+      NotificationCenter.default.post(name: .kratosReplied, object: nil, userInfo: reply ?? [:])
       guard let spoken = reply?["spoken"] as? String else { self.resume(); return }
       self.set(.speaking)
       self.speaker.say(spoken) { self.resume() }
@@ -460,7 +460,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     }
     NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] n in
       self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()"); self?.panel.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
-      if (n.object as? String) == "reporte" { self?.universeJS("window.kratosReport && window.kratosReport()") }
+      guard let self else { return }
+      let info = n.userInfo ?? [:]
+      if (info["action"] as? String) == "reporte" { self.universeJS("window.kratosReport && window.kratosReport()") }
+      // Si la respuesta escrita trae más que lo que se dice en voz, se abre la ventana de lectura en el universo
+      else if let text = info["text"] as? String, let spoken = info["spoken"] as? String, text.count > spoken.count + 40 {
+        self.universeJS("window.kratosShowText && window.kratosShowText(\(self.jsString(text)))")
+      }
     }
     Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
     ensureService { [weak self] ok in
