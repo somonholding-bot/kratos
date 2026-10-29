@@ -358,11 +358,11 @@ final class WakeListener {
   // Conecta la música a la salida del motor; false si la escucha no está activa con cancelación de eco
   func attachMusic(_ node: AVAudioPlayerNode, format: AVAudioFormat) -> Bool {
     guard engine.isRunning, echoCancel else { return false }
-    if node.engine == nil { engine.attach(node) }
-    engine.disconnectNodeOutput(node)
+    engine.attach(node)
     engine.connect(node, to: engine.mainMixerNode, format: format)
     return true
   }
+  func detachMusic(_ node: AVAudioPlayerNode) { if node.engine === engine { engine.detach(node) } }
 
   func stop() {
     onOutput?(false)   // la música pasa a AVPlayer, en el mismo punto, antes de parar el motor
@@ -558,7 +558,10 @@ final class MusicPlayer {
   static let cache = ROOT + "/.jarvis/musica"
   weak var output: WakeListener?
   private let player = AVPlayer()            // sin cancelación de eco (escucha apagada o archivo que el motor no lee)
-  private let node = AVAudioPlayerNode()     // con cancelación de eco
+  // Con cancelación de eco. Uno nuevo por canción: reconectar el mismo con el motor en marcha lo dejaba mudo
+  // (la primera canción sonaba y al cambiar ya no)
+  private var node: AVAudioPlayerNode?
+  private var engineBroken = false           // el motor no logró sonar: el resto de la sesión, AVPlayer
   private var file: AVAudioFile?
   private var fileStart: AVAudioFramePosition = 0
   private var onEngine = false, paused = false
@@ -570,7 +573,7 @@ final class MusicPlayer {
   private(set) var ducked = false
   var onChange: (([String: Any]?) -> Void)?   // ventanita del universo (nil = se oculta)
   var onError: ((String) -> Void)?
-  var isPlaying: Bool { !list.isEmpty && !paused && (onEngine ? node.isPlaying : player.timeControlStatus != .paused) }
+  var isPlaying: Bool { !list.isEmpty && !paused && (onEngine ? node?.isPlaying ?? false : player.timeControlStatus != .paused) }
 
   init() {
     NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main) { [weak self] n in
@@ -623,10 +626,11 @@ final class MusicPlayer {
   private func begin(_ path: String, at seconds: Double = 0, paused wasPaused: Bool = false) {
     let url = URL(fileURLWithPath: path)
     segment += 1; let my = segment
-    node.stop(); player.pause(); player.replaceCurrentItem(with: nil)
+    dropNode(); player.pause(); player.replaceCurrentItem(with: nil)
     paused = wasPaused
-    if let out = output, let f = try? AVAudioFile(forReading: url), f.length > 0, out.attachMusic(node, format: f.processingFormat) {
-      file = f; onEngine = true
+    let node = AVAudioPlayerNode()
+    if !engineBroken, let out = output, let f = try? AVAudioFile(forReading: url), f.length > 0, out.attachMusic(node, format: f.processingFormat) {
+      self.node = node; file = f; onEngine = true
       fileStart = min(AVAudioFramePosition(max(0, seconds) * f.processingFormat.sampleRate), f.length - 1)
       node.scheduleSegment(f, startingFrame: fileStart, frameCount: AVAudioFrameCount(f.length - fileStart), at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
         DispatchQueue.main.async { guard let self, my == self.segment else { return }; self.skip() }   // terminó la canción
@@ -643,11 +647,36 @@ final class MusicPlayer {
       appLog("música: suena sin cancelación de eco")
     }
     if !list.isEmpty { onChange?(info(playing: !wasPaused)) }
+    if !wasPaused { watch(path, from: max(0, seconds), segment: my) }
+  }
+
+  // A los 4 s se comprueba que la canción avanza de verdad; si no, se pasa al otro reproductor o a la siguiente
+  private func watch(_ path: String, from start: Double, segment my: Int) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+      guard let self, my == self.segment, !self.paused else { return }
+      let now = self.position
+      if now > start + 1 { return }
+      if self.onEngine {
+        appLog("música: el motor no avanza (\(now) s), paso a AVPlayer")
+        self.engineBroken = true
+        self.begin(path, at: start)
+      } else {
+        appLog("música: AVPlayer no avanza (\(now) s, \(self.player.currentItem?.error?.localizedDescription ?? "sin error")), siguiente")
+        self.files = self.files.filter { $0.value != path }; try? FileManager.default.removeItem(atPath: path)
+        self.failures += 1
+        if self.failures < 4 { self.skip() } else { self.stop(); self.onError?("La música no está sonando. Revisa el volumen del Mac o prueba otra búsqueda.") }
+      }
+    }
+  }
+
+  private func dropNode() {
+    guard let n = node else { return }
+    n.stop(); output?.detachMusic(n); node = nil
   }
 
   // Segundos ya sonados de la canción actual
   private var position: Double {
-    if onEngine, let f = file, let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) {
+    if onEngine, let n = node, let f = file, let t = n.lastRenderTime, let p = n.playerTime(forNodeTime: t) {
       return Double(fileStart + p.sampleTime) / f.processingFormat.sampleRate
     }
     let s = player.currentTime().seconds
@@ -675,11 +704,16 @@ final class MusicPlayer {
     switch cmd {
     case "pausa":
       guard !list.isEmpty else { return }
-      paused = true; onEngine ? node.pause() : player.pause(); onChange?(info(playing: false))
+      paused = true
+      if onEngine { node?.pause() } else { player.pause() }
+      onChange?(info(playing: false))
     case "sigue":
       guard !list.isEmpty else { return }
       guard currentPath != nil else { start(); return }   // aún sin archivo: se vuelve a cargar
-      paused = false; onEngine ? node.play() : player.play(); onChange?(info(playing: true))
+      paused = false
+      if onEngine { node?.play() } else { player.play() }
+      onChange?(info(playing: true))
+      if let path = currentPath { watch(path, from: position, segment: segment) }
     case "siguiente": skip()
     case "para": stop()
     case "sube": volume = min(1, volume + 0.15); applyVolume(); UserDefaults.standard.set(volume, forKey: "musicVolume")
@@ -692,7 +726,7 @@ final class MusicPlayer {
 
   private func halt() {
     segment += 1
-    node.stop(); player.pause(); player.replaceCurrentItem(with: nil)
+    dropNode(); player.pause(); player.replaceCurrentItem(with: nil)
     file = nil; onEngine = false; paused = false
   }
 
@@ -704,7 +738,7 @@ final class MusicPlayer {
 
   // Mientras KRATOS escucha o habla, la música baja; al terminar vuelve
   func duck(_ on: Bool) { guard on != ducked else { return }; ducked = on; applyVolume() }
-  private func applyVolume() { let v = ducked ? volume * 0.12 : volume; player.volume = v; node.volume = v }
+  private func applyVolume() { let v = ducked ? volume * 0.12 : volume; player.volume = v; node?.volume = v }
 
   // Descarga el audio una sola vez por canción (si ya se está bajando, espera a esa descarga)
   private func download(_ id: String, _ done: @escaping (String?) -> Void) {
