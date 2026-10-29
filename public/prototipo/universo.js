@@ -40,16 +40,18 @@ const real = { agents: [], businesses: [], overview: null, connected: false, sta
 const embedded = new URLSearchParams(location.search).has('embed');
 if (embedded) document.documentElement.classList.add('embed');
 // Voz real desde la app de Mac: despertar, nivel del micrófono y pulsos de cada palabra de KRATOS
-const voice = { nativeState: null, enabled: true, awake: false, wokeAt: 0, level: 0, pulse: 0, thinking: false };
+const voice = { nativeState: null, enabled: true, awake: false, wokeAt: 0, level: 0, pulse: 0, thinking: false, burst: 0 };
+// «¡Pum!»: al despertar y en cada golpe de voz, el núcleo, las neuronas y el cielo se expanden y vuelven
+const boom = (k) => { voice.burst = Math.max(voice.burst, k); if (k >= 0.6 && world?.shock) world.shock.t = 0; };
 const nativeBridge = window.webkit?.messageHandlers?.kratos ?? null;
 window.kratosNativeState = (state, enabled) => {
   voice.nativeState = state; voice.enabled = enabled;
   if (state === 'Di «Kratos»' || state === 'Escucha apagada') voice.awake = false;
   ui.muted = !enabled; document.querySelector('[data-act="mute"]')?.setAttribute('aria-pressed', ui.muted);
 };
-window.kratosWoke = () => { voice.awake = true; voice.wokeAt = performance.now(); log('KRATOS ha despertado'); };
-window.kratosSpeechPulse = () => { voice.pulse = 1; };
-window.kratosMicLevel = (v) => { voice.level = Math.min(1, v * 9); };
+window.kratosWoke = () => { voice.awake = true; voice.wokeAt = performance.now(); boom(1); log('KRATOS ha despertado'); };
+window.kratosSpeechPulse = () => { voice.pulse = 1; boom(0.45); };
+window.kratosMicLevel = (v) => { const l = Math.min(1, v * 9); if (l > voice.level + 0.35) boom(Math.min(1, l)); voice.level = l; };
 window.kratosRefresh = () => refreshReal();
 function voiceState() {
   const w = voice.nativeState;
@@ -676,8 +678,11 @@ function build() {
   const bright = makeBrightStars(q.bright, U); root.add(bright);
   root.add(makeGalaxies(q.galaxies));
   root.add(makeConstellations(ui.quality === 'baja' ? 10 : ui.quality === 'media' ? 22 : 32));
-  root.add(makeNeuralField(q.field));
+  const field = makeNeuralField(q.field); root.add(field);
   const mind = makeMind(q); root.add(mind.group);
+  // onda expansiva del «¡pum!»: un anillo luminoso que sale del núcleo
+  const shock = new THREE.Mesh(new THREE.RingGeometry(0.96, 1.0, 96), new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  shock.position.copy(mind.group.position); shock.t = 9; root.add(shock);
   const light = new THREE.PointLight(0xbfe6ff, 3.2, 18, 1.7); light.position.copy(mind.group.position); root.add(light);
   root.add(new THREE.AmbientLight(0x26334f, 0.16));
   const anchors = layout();
@@ -695,7 +700,7 @@ function build() {
   thought.lines.visible = false; // el zorro ya está dentro de la mente
   root.add(thought.lines);
   scene.add(root);
-  world = { root, background, stars, bright, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
+  world = { root, background, stars, bright, field, shock, mind, planets, links, fox, thought, light, constellation, active: new Map(), hover: null, selected: null };
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.75, 0.55, 0.55);
@@ -802,7 +807,15 @@ function frame() {
   U.speak.value += (speakTarget - U.speak.value) * Math.min(1, dt * 8);
   mu.uLevel.value += (lvl - mu.uLevel.value) * 0.3;
   const breathe = ui.state === 'pensando' ? 0.06 * Math.sin(t * 2.4) : 0.025 * Math.sin(t * 0.8);
-  world.mind.group.scale.setScalar(1 + breathe * 0.5 + U.speak.value * 0.55);   // el núcleo crece mientras habláis
+  voice.burst *= Math.pow(0.12, dt);
+  const b = ui.reduced ? 0 : voice.burst;
+  world.mind.group.scale.setScalar(1 + breathe * 0.5 + U.speak.value * 0.85 + b * 0.7);   // el núcleo crece mientras habláis y da un «¡pum!»
+  world.stars.scale.setScalar(1 + U.speak.value * 0.04 + b * 0.1);                       // el cielo se despliega hacia fuera
+  world.bright.scale.setScalar(1 + U.speak.value * 0.05 + b * 0.13);
+  world.field.scale.setScalar(1 + U.speak.value * 0.18 + b * 0.35);                      // la nube neuronal se abre
+  if (bloom) bloom.strength = 0.75 + U.speak.value * 0.45 + b * 0.9;
+  const sh = world.shock; sh.t += dt;
+  sh.scale.setScalar(1.2 + sh.t * 9); sh.material.opacity = Math.max(0, 0.55 * (1 - sh.t / 1.1)) * U.dim.value; sh.lookAt(camera.position);
   world.mind.syn.rotation.y = U.time.value * mu.uSpin.value * 0.5;
   world.mind.synMat.opacity = 0.14 + 0.15 * (ui.state === 'pensando' ? 1 : 0) + U.speak.value * 0.45;
   world.fox.fireU.uFire.value += (p.fire - world.fox.fireU.uFire.value) * ease;
