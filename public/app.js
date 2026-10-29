@@ -248,7 +248,7 @@ const screens = {
     const reduce = aj.ui_reduced === '1';
     store('kratos.quality', aj.ui_quality ?? store('kratos.quality') ?? 'media');
     return `<h1>Configuración y privacidad</h1>${meta('local')}
-      <h2>Interfaz</h2><label><input type="checkbox" id="reduce" ${reduce ? 'checked' : ''}> Reducir movimiento (escena estática)</label>
+      <h2>Universo</h2><label><input type="checkbox" id="reduce" ${reduce ? 'checked' : ''}> Reducir movimiento (imagen fija, sin animación)</label>
       <label style="display:block;margin-top:8px">Calidad gráfica de la escena <select id="quality">${['baja', 'media', 'alta'].map((q) => `<option value="${q}" ${(store('kratos.quality') || 'media') === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
       <h2>Bitácora</h2>
       <div id="bitacora"><span class="note">Cargando…</span></div>
@@ -453,7 +453,11 @@ window.kratosMicLevel = (v) => inner('kratosMicLevel', v);
 window.kratosSpeechPulse = () => scene.pulse();
 
 // ---------- eventos ----------
-$('#nav').innerHTML = SCREENS.map(([id, label]) => `<button data-screen="${id}">${label}${id === 'aprobaciones' ? '<span class="badge" hidden></span>' : ''}</button>`).join('');
+// Panel mínimo: a la vista solo lo esencial; el resto queda en «Más» (no se pierde ninguna función)
+const ESSENTIAL = new Set(['inicio', 'aprobaciones', 'conexiones', 'ajustes']);
+const navBtn = ([id, label]) => `<button data-screen="${id}">${label}${id === 'aprobaciones' ? '<span class="badge" hidden></span>' : ''}</button>`;
+$('#nav').innerHTML = SCREENS.filter(([id]) => ESSENTIAL.has(id)).map(navBtn).join('') +
+  `<details class="nav-more"><summary>Más</summary>${SCREENS.filter(([id]) => !ESSENTIAL.has(id)).map(navBtn).join('')}</details>`;
 $('#nav').addEventListener('click', (e) => { const b = e.target.closest('button[data-screen]'); if (b) go(b.dataset.screen); });
 
 $('#btn-stop').addEventListener('click', async () => {
