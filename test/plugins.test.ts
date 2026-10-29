@@ -35,3 +35,8 @@ test('el aislamiento bloquea archivos y programas aunque el código intente evad
   const out: any = await runPlugin(db, 'curiosa', {});
   assert.ok(out.error, 'debe fallar por permisos');
 });
+
+test('nunca más de 20 herramientas estrictas (límite de la API de Claude)', async () => {
+  const { toolCount } = await import('../src/core/brain.ts');
+  assert.ok(toolCount().strict <= 20, JSON.stringify(toolCount()));
+});
