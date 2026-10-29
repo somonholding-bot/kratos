@@ -263,6 +263,12 @@ final class WakeListener {
 
   private let engine = AVAudioEngine()
   private var converter: AVAudioConverter?
+  private var mono: AVAudioFormat?
+  // Cancelación de eco de macOS: lo que suena por este mismo motor (la música) se resta del micrófono.
+  // Se desactiva con «defaults write local.kratos.app echoCancel -bool false».
+  private(set) var echoCancel = false
+  private var echoFailed = false
+  var onOutput: ((Bool) -> Void)?   // el motor arrancó (true) o va a pararse (false): la música cambia de salida
   private let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
   private let q = DispatchQueue(label: "kratos.vad")
   private let frame = 320 // 20 ms
@@ -317,15 +323,49 @@ final class WakeListener {
     }
     guard !engine.isRunning else { return }
     let input = engine.inputNode
+    let wantEcho = !echoFailed && (UserDefaults.standard.object(forKey: "echoCancel") as? Bool ?? true)
+    echoCancel = false
+    if wantEcho != input.isVoiceProcessingEnabled {
+      do { try input.setVoiceProcessingEnabled(wantEcho) } catch { appLog("cancelación de eco no disponible: \(error.localizedDescription)") }
+    }
+    if input.isVoiceProcessingEnabled {
+      echoCancel = true
+      // Que la cancelación de eco no baje el volumen de la voz de KRATOS ni de otras apps
+      if #available(macOS 14.0, *) { input.voiceProcessingOtherAudioDuckingConfiguration = .init(enableAdvancedDucking: false, duckingLevel: .min) }
+    }
+    _ = engine.mainMixerNode   // la salida del motor existe desde el arranque (ahí suena la música)
     let fmt = input.outputFormat(forBus: 0)
-    guard fmt.sampleRate > 0, let conv = AVAudioConverter(from: fmt, to: target) else { set(.error, "No hay micrófono disponible"); return }
-    converter = conv
+    // Con la cancelación de eco el micrófono puede llegar con varios canales: se usa el primero (el ya procesado)
+    guard fmt.sampleRate > 0, let m = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: fmt.sampleRate, channels: 1, interleaved: false),
+          let conv = AVAudioConverter(from: fmt.channelCount > 1 ? m : fmt, to: target) else { set(.error, "No hay micrófono disponible"); return }
+    converter = conv; mono = m
     input.removeTap(onBus: 0)
     input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in self?.ingest(buf) }
-    do { try engine.start(); set(.listening) } catch { set(.error, error.localizedDescription) }
+    do {
+      try engine.start(); set(.listening)
+      appLog("escucha: cancelación de eco \(echoCancel ? "activa" : "apagada")")
+      DispatchQueue.main.async { self.onOutput?(true) }
+    } catch {
+      input.removeTap(onBus: 0)
+      if echoCancel {   // algunos micrófonos no la admiten: se escucha sin ella
+        appLog("escucha: no arrancó con cancelación de eco (\(error.localizedDescription)), sigo sin ella")
+        echoFailed = true; try? input.setVoiceProcessingEnabled(false); echoCancel = false; start(); return
+      }
+      set(.error, error.localizedDescription)
+    }
+  }
+
+  // Conecta la música a la salida del motor; false si la escucha no está activa con cancelación de eco
+  func attachMusic(_ node: AVAudioPlayerNode, format: AVAudioFormat) -> Bool {
+    guard engine.isRunning, echoCancel else { return false }
+    if node.engine == nil { engine.attach(node) }
+    engine.disconnectNodeOutput(node)
+    engine.connect(node, to: engine.mainMixerNode, format: format)
+    return true
   }
 
   func stop() {
+    onOutput?(false)   // la música pasa a AVPlayer, en el mismo punto, antes de parar el motor
     engine.inputNode.removeTap(onBus: 0)
     engine.stop()
     q.async { self.resetSegment() }
@@ -334,8 +374,15 @@ final class WakeListener {
 
   private func resetSegment() { inSpeech = false; segment = []; preroll = []; loud = 0; quiet = 0 }
 
-  private func ingest(_ buf: AVAudioPCMBuffer) {
-    guard let conv = converter else { return }
+  private func ingest(_ input: AVAudioPCMBuffer) {
+    guard let conv = converter, let mono else { return }
+    let buf: AVAudioPCMBuffer
+    if input.format.channelCount > 1 {
+      guard let src = input.floatChannelData, let one = AVAudioPCMBuffer(pcmFormat: mono, frameCapacity: input.frameLength) else { return }
+      one.frameLength = input.frameLength
+      one.floatChannelData![0].initialize(from: src[0], count: Int(input.frameLength))
+      buf = one
+    } else { buf = input }
     let cap = AVAudioFrameCount(Double(buf.frameLength) * 16000 / buf.format.sampleRate) + 64
     guard let out = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: cap) else { return }
     var fed = false
@@ -375,7 +422,7 @@ final class WakeListener {
       } else {
         segment += f
         quiet = rms > thr * 0.7 ? 0 : quiet + 1
-        if quiet >= 25 || segment.count >= 16000 * 8 { endSegment() }   // 0,5 s de silencio cierra la frase
+        if quiet >= 25 || segment.count >= 16000 * (musicOn ? 5 : 8) { endSegment() }   // con música no hay silencios: se corta antes para oír «Kratos» a tiempo   // 0,5 s de silencio cierra la frase
       }
     }
   }
@@ -501,22 +548,33 @@ final class WakeListener {
 }
 
 // MARK: - Música: YouTube solo audio, sin anuncios
-// yt-dlp busca en YouTube y da la dirección directa del audio; AVPlayer lo reproduce. Como no se carga la página
-// de YouTube, no hay anuncios ni vídeo. Se instala con «brew install yt-dlp».
+// yt-dlp busca en YouTube y descarga el audio (m4a) a .jarvis/musica; no se carga la página de YouTube, así que no
+// hay anuncios ni vídeo. Se descarga en vez de reproducir la dirección directa porque YouTube suele negar esa
+// dirección a otros reproductores (salía el reproductor en pantalla pero sin sonido). Con la escucha activa, la
+// canción sale por el mismo motor de audio que el micrófono: la cancelación de eco la resta y «Kratos» se oye por
+// encima de la música. Sin escucha, suena con AVPlayer. Se instala con «brew install yt-dlp».
 final class MusicPlayer {
   static var ytdlp: String? { ["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp", NSHomeDirectory() + "/.local/bin/yt-dlp"].first { FileManager.default.isExecutableFile(atPath: $0) } }
-  private let player = AVPlayer()
+  static let cache = ROOT + "/.jarvis/musica"
+  weak var output: WakeListener?
+  private let player = AVPlayer()            // sin cancelación de eco (escucha apagada o archivo que el motor no lee)
+  private let node = AVAudioPlayerNode()     // con cancelación de eco
+  private var file: AVAudioFile?
+  private var fileStart: AVAudioFramePosition = 0
+  private var onEngine = false, paused = false
   private var list: [(id: String, title: String, channel: String)] = []
-  private var index = 0, failures = 0, generation = 0
+  private var index = 0, failures = 0, generation = 0, segment = 0
+  private var files: [String: String] = [:]                    // id → archivo descargado
+  private var waiting: [String: [(String?) -> Void]] = [:]     // descargas en curso (la siguiente se baja mientras suena esta)
   private var volume: Float = UserDefaults.standard.object(forKey: "musicVolume") as? Float ?? 0.7
   private(set) var ducked = false
   var onChange: (([String: Any]?) -> Void)?   // ventanita del universo (nil = se oculta)
   var onError: ((String) -> Void)?
-  var isPlaying: Bool { player.timeControlStatus != .paused && !list.isEmpty }
+  var isPlaying: Bool { !list.isEmpty && !paused && (onEngine ? node.isPlaying : player.timeControlStatus != .paused) }
 
   init() {
     NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main) { [weak self] n in
-      guard let self, (n.object as? AVPlayerItem) === self.player.currentItem else { return }
+      guard let self, !self.onEngine, (n.object as? AVPlayerItem) === self.player.currentItem else { return }
       self.skip()
     }
   }
@@ -524,39 +582,88 @@ final class MusicPlayer {
   func play(_ query: String) {
     guard let bin = MusicPlayer.ytdlp else { onError?("Para poner música me falta yt-dlp. En Terminal escribe: brew install yt-dlp"); return }
     generation += 1; let gen = generation
-    player.pause()
+    halt()
     onChange?(["title": "Buscando «\(query)»…", "channel": "YouTube", "playing": false])
     MusicPlayer.run(bin, ["--flat-playlist", "-j", "--no-warnings", "ytsearch10:\(query)"]) { [weak self] out in
       guard let self, gen == self.generation else { return }
-      self.list = out.split(separator: "\n").compactMap { line -> (id: String, title: String, channel: String)? in
+      let found = out.split(separator: "\n").compactMap { line -> (id: String, title: String, channel: String, dur: Double)? in
         guard let d = String(line).data(using: .utf8), let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any], let id = j["id"] as? String else { return nil }
-        if let dur = j["duration"] as? Double, dur < 90 { return nil }   // sin cortos
-        return (id, j["title"] as? String ?? "Sin título", (j["channel"] ?? j["uploader"]) as? String ?? "YouTube")
+        let dur = j["duration"] as? Double ?? 0
+        if dur > 0, dur < 90 { return nil }   // sin cortos
+        return (id, j["title"] as? String ?? "Sin título", (j["channel"] ?? j["uploader"]) as? String ?? "YouTube", dur)
       }
+      // Primero lo que dura hasta 20 min (se descarga en segundos); las mezclas de horas, al final
+      let short = found.filter { $0.dur > 0 && $0.dur <= 1200 }, long = found.filter { !($0.dur > 0 && $0.dur <= 1200) }
+      self.list = (short + long).map { ($0.id, $0.title, $0.channel) }
       appLog("música: «\(query)» → \(self.list.count) resultados")
       guard !self.list.isEmpty else { self.onChange?(nil); self.onError?("No encontré música de \(query)."); return }
-      self.index = 0; self.failures = 0; self.start()
+      self.index = 0; self.failures = 0; self.cleanCache(); self.start()
     }
   }
 
   private func start() {
-    guard let bin = MusicPlayer.ytdlp, index < list.count else { stop(); return }
+    guard index < list.count else { stop(); return }
     generation += 1; let gen = generation
-    let item = list[index]
+    halt()
     onChange?(info(playing: false, loading: true))
-    MusicPlayer.run(bin, ["-f", "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/18", "-g", "--no-playlist", "--no-warnings", "https://www.youtube.com/watch?v=\(item.id)"]) { [weak self] out in
+    download(list[index].id) { [weak self] path in
       guard let self, gen == self.generation else { return }
-      guard let line = out.split(separator: "\n").first, let url = URL(string: String(line)) else {
+      guard let path else {
         self.failures += 1
-        if self.failures < 4 { self.index += 1; self.start() } else { self.stop(); self.onError?("YouTube no me dejó reproducir esa música.") }
+        if self.failures < 4 { self.index = (self.index + 1) % self.list.count; self.start() } else { self.stop(); self.onError?("YouTube no me dejó reproducir esa música.") }
         return
       }
       self.failures = 0
-      self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
-      self.applyVolume()
-      self.player.play()
-      self.onChange?(self.info(playing: true))
+      self.begin(path)
+      if self.list.count > 1 { self.download(self.list[(self.index + 1) % self.list.count].id) { _ in } }
     }
+  }
+
+  // Suena el archivo desde «seconds»: por el motor de la escucha si está activo (cancelación de eco), si no con AVPlayer
+  private func begin(_ path: String, at seconds: Double = 0, paused wasPaused: Bool = false) {
+    let url = URL(fileURLWithPath: path)
+    segment += 1; let my = segment
+    node.stop(); player.pause(); player.replaceCurrentItem(with: nil)
+    paused = wasPaused
+    if let out = output, let f = try? AVAudioFile(forReading: url), f.length > 0, out.attachMusic(node, format: f.processingFormat) {
+      file = f; onEngine = true
+      fileStart = min(AVAudioFramePosition(max(0, seconds) * f.processingFormat.sampleRate), f.length - 1)
+      node.scheduleSegment(f, startingFrame: fileStart, frameCount: AVAudioFrameCount(f.length - fileStart), at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        DispatchQueue.main.async { guard let self, my == self.segment else { return }; self.skip() }   // terminó la canción
+      }
+      applyVolume()
+      if !wasPaused { node.play() }
+      appLog("música: suena con cancelación de eco")
+    } else {
+      file = nil; onEngine = false
+      player.replaceCurrentItem(with: AVPlayerItem(url: url))
+      if seconds > 0 { player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600)) }
+      applyVolume()
+      if !wasPaused { player.play() }
+      appLog("música: suena sin cancelación de eco")
+    }
+    if !list.isEmpty { onChange?(info(playing: !wasPaused)) }
+  }
+
+  // Segundos ya sonados de la canción actual
+  private var position: Double {
+    if onEngine, let f = file, let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) {
+      return Double(fileStart + p.sampleTime) / f.processingFormat.sampleRate
+    }
+    let s = player.currentTime().seconds
+    return s.isFinite ? s : 0
+  }
+  private var currentPath: String? { onEngine ? file?.url.path : (player.currentItem?.asset as? AVURLAsset)?.url.path }
+
+  // La escucha se apaga (o cambia el micrófono): la canción sigue en AVPlayer en el mismo punto, sin cortarse
+  func leaveEngine() {
+    guard onEngine, let path = currentPath else { return }
+    begin(path, at: position, paused: paused)
+  }
+  // La escucha vuelve: la canción pasa al motor para que la cancelación de eco la reste
+  func joinEngine() {
+    guard !onEngine, !list.isEmpty, let path = currentPath else { return }
+    begin(path, at: position, paused: paused)
   }
 
   private func info(playing: Bool, loading: Bool = false) -> [String: Any] {
@@ -566,8 +673,13 @@ final class MusicPlayer {
 
   func control(_ cmd: String) {
     switch cmd {
-    case "pausa": player.pause(); if !list.isEmpty { onChange?(info(playing: false)) }
-    case "sigue": if list.isEmpty { return }; player.play(); onChange?(info(playing: true))
+    case "pausa":
+      guard !list.isEmpty else { return }
+      paused = true; onEngine ? node.pause() : player.pause(); onChange?(info(playing: false))
+    case "sigue":
+      guard !list.isEmpty else { return }
+      guard currentPath != nil else { start(); return }   // aún sin archivo: se vuelve a cargar
+      paused = false; onEngine ? node.play() : player.play(); onChange?(info(playing: true))
     case "siguiente": skip()
     case "para": stop()
     case "sube": volume = min(1, volume + 0.15); applyVolume(); UserDefaults.standard.set(volume, forKey: "musicVolume")
@@ -578,16 +690,49 @@ final class MusicPlayer {
 
   private func skip() { guard !list.isEmpty else { return }; index = (index + 1) % list.count; start() }
 
+  private func halt() {
+    segment += 1
+    node.stop(); player.pause(); player.replaceCurrentItem(with: nil)
+    file = nil; onEngine = false; paused = false
+  }
+
   func stop() {
     generation += 1
-    player.pause(); player.replaceCurrentItem(with: nil); list = []
+    halt(); list = []
     onChange?(nil)
   }
 
   // Mientras KRATOS escucha o habla, la música baja; al terminar vuelve
   func duck(_ on: Bool) { guard on != ducked else { return }; ducked = on; applyVolume() }
-  private func applyVolume() { player.volume = ducked ? volume * 0.12 : volume }
+  private func applyVolume() { let v = ducked ? volume * 0.12 : volume; player.volume = v; node.volume = v }
 
+  // Descarga el audio una sola vez por canción (si ya se está bajando, espera a esa descarga)
+  private func download(_ id: String, _ done: @escaping (String?) -> Void) {
+    if let f = files[id], FileManager.default.fileExists(atPath: f) { done(f); return }
+    if waiting[id] != nil { waiting[id]!.append(done); return }
+    guard let bin = MusicPlayer.ytdlp else { done(nil); return }
+    waiting[id] = [done]
+    try? FileManager.default.createDirectory(atPath: MusicPlayer.cache, withIntermediateDirectories: true)
+    MusicPlayer.run(bin, ["-f", "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/18", "--no-playlist", "--no-warnings", "--no-part", "--no-simulate",
+                          "-N", "4", "-o", MusicPlayer.cache + "/%(id)s.%(ext)s", "--print", "after_move:filepath",
+                          "https://www.youtube.com/watch?v=\(id)"]) { [weak self] out in
+      guard let self else { return }
+      let path = out.split(separator: "\n").last.map { $0.trimmingCharacters(in: .whitespaces) }
+      let ok = path.map { FileManager.default.fileExists(atPath: $0) } ?? false
+      if ok { self.files[id] = path } else { appLog("música: no se pudo descargar \(id)") }
+      let calls = self.waiting.removeValue(forKey: id) ?? []
+      calls.forEach { $0(ok ? path : nil) }
+    }
+  }
+
+  // Se guardan solo las 15 canciones más recientes
+  private func cleanCache() {
+    let fm = FileManager.default
+    guard let names = try? fm.contentsOfDirectory(atPath: MusicPlayer.cache) else { return }
+    let paths = names.map { MusicPlayer.cache + "/" + $0 }
+    let dated = paths.map { ($0, ((try? fm.attributesOfItem(atPath: $0))?[.modificationDate] as? Date) ?? .distantPast) }.sorted { $0.1 > $1.1 }
+    for (p, _) in dated.dropFirst(15) where p != currentPath { try? fm.removeItem(atPath: p); files = files.filter { $0.value != p } }
+  }
   static func run(_ bin: String, _ args: [String], _ done: @escaping (String) -> Void) {
     DispatchQueue.global(qos: .userInitiated).async {
       let p = Process(); p.executableURL = URL(fileURLWithPath: bin); p.arguments = args
@@ -749,6 +894,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
       let json = info.flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { String(data: $0, encoding: .utf8) } ?? "null"
       self.web.evaluateJavaScript("window.kratosMusic && window.kratosMusic(\(json))")
     }
+    music.output = wake
+    wake.onOutput = { [weak self] up in up ? self?.music.joinEngine() : self?.music.leaveEngine() }
     music.onError = { [weak self] msg in self?.announcements.append(["kind": "aviso", "spoken": msg]); self?.sayAnnouncements() }
     NotificationCenter.default.addObserver(forName: .kratosWoke, object: nil, queue: .main) { [weak self] _ in
       self?.music.duck(true)

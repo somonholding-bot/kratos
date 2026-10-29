@@ -14,12 +14,14 @@ const clean = (s: string) => s.replace(/[.!?¿¡,]/g, ' ').replace(/^\s*(de|del|
 export function musicControl(t: string): MusicCmd | null {
   if (/\b(todo|todas|acciones|emergencia)\b/.test(t)) return null;   // «detén todo» es la parada de emergencia
   const about = /\b(musica|cancion|tema|canciones|volumen)\b/.test(t);
-  if (/^(pausa|pausala|pausar)\b|\b(pausa|pausala|pausar)\b.*\b(musica|cancion)\b/.test(t)) return 'pausa';
+  if (/^(pausa|pausala|pausar)\b|^(pause|stop)$|^(dale|ponle|pon) (pausa|pause)$|\b(pausa|pausala|pausar)\b.*\b(musica|cancion)\b/.test(t)) return 'pausa';
   if (about && /\b(quita|quitala|para|parala|apaga|apagala|deten|detenla|stop|cierra)\b/.test(t)) return 'para';
   if (/^(siguiente|otra|salta|cambiala)\b|\b(siguiente|otra|salta|cambia)\b.*\b(cancion|tema)\b/.test(t)) return 'siguiente';
   if (about && /\b(sube|subele|mas alto|mas fuerte)\b/.test(t)) return 'sube';
   if (about && /\b(baja|bajale|mas bajo|mas suave)\b/.test(t)) return 'baja';
   if (about && /\b(continua|sigue|reanuda|reanudala|vuelve a poner|play)\b/.test(t)) return 'sigue';
+  // «play», «dale play», «ponle play», «reanuda»: vuelve a sonar lo que estaba en pausa (sin decir «música»)
+  if (/\bplay\b|^(reanuda|reanudala|continua|despausa|quita la pausa)$/.test(t)) return 'sigue';
   return null;
 }
 

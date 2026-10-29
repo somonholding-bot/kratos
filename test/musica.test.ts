@@ -28,6 +28,13 @@ test('control de la música, sin confundirlo con la parada de emergencia', () =>
   assert.equal(musicControl('siguiente cancion'), 'siguiente');
   assert.equal(musicControl('sube el volumen'), 'sube');
   assert.equal(musicControl('reanuda la musica'), 'sigue');
+  assert.equal(musicControl('play'), 'sigue');
+  assert.equal(musicControl('dale play'), 'sigue');
+  assert.equal(musicControl('ponle play'), 'sigue');
+  assert.equal(musicControl('reanuda'), 'sigue');
+  assert.equal(musicControl('dale pausa'), 'pausa');
+  assert.equal(musicControl('pausa'), 'pausa');
+  assert.equal(musicQuery('dale play'), null);
   assert.equal(musicControl('deten todo'), null);
 });
 
