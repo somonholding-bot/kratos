@@ -129,7 +129,9 @@ test('frases de activación: «Kratos, Kratos» y «Hey Kratos»; una sola menci
   assert.deepEqual(detectWake('Kratos, Kratos, ¿cómo van mis negocios?'), { wake: true, mentions: 2, hey: false, command: '¿cómo van mis negocios?' });
   assert.equal(detectWake('Hey Kratos, detén todas las acciones.').command, 'detén todas las acciones.');
   for (const v of ['KRATOS KRATOS', 'kratos... kratos', 'Hey, Kratos.', 'Ey Cratos', 'Oye Gratos, organiza mi día']) assert.equal(detectWake(v).wake, true, v);
-  for (const v of ['Kratos, ¿cómo van?', 'Gratos.']) { const d = detectWake(v); assert.equal(d.wake, false, v); assert.equal(d.mentions, 1, v); }
+  // más sensible (pedido por el propietario): «Kratos, …» al empezar y con orden detrás despierta; una mención suelta, no
+  assert.equal(detectWake('Kratos, ¿cómo van mis apps?').wake, true);
+  for (const v of ['Gratos.', 'Kratos.']) { const d = detectWake(v); assert.equal(d.wake, false, v); assert.equal(d.mentions, 1, v); }
   for (const v of ['Es gratis el envío', 'Hey, ¿cómo estás?', 'Ese juego de dioses griegos', 'Cristo vive', 'le dije a mi primo que Kratos es bueno']) assert.equal(detectWake(v).wake, false, v);
 });
 
@@ -142,7 +144,7 @@ test('activación con audio: ambas frases despiertan; conversación normal no', 
     assert.equal(r.wake, true, `no despertó con «${phrase}» (${voice}): ${JSON.stringify(r)}`);
   }
   const single = await transcribeWake(db, speech('Kratos, ¿cómo van mis negocios?'));
-  assert.equal(single.wake, false); assert.equal(single.mentions, 1);
+  assert.equal(single.wake, true); assert.equal(single.mentions, 1);   // «Kratos, orden» también despierta
   for (const phrase of ['Mañana voy al supermercado con mi hermana.', 'Ese juego de dioses griegos es muy bueno.', 'Hey, ¿me pasas la sal por favor?']) {
     const miss = await transcribeWake(db, speech(phrase));
     assert.equal(miss.wake, false, `se activó con «${phrase}»`);

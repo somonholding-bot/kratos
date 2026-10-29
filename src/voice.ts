@@ -12,7 +12,7 @@ const WHISPER = process.env.KRATOS_WHISPER ?? '/opt/homebrew/bin/whisper-cli';
 const MODEL = path.join(DATA_DIR, 'models', 'ggml-large-v3-turbo-q5_0.bin');
 const TMP = path.join(DATA_DIR, config.db.database === 'jarvis' ? 'tmp' : `tmp-${config.db.database}`);
 
-export const VOICE_LIMITS = { minMs: 400, maxMs: 30_000, minRms: 0.008 };
+export const VOICE_LIMITS = { minMs: 400, maxMs: 30_000, minRms: 0.004 };   // umbral bajo: voz suave o lejos del micrófono
 
 // Frases que Whisper inventa sobre silencio o ruido (subtítulos de vídeos de entrenamiento).
 const HALLUCINATIONS = [/^\s*[\[(].*[\])]\s*$/, /amara\.org/i, /subt[ií]tulos (realizados|por)/i, /gracias por ver/i, /suscr[ií]bete/i];
@@ -100,7 +100,7 @@ export function isWakeToken(word: string): boolean {
   return dist <= 1 || (dist <= 2 && /^[kc]/.test(w));
 }
 
-const HEY = /^(hey|hei|ey|oye|oi)$/;
+const HEY = /^(hey|hei|ey|eh|ei|hay|oye|oi|ok|okay|hola|buenas|a)$/;
 const plain = (w: string) => w.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
 
 // Frases de activación: «Kratos, Kratos» (dos menciones seguidas) o «Hey Kratos».
@@ -114,7 +114,9 @@ export function detectWake(text: string): { wake: boolean; mentions: number; hey
   const mentions = idx.length >= 2 && idx[1] - idx[0] <= 2 ? 2 : 1;
   const last = mentions === 2 ? idx[1] : idx[0];
   const command = words.slice(last + 1).join(' ').replace(/^[\s,.;:-]+/, '').trim();
-  return { wake: hey || mentions >= 2, mentions, hey, command: command.replace(/[.\s]+$/, '').length >= 2 ? command : '' };
+  // «Kratos, …» al empezar la frase y con una orden detrás también despierta
+  const leading = idx[0] === 0 && command.replace(/[.\s]+$/, '').split(/\s+/).length >= 2;
+  return { wake: hey || mentions >= 2 || leading, mentions, hey, command: command.replace(/[.\s]+$/, '').length >= 2 ? command : '' };
 }
 
 function sliceWav(wav: Buffer, ms: number): Buffer {
@@ -147,7 +149,11 @@ export type WakeResult = { wake: boolean; mentions: number; command: string; tex
 export async function transcribeWake(db: Db, wav: Buffer, signal?: AbortSignal): Promise<WakeResult> {
   const started = Date.now();
   const a = analyzeWav(wav);
-  const miss = (reason: string): WakeResult => ({ wake: false, mentions: 0, command: '', text: '', audioMs: a.audioMs, sttMs: Date.now() - started, reason });
+  const miss = (reason: string): WakeResult => {
+    // se registran los intentos fallidos con voz (no el silencio) para afinar la sensibilidad
+    if (reason !== 'silencio' && reason !== 'muy_corto') db.query(`INSERT INTO voice_metrics (audio_ms, stt_ms, outcome) VALUES ($1,$2,$3)`, [a.audioMs, Date.now() - started, 'ruido']).catch(() => {});
+    return { wake: false, mentions: 0, command: '', text: '', audioMs: a.audioMs, sttMs: Date.now() - started, reason };
+  };
   if (a.audioMs < VOICE_LIMITS.minMs) return miss('muy_corto');
   if (a.audioMs > 15_000) return miss('muy_largo');
   if (a.rms < VOICE_LIMITS.minRms) return miss('silencio');
