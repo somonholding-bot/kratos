@@ -86,3 +86,10 @@ test('mensajes de texto: borrador para un contacto guardado', async () => {
   const r = await h(db, 'Kratos, mándale un mensaje a Ana diciendo que llego en diez minutos', 'voz');
   assert.equal(r.action, 'mensaje'); assert.match(r.text, /llego en diez minutos/);
 });
+
+test('«Hey Kratos» se detecta aunque llegue a mitad de un fragmento', async () => {
+  const { detectWake } = await import('../src/voice.ts');
+  const d = detectWake('Bueno, mañana vamos. Hey Kratos, ¿qué hora es?');
+  assert.equal(d.wake, true); assert.equal(d.command, '¿qué hora es?');
+  assert.equal(detectWake('le dije a mi primo que Kratos es bueno').wake, false);
+});

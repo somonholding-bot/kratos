@@ -81,7 +81,6 @@ export async function transcribe(db: Db, wav: Buffer, signal?: AbortSignal): Pro
 // Solo se analizan los primeros 2,5 s; si no empieza por «Kratos», se descarta sin guardar nada.
 
 const WAKE = 'kratos';
-const WAKE_WINDOW_MS = 2500;
 
 function levenshtein(a: string, b: string): number {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -108,25 +107,18 @@ const plain = (w: string) => w.toLowerCase().normalize('NFD').replace(/[^a-z]/g,
 // llega la segunda en el siguiente fragmento (ventana configurable).
 export function detectWake(text: string): { wake: boolean; mentions: number; hey: boolean; command: string } {
   const words = text.trim().split(/\s+/).filter(Boolean);
-  const idx = words.slice(0, 5).map((w, i) => (isWakeToken(w) ? i : -1)).filter((i) => i >= 0);
+  // «Kratos» puede llegar en cualquier punto del fragmento (antes solo se miraban las 5 primeras palabras)
+  const all = words.map((w, i) => (isWakeToken(w) ? i : -1)).filter((i) => i >= 0);
+  const strong = all.findIndex((i, k) => (i > 0 && HEY.test(plain(words[i - 1]))) || (all[k + 1] !== undefined && all[k + 1] - i <= 2));
+  const idx = strong >= 0 ? all.slice(strong) : all;
   if (!idx.length) return { wake: false, mentions: 0, hey: false, command: '' };
   const hey = idx[0] > 0 && HEY.test(plain(words[idx[0] - 1]));
   const mentions = idx.length >= 2 && idx[1] - idx[0] <= 2 ? 2 : 1;
   const last = mentions === 2 ? idx[1] : idx[0];
   const command = words.slice(last + 1).join(' ').replace(/^[\s,.;:-]+/, '').trim();
   // «Kratos, …» al empezar la frase y con una orden detrás también despierta
-  const leading = idx[0] === 0 && command.replace(/[.\s]+$/, '').split(/\s+/).length >= 2;
+  const leading = (idx[0] === 0 || /[.?!]$/.test(words[idx[0] - 1] ?? '')) && command.replace(/[.\s]+$/, '').split(/\s+/).length >= 2;
   return { wake: hey || mentions >= 2 || leading, mentions, hey, command: command.replace(/[.\s]+$/, '').length >= 2 ? command : '' };
-}
-
-function sliceWav(wav: Buffer, ms: number): Buffer {
-  const dataLen = Math.min(wav.length - 44, Math.round((ms / 1000) * 16000) * 2);
-  const out = Buffer.alloc(44 + dataLen);
-  wav.copy(out, 0, 0, 44);
-  out.writeUInt32LE(36 + dataLen, 4);
-  out.writeUInt32LE(dataLen, 40);
-  wav.copy(out, 44, 44, 44 + dataLen);
-  return out;
 }
 
 async function whisper(wav: Buffer, signal?: AbortSignal): Promise<string> {
@@ -158,8 +150,6 @@ export async function transcribeWake(db: Db, wav: Buffer, signal?: AbortSignal):
   if (a.audioMs > 15_000) return miss('muy_largo');
   if (a.rms < VOICE_LIMITS.minRms) return miss('silencio');
 
-  const head = a.audioMs > WAKE_WINDOW_MS + 300 ? await whisper(sliceWav(wav, WAKE_WINDOW_MS), signal) : null;
-  if (head !== null && !detectWake(head).mentions) return miss('sin_palabra');
   const text = cleanTranscript(await whisper(wav, signal));
   const { wake, mentions, command } = detectWake(text);
   if (!mentions) return miss('sin_palabra');

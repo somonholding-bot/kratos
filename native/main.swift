@@ -80,7 +80,7 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
       guard let self, my == self.token else { return }
       self.loading = false
       if let data, let p = try? AVAudioPlayer(data: data) {
-        self.player = p; p.delegate = self; p.isMeteringEnabled = true; p.play()
+        self.player = p; p.delegate = self; p.isMeteringEnabled = true; p.volume = 0; p.play(); p.setVolume(1, fadeDuration: 0.06)
         self.meter = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in self?.pulse() }
       } else {
         self.systemVoice(text)
@@ -229,7 +229,7 @@ final class WakeListener {
   // Detector de voz por energía con umbral adaptativo al ruido de la sala.
   private func process(_ samples: [Float]) {
     // Nunca escuchar mientras Kratos habla, procesa o el panel usa «pulsar para hablar».
-    if busy || speaker.isSpeaking || pausedByPanel || !enabled { pending = []; if inSpeech { resetSegment() }; return }
+    if speaker.isSpeaking || pausedByPanel || !enabled { pending = []; if inSpeech { resetSegment() }; return }
     pending += samples
     while pending.count >= frame {
       let f = Array(pending.prefix(frame)); pending.removeFirst(frame)
@@ -242,23 +242,30 @@ final class WakeListener {
       let thr = max(Float(0.02 - 0.014 * sensitivity), floor * k)
       if !inSpeech {
         preroll.append(f); if preroll.count > 15 { preroll.removeFirst() }
-        if rms > thr { loud += 1 } else { loud = 0; floor = floor * 0.98 + rms * 0.02 }
+        floor = rms < floor ? floor * 0.9 + rms * 0.1 : floor * 0.997 + rms * 0.003
+        if rms > thr { loud += 1 } else { loud = 0 }
         if loud >= 4 {
           inSpeech = true; quiet = 0
           segment = preroll.flatMap { $0 }; preroll = []
-          set(.hearing)
+          if !busy { set(.hearing) }
         }
       } else {
         segment += f
         quiet = rms > thr * 0.7 ? 0 : quiet + 1
-        if quiet >= 40 || segment.count >= 16000 * 12 { endSegment() }
+        if quiet >= 30 || segment.count >= 16000 * 8 { endSegment() }
       }
     }
   }
 
+  private var queued: [Float]?
   private func endSegment() {
     let samples = segment
     resetSegment()
+    if busy { queued = samples; return }   // se está procesando otro: este va después, no se pierde
+    submit(samples)
+  }
+
+  private func submit(_ samples: [Float]) {
     let follow = (followUpUntil ?? .distantPast) > Date()
     if samples.count < 16000 * 35 / 100 { set(follow ? .followUp : .listening); return }
     busy = true
@@ -279,14 +286,13 @@ final class WakeListener {
         self.resume(); return
       }
       self.lastMention = nil
-      NSSound(named: "Tink")?.play() // señal breve: Kratos ha despertado
       NotificationCenter.default.post(name: .kratosWoke, object: nil)
       let command = (r["command"] as? String) ?? ""
       if command.isEmpty {
         self.set(.speaking)
         self.speaker.say((r["greeting"] as? String) ?? "¿Sí?") {
           self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)
-          self.q.asyncAfter(deadline: .now() + 0.3) { self.busy = false; self.set(.followUp) }
+          self.q.asyncAfter(deadline: .now() + 0.3) { self.busy = false; self.queued = nil; self.set(.followUp) }
         }
       } else {
         self.handle(command, metricId: r["metricId"])
@@ -309,7 +315,12 @@ final class WakeListener {
 
   private func resume() {
     // Pequeña pausa para que la cola de su propia voz no entre por el micrófono.
-    q.asyncAfter(deadline: .now() + 0.4) { self.busy = false; self.pending = []; self.set(self.enabled ? .listening : .off) }
+    q.asyncAfter(deadline: .now() + 0.7) {
+      self.busy = false; self.pending = []
+      if let next = self.queued, !self.speaker.isSpeaking { self.queued = nil; self.submit(next); return }
+      self.queued = nil
+      self.set(self.enabled ? .listening : .off)
+    }
   }
 
   static func wav(_ s: [Float]) -> Data {
