@@ -16,7 +16,8 @@ import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
 import { proposeCodeJob } from './claudecode.ts';
 import { setSetting } from './bitacora.ts';
 import { agentsContext, agentsRegistry, searchReports, systemInventory, taskResult } from './registry.ts';
-import { diagnose, proposeImprovement, proposeRevert, readCode, searchCode } from './selfimprove.ts';
+import { proposeImprovement, proposeRevert, readCode, searchCode } from './selfimprove.ts';
+import { diagnoseSelf } from './selfdiag.ts';
 import { runWithSubscription, subscriptionAvailable } from './subscription.ts';
 
 // Inteligencia de Kratos con la API de Claude.
@@ -299,7 +300,7 @@ const TOOLS: ToolDef[] = [
   {
     name: 'diagnostico_propio', description: 'Tu propio diagnóstico con datos reales: fallas recientes, tiempos de voz y de respuesta, uso de CPU y RAM, tareas fallidas, gasto de IA y estado de tus mejoras. Úsalo cuando pregunten qué falla o por qué vas lento.',
     input_schema: obj({}),
-    run: async (db) => diagnose(db),
+    run: async (db) => diagnoseSelf(db),
   },
   {
     name: 'leer_codigo', description: 'Lee un archivo de tu propio código (ruta relativa, p. ej. src/core/brain.ts) para entender un fallo. Solo lectura.',

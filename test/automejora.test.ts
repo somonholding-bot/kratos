@@ -5,6 +5,7 @@ import { createPool, type Db } from '../src/db.ts';
 import { migrate } from '../src/migrate.ts';
 import { decideApproval } from '../src/core/approvals.ts';
 import { PROTECTED, diagnose, proposeImprovement, readCode } from '../src/core/selfimprove.ts';
+import { describeJob, diagnoseSelf, failureReason } from '../src/core/selfdiag.ts';
 
 let db: Db;
 before(async () => { db = createPool(); await migrate(db, () => {}); });
@@ -29,4 +30,18 @@ test('las piezas que protegen al propietario están fuera de su alcance', () => 
 test('el diagnóstico devuelve datos reales', async () => {
   const d: any = await diagnose(db);
   assert.ok('voz_ultimas_24h' in d && 'fallas_recientes' in d);
+  assert.ok(Array.isArray((await diagnoseSelf(db)).mejoras));
+});
+
+test('el diagnóstico separa reversiones de fallos y muestra el motivo', () => {
+  const base = { id: 1, mejora: 'x', finished_at: null };
+  const rev: any = describeJob({ ...base, status: 'fallida', result: JSON.stringify({ commit: 'abc', revertida: true }) });
+  assert.equal(rev.status, 'revertida');
+  const tests: any = describeJob({ ...base, status: 'fallida', result: JSON.stringify({ error: 'Las pruebas fallaron; cambio deshecho. ✖ algo' }) });
+  assert.equal(tests.status, 'fallida');
+  assert.equal(tests.motivo, 'pruebas no pasaron');
+  assert.match(tests.error, /✖ algo/);
+  assert.equal(failureReason('No se pudo aplicar sobre la rama principal'), 'no se pudo aplicar');
+  assert.equal(failureReason('Claude Code no está instalado'), 'error general');
+  assert.equal((describeJob({ ...base, status: 'completada', result: '{}' }) as any).motivo, undefined);
 });
