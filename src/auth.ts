@@ -40,3 +40,29 @@ export function safeEqual(a: string, b: string): boolean {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
+
+// Acceso remoto (opcional): enlace propio por un túnel cifrado de Cloudflare hacia este Mac.
+// .jarvis/remote.json guarda el dominio público y el hash scrypt de la clave remota; la clave nunca se guarda en claro.
+const REMOTE_FILE = path.join(DATA_DIR, 'remote.json');
+type Remote = { host: string; salt: string; hash: string };
+export function remoteConfig(): Remote | null {
+  try { const r = JSON.parse(fs.readFileSync(REMOTE_FILE, 'utf8')); return r.host && r.salt && r.hash ? r : null; } catch { return null; }
+}
+export function setRemote(host: string, passphrase: string) {
+  if (passphrase.length < 10) throw new Error('La clave remota debe tener al menos 10 caracteres');
+  ensureDir();
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(passphrase, salt, 64).toString('hex');
+  fs.writeFileSync(REMOTE_FILE, JSON.stringify({ host, salt, hash }), { mode: 0o600 });
+}
+const tries: number[] = [];
+export function checkRemotePassphrase(passphrase: string): boolean | 'bloqueado' {
+  const r = remoteConfig();
+  if (!r) return false;
+  const now = Date.now();
+  while (tries.length && now - tries[0] > 15 * 60_000) tries.shift();
+  if (tries.length >= 5) return 'bloqueado';   // 5 intentos fallidos cada 15 minutos
+  const ok = safeEqual(crypto.scryptSync(passphrase.slice(0, 200), r.salt, 64).toString('hex'), r.hash);
+  if (!ok) tries.push(now);
+  return ok;
+}

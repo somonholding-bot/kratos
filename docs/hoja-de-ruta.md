@@ -22,15 +22,18 @@ Actualizada: 28-oct-2026.
 | 11 | Universo 3D a pantalla completa; panel interno con el mismo universo | ✅ |
 | 12 | Repositorio público en GitHub | ✅ |
 
-## 🚀 Plan actual en 5 etapas
+## 🚀 Plan actual
 
 | Etapa | Qué incluye | Estado |
 |---|---|---|
-| 1 | Universo encuadrado (todos los planetas en pantalla), cielo con movimiento y estrellas fugaces, más nebulosa; skills para buscar y contactar creadores e influencers, comunidades y prensa | ✅ |
-| 2 | **Apple App Store Connect (solo lectura):** estado de revisión de tus 2 apps en tiempo real, descargas y reseñas | Necesita tu clave de API (Issuer ID, Key ID, archivo .p8, rol de solo lectura) |
-| 3 | **Correo y lista de correo:** leer y preparar borradores; enviar solo con tu aprobación | Autorizar Gmail y elegir proveedor de lista |
-| 4 | **Internet y Claude Code:** búsqueda web para los agentes; delegar diseño y programación en una carpeta aislada con aprobación | Aprobar la instalación |
-| 5 | **Creadores reales, Google Play y panel mínimo:** flujo de contratación (plataformas, briefs, pagos solo con tu aprobación), Google Play en lectura, panel con solo voz, diseños, saldos y conexiones | Elegir plataformas de creadores |
+| 1 | Universo encuadrado, cielo en movimiento, más nebulosa, «¡pum!» al hablar; skills de creadores, comunidades y prensa | ✅ |
+| 2 | Apple App Store Connect (solo lectura): estado de revisión cada 15 min y aviso hablado si cambia | ✅ código · ⏳ falta tu clave (`scripts/conectar-apple.sh` o botón «Conectar» en Conexiones) |
+| 2b | Saludo «señor Idalmi», agenda y alarmas habladas («despiértame a las 8») | ✅ |
+| 2c | Llamadas desde tu iPhone vía el Mac, solo por tu orden («guarda el número de Ana: …», «llama a Ana») | ✅ |
+| 2d | Acceso remoto con enlace propio (túnel Cloudflare + clave remota + código al correo) | ✅ código · ⏳ falta mover el dominio a Cloudflare y ejecutar `scripts/acceso-remoto.sh` |
+| 3 | Correo y lista de correo (leer, borradores; enviar solo con aprobación) | ⏳ |
+| 4 | Búsqueda web para los agentes y delegación en Claude Code | ⏳ |
+| 5 | Creadores reales, Google Play, panel mínimo, voz más humana | ⏳ |
 
 ## ⏳ Falta (en orden)
 

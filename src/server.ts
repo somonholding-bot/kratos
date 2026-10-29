@@ -5,7 +5,7 @@ import path from 'node:path';
 import { ROOT, config } from './config.ts';
 import { createPool, type Db } from './db.ts';
 import { migrate } from './migrate.ts';
-import { consumeLoginCode, safeEqual, sessionToken } from './auth.ts';
+import { checkRemotePassphrase, consumeLoginCode, remoteConfig, safeEqual, sessionToken } from './auth.ts';
 import { audit, emergencyStop, getState, heartbeat, resumeFromEmergency, setAutomationsPaused } from './core/state.ts';
 import { cancelTask, createTask } from './core/tasks.ts';
 import { decideApproval } from './core/approvals.ts';
@@ -34,6 +34,8 @@ const IMPORTMAP_HASHES = (() => {
 })();
 const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg' };
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${config.port}`, `localhost:${config.port}`]);
+
+const REMOTE_FORM = `<form method="post" action="/login" style="margin-top:18px"><input type="password" name="clave" autocomplete="current-password" placeholder="Clave remota" autofocus style="padding:10px;border-radius:8px;border:1px solid #445;background:#0b1020;color:#fff"> <button style="padding:10px 16px;border-radius:8px">Entrar</button></form>`;
 
 type Route = (db: Db, body: any, params: string[]) => Promise<unknown>;
 
@@ -220,7 +222,10 @@ export function createServer(db: Db) {
   return http.createServer(async (req, res) => {
     try {
       // Protección frente a DNS rebinding: solo hosts locales exactos.
-      if (!ALLOWED_HOSTS.has(req.headers.host ?? '')) return send(res, 421, { error: 'Host no permitido' });
+      const remote = remoteConfig();
+      const isRemote = !!remote && req.headers.host === remote.host && !!req.headers['cf-connecting-ip'];   // solo a través del túnel de Cloudflare
+      if (!ALLOWED_HOSTS.has(req.headers.host ?? '') && !isRemote) return send(res, 421, { error: 'Host no permitido' });
+      const secure = isRemote ? '; Secure' : '';
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
 
       if (url.pathname === '/api/health') {
@@ -231,10 +236,19 @@ export function createServer(db: Db) {
         if (consumeLoginCode(url.searchParams.get('c') ?? '')) {
           return send(res, 302, '', { location: '/', 'set-cookie': `jarvis=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000` });
         }
+        if (isRemote && req.method === 'POST') {
+          const form = new URLSearchParams((await readRaw(req, 4_000)).toString('utf8'));
+          const ok = checkRemotePassphrase(form.get('clave') ?? '');
+          await audit(db, 'acceso remoto', ok === true ? 'remoto.entrada' : 'remoto.intento_fallido', { ip: String(req.headers['cf-connecting-ip']).slice(0, 45) });
+          if (ok === true) return send(res, 302, '', { location: '/prototipo/', 'set-cookie': `jarvis=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${secure}` });
+          return send(res, 401, page(ok === 'bloqueado' ? 'Demasiados intentos. Espera 15 minutos.' : 'Clave incorrecta.' + REMOTE_FORM));
+        }
+        if (isRemote) return send(res, 200, page('Acceso remoto a KRATOS.' + REMOTE_FORM));
         return send(res, 401, page('Código no válido o caducado. Ejecuta <code>npm run open</code> en la carpeta de Kratos (~/Jarvis).'));
       }
       if (!safeEqual(cookie(req, 'jarvis'), token)) {
         if (url.pathname.startsWith('/api/')) return send(res, 401, { error: 'Sesión requerida' });
+        if (isRemote) return send(res, 302, '', { location: '/login' });
         return send(res, 401, page('Kratos está activo. Para entrar ejecuta <code>npm run open</code> en la carpeta de Kratos (~/Jarvis).'));
       }
 
@@ -246,7 +260,7 @@ export function createServer(db: Db) {
       if (req.method === 'POST' && url.pathname.startsWith('/api/')) {
         // CSRF: exige JSON y, si hay Origin, que sea local.
         const origin = req.headers.origin;
-        if (origin && !ALLOWED_HOSTS.has(origin.replace(/^https?:\/\//, ''))) return send(res, 403, { error: 'Origen no permitido' });
+        if (origin && !ALLOWED_HOSTS.has(origin.replace(/^https?:\/\//, '')) && !(isRemote && origin === `https://${remote!.host}`)) return send(res, 403, { error: 'Origen no permitido' });
         if (url.pathname === '/api/voice/transcribe') {
           if (req.headers['content-type'] !== 'audio/wav') return send(res, 415, { error: 'Se requiere audio/wav' });
           const wav = await readRaw(req, 1_200_000); // ~37 s a 16 kHz mono
