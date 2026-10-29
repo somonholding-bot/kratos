@@ -25,18 +25,18 @@ test('interpreta alarmas y recordatorios en español', () => {
 });
 
 test('saluda al propietario por su nombre', async () => {
-  assert.match(await greeting(db), /[Ss]eñor Idalmi/);
+  assert.match(await greeting(db), /Idalmi/);
 });
 
 test('una alarma por voz se programa y se entrega una sola vez, hablada', async () => {
   const r = await handleMessage(db, 'Kratos, despiértame en 1 minuto', 'voz');
   assert.equal(r.action, 'agenda_creada');
-  assert.match(r.spoken, /señor Idalmi/);
+  assert.match(r.spoken, /Idalmi/);
   assert.equal((await upcoming(db)).length, 1);
   await db.query(`UPDATE agenda SET at = now() - interval '1 second'`);
   const due = await claimDue(db);
   assert.equal(due.length, 1);
-  assert.match(due[0].spoken, /Buen[oa]s .*señor Idalmi\. Son las/);
+  assert.match(due[0].spoken, /Buen[oa]s .*Idalmi\. Son las/);
   assert.equal((await claimDue(db)).length, 0, 'no se repite');
 });
 
@@ -78,7 +78,7 @@ test('«dame un reporte» devuelve dinero invertido y ganado sin inventar cifras
   const r = await h(db, 'Kratos, dame un reporte', 'voz');
   assert.equal(r.action, 'reporte');
   assert.match(r.text, /Invertido: .* USD/); assert.match(r.text, /Ingresos: sin ventas registradas/);
-  assert.match(r.spoken, /Su reporte, señor Idalmi/);
+  assert.match(r.spoken, /Su reporte, Idalmi/);
 });
 
 test('mensajes de texto: borrador para un contacto guardado', async () => {

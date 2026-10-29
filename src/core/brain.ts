@@ -14,6 +14,7 @@ import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox } from './mail.ts';
 import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
 import { proposeCodeJob } from './claudecode.ts';
+import { setSetting } from './bitacora.ts';
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -69,7 +70,9 @@ export async function aiStatus(db: Db) {
   };
 }
 
-const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario. Hablas español claro y cercano, sin tecnicismos innecesarios.
+const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario, Idalmi. Hablas español, con personalidad: ingenioso, seguro, cálido y con humor seco, como el JARVIS de Tony Stark. Suenas como un agente real y competente, no como una máquina.
+Forma de hablar: trata al propietario por «Idalmi». No uses «señor» en cada frase: solo en el saludo de la mañana o en momentos formales. Respuestas habladas breves (1 a 3 frases) salvo que pida detalle. Nada de frases de robot ni de disculpas repetidas.
+Ajustes: puedes cambiar tus propios ajustes (calidad gráfica, velocidad de la voz, tiempo de conversación, voz y modelo) con ajustar_kratos cuando te lo pida; confirma en una frase lo que cambiaste.
 
 Meta de vida: 100.000 usuarios y 250.000 USD de ingresos mensuales (primer hito: 10.000 usuarios). Sé proactivo: propone y reparte trabajo hacia esa meta sin esperar a que te lo pidan, siempre de forma legal, honesta y dentro de presupuestos y aprobaciones.
 
@@ -227,6 +230,11 @@ const TOOLS: ToolDef[] = [
     name: 'encargar_a_claude_code', description: 'Encarga a Claude Code un trabajo de diseño o programación (web, landing, app, script, página) en una carpeta aislada ~/KratosProyectos/<proyecto>. Solo corre si el propietario lo aprueba en el panel; descríbelo con todo detalle.',
     input_schema: obj({ proyecto: { type: 'string', description: 'Nombre corto del proyecto' }, instrucciones: { type: 'string', description: 'Qué construir, con requisitos y criterios de aceptación' } }, ['proyecto', 'instrucciones']),
     run: async (db, i) => proposeCodeJob(db, String(i.proyecto), String(i.instrucciones), 'kratos (IA)'),
+  },
+  {
+    name: 'ajustar_kratos', description: 'Cambia un ajuste interno de KRATOS a petición del propietario: ui_quality (baja|media|alta, calidad gráfica), voice_speed (0.7 a 1.4, velocidad de la voz), follow_up (5 a 300 segundos de conversación sin repetir «Kratos»), tts_voice (piper|kokoro), voice_model (claude-haiku-5-5|claude-sonnet-5-5|claude-opus-5-5).',
+    input_schema: obj({ clave: { type: 'string', enum: ['ui_quality', 'voice_speed', 'follow_up', 'tts_voice', 'voice_model'] }, valor: { type: 'string' } }, ['clave', 'valor']),
+    run: async (db, i) => { try { return await setSetting(db, String(i.clave), i.valor, 'kratos (IA, por orden del propietario)'); } catch (e: any) { return { error: e.message }; } },
   },
   {
     name: 'mensaje_texto', description: 'Prepara un mensaje de texto (iMessage/SMS por el iPhone) a un contacto o número; se abre en Mensajes y el propietario pulsa Enviar. Solo por orden expresa del propietario.',

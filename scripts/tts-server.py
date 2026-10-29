@@ -25,18 +25,18 @@ if os.path.exists(os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx")):
         print("Kokoro no disponible:", e, flush=True)
 
 
-def synth(text: str, voice: str) -> bytes:
+def synth(text: str, voice: str, speed: float = 1.0) -> bytes:
     buf = io.BytesIO()
     with lock:
         if voice == "kokoro" and kokoro is not None:
             import numpy as np
-            samples, rate = kokoro.create(text, voice="em_alex", speed=1.05, lang="es")
+            samples, rate = kokoro.create(text, voice="em_alex", speed=1.05 * speed, lang="es")
             pcm = (np.clip(samples, -1, 1) * 32767).astype("<i2").tobytes()
             with wave.open(buf, "wb") as w:
                 w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm)
         else:
             with wave.open(buf, "wb") as w:
-                piper_voice.synthesize_wav(text, w, syn_config=piper_cfg)
+                piper_voice.synthesize_wav(text, w, syn_config=SynthesisConfig(length_scale=0.93 / speed))
     return buf.getvalue()
 
 
@@ -57,7 +57,7 @@ class H(BaseHTTPRequestHandler):
             text = str(req.get("text", "")).strip()[:2000]
             if not text:
                 raise ValueError("texto vacío")
-            wav = synth(text, str(req.get("voice", "piper")))
+            wav = synth(text, str(req.get("voice", "piper")), min(1.4, max(0.7, float(req.get("speed", 1.0)))))
         except Exception as e:
             self.send_response(400); self.end_headers(); self.wfile.write(str(e).encode()[:200]); return
         self.send_response(200); self.send_header("Content-Type", "audio/wav"); self.send_header("Content-Length", str(len(wav))); self.end_headers(); self.wfile.write(wav)

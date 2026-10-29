@@ -1,3 +1,4 @@
+window.addEventListener('error', (e) => fetch('/api/fallas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: `panel: ${e.message}` }) }).catch(() => {}));
 // Panel de Kratos. Todo lo que se muestra sale de la API local; nada se simula aquí.
 
 import { Voice, isNative } from './voice.js';
@@ -247,6 +248,9 @@ const screens = {
     return `<h1>Configuración y privacidad</h1>${meta('local')}
       <h2>Interfaz</h2><label><input type="checkbox" id="reduce" ${reduce ? 'checked' : ''}> Reducir movimiento (escena estática)</label>
       <label style="display:block;margin-top:8px">Calidad gráfica de la escena <select id="quality">${['baja', 'media', 'alta'].map((q) => `<option value="${q}" ${(store('kratos.quality') || 'media') === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
+      <h2>Bitácora</h2>
+      <div id="bitacora"><span class="note">Cargando…</span></div>
+      <button class="ctl" id="bit-refresh" style="margin-top:6px">Actualizar bitácora</button>
       <h2>Uso de recursos</h2>
       <div id="resources"><span class="note">Midiendo…</span></div>
       <button class="ctl" id="res-refresh" style="margin-top:6px">Actualizar</button>
@@ -309,7 +313,7 @@ async function render() {
   try { main.innerHTML = await screens[app.screen](); }
   catch (e) { main.innerHTML = `<h1>Sin conexión con Kratos</h1><p class="meta">${esc(e.message)}. Comprueba que el servicio esté activo.</p>`; }
   paintChrome();
-  if (app.screen === 'ajustes') renderResources();
+  if (app.screen === 'ajustes') { renderResources(); renderBitacora(); }
   const log = $('#log'); if (log) log.scrollTop = log.scrollHeight;
 }
 
@@ -500,7 +504,20 @@ async function renderResources() {
     ${r.warnings.map((w) => `<div class="note" style="color:#ffb547">⚠ ${esc(w)}</div>`).join('')}
     <div class="note">Se actualiza al abrir esta pantalla. No mide la tarjeta gráfica (macOS no la expone sin permisos de administrador).</div>`;
 }
+async function renderBitacora() {
+  const box = document.getElementById('bitacora');
+  if (!box) return;
+  let b;
+  try { b = await api('/api/bitacora'); } catch { box.innerHTML = '<span class="note">No pude leer la bitácora.</span>'; return; }
+  const when = (t) => new Date(t).toLocaleString('es', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const last = b.rendimiento[0];
+  box.innerHTML = `
+    <div class="note">Rendimiento: se guarda una muestra cada minuto durante 7 días${last ? ` · última: CPU ${last.cpu_busy ?? '?'} % · RAM ${last.ram_used_pct ?? '?'} % · KRATOS ${last.kratos_ram_mb ?? '?'} MB` : ''}.</div>
+    <div class="note" style="margin-top:8px">Fallas recientes:</div>
+    <ul class="note">${b.fallas.slice(0, 25).map((f) => `<li>${when(f.at)} · ${esc(f.source)} · ${esc(f.message)}</li>`).join('') || '<li>Sin fallas registradas.</li>'}</ul>`;
+}
 document.addEventListener('click', async (e) => {
+  if (e.target.id === 'bit-refresh') return renderBitacora();
   if (e.target.id === 'res-refresh') return renderResources();
   const t = e.target;
   if (t.dataset.say) return say(t.dataset.say);
@@ -536,6 +553,7 @@ document.addEventListener('change', async (e) => {
   if (e.target.id === 'cfg-tts_voice' || e.target.id === 'cfg-voice_model') {
     await api('/api/settings', { key: e.target.id.slice(4), value: e.target.value }); toast('Ajuste guardado.'); return;
   }
+  if (e.target.id === 'cfg-followUp') { await api('/api/settings', { key: 'follow_up', value: Number(e.target.value) }).catch(() => {}); }
   if (e.target.id?.startsWith('cfg-')) voice.setWakeConfig({ [e.target.id.slice(4)]: Number(e.target.value) });
   if (e.target.id === 'reduce') { store('jarvis.reduceMotion', e.target.checked ? '1' : '0'); document.body.classList.toggle('reduce-motion', e.target.checked); scene.set({ reducedMotion: e.target.checked || prefersReduced }); }
   if (e.target.id === 'quality') { store('kratos.quality', e.target.value); scene.set({ quality: e.target.value }); }

@@ -524,7 +524,7 @@ function updateMeteors(dt) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
     const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
     const start = new THREE.Vector3(rand(-18, 18), rand(4, 11), -20), dir = new THREE.Vector3(rand(-1, -0.4) * (Math.random() < 0.5 ? -1 : 1), rand(-0.8, -0.4), 0).normalize();
-    meteorGroup.add(line); meteors.push({ line, pos: start, dir, life: 0, max: rand(0.7, 1.3), speed: rand(14, 22) });
+    line.frustumCulled = false; meteorGroup.add(line); meteors.push({ line, pos: start, dir, life: 0, max: rand(0.7, 1.3), speed: rand(14, 22) });
   }
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i]; m.life += dt;
@@ -780,9 +780,13 @@ function governFluidity(now) {
   else if (fluid.highSince && now - fluid.highSince > 8000 && fluid.scale < 1) { fluid.scale = Math.min(1, fluid.scale + 0.1); fluid.highSince = 0; apply(); }
 }
 
+window.addEventListener('error', (e) => fetch('/api/fallas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: `universo: ${e.message}` }) }).catch(() => {}));
 function tick(now) {
   raf = 0;
   if (now) governFluidity(now);
+  // límite de 30 imágenes por segundo: menos trabajo para la gráfica y el procesador
+  if (now && tick.last && now - tick.last < 33) { raf = requestAnimationFrame(tick); return; }
+  if (now) tick.last = now;
   if (document.hidden || ui.paused) return;
   frame();
   if (!ui.reduced) raf = requestAnimationFrame(tick);
@@ -994,9 +998,15 @@ missionForm.addEventListener('submit', async (event) => {
   }
 });
 
+let lastServerQuality = null;
 async function refreshReal() {
   try {
-    const [agents, overview, businesses] = await Promise.all([api('/api/agents'), api('/api/overview'), api('/api/businesses')]);
+    const [agents, overview, businesses, ajustes] = await Promise.all([api('/api/agents'), api('/api/overview'), api('/api/businesses'), api('/api/ajustes').catch(() => null)]);
+    // La calidad la puede cambiar el propietario o KRATOS por voz: se aplica cuando cambia en el servidor
+    if (ajustes?.ui_quality && ajustes.ui_quality !== lastServerQuality) {
+      lastServerQuality = ajustes.ui_quality;
+      if (ajustes.ui_quality !== ui.quality) { ui.quality = ajustes.ui_quality; store('kratos.proto.quality', ui.quality); build(); frame(); }
+    }
     real.agents = agents;
     real.overview = overview;
     real.businesses = businesses.businesses ?? [];

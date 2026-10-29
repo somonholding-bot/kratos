@@ -640,6 +640,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func heartbeat() {
     let listening = wake.enabled && [.listening, .hearing, .processing, .followUp, .speaking].contains(wake.state)
     API.post("/api/voice/heartbeat", ["listening": listening, "muted": !wake.enabled])
+    // Ajustes que puede cambiar KRATOS por voz: el tiempo de conversación sin repetir «Kratos»
+    API.send(API.request("/api/ajustes")) { r in
+      if let f = r?["follow_up"] as? Double, f >= 5, f <= 300 { UserDefaults.standard.set(f, forKey: "followUp") }
+    }
   }
 
   // Alarmas y avisos de la agenda: a su hora, encender la pantalla, abrir el universo y decirlo en voz alta.

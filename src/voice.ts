@@ -188,9 +188,9 @@ const PIPER_VOICE = path.join(ROOT, '.jarvis', 'tts', 'es_MX-claude-high.onnx');
 export const naturalVoiceAvailable = () => fs.existsSync(PIPER) && fs.existsSync(PIPER_VOICE);
 
 // Servicio de voz persistente (com.jarvis.tts): 0,1 s por frase en vez de ~2 s cargando el modelo cada vez.
-export async function synthesize(text: string, signal?: AbortSignal, voice = 'piper'): Promise<Buffer> {
+export async function synthesize(text: string, signal?: AbortSignal, voice = 'piper', speed = 1): Promise<Buffer> {
   try {
-    const r = await fetch('http://127.0.0.1:7431/tts', { method: 'POST', body: JSON.stringify({ text: text.replace(/[*_#`]/g, '').slice(0, 2000), voice }),
+    const r = await fetch('http://127.0.0.1:7431/tts', { method: 'POST', body: JSON.stringify({ text: text.replace(/[*_#`]/g, '').slice(0, 2000), voice, speed }),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000) });
     if (r.ok) return smoothEnds(Buffer.from(await r.arrayBuffer()));
   } catch (e: any) { if (signal?.aborted) throw e; }

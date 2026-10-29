@@ -16,6 +16,7 @@ import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
 import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
+import { allSettings, logFault, logPerf, setSetting } from './core/bitacora.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -97,6 +98,11 @@ const GET: Record<string, Route> = {
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
   '/api/resources': async () => resources(),
+  '/api/ajustes': async (db) => allSettings(db),
+  '/api/bitacora': async (db) => ({
+    fallas: await q(db, `SELECT at, source, level, message FROM fault_log ORDER BY id DESC LIMIT 100`),
+    rendimiento: await q(db, `SELECT at, cpu_busy, ram_used_pct, kratos_ram_mb, kratos_cpu, top_app, top_app_ram_mb FROM perf_log ORDER BY id DESC LIMIT 120`),
+  }),
   '/api/voz/ajustes': async (db) => { const st = await getState(db); return { tts_voice: st.tts_voice ?? 'kokoro', voice_model: st.voice_model ?? 'claude-haiku-5-5' }; },
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
@@ -155,19 +161,10 @@ const POST: Record<string, Route> = {
     spawn('/bin/bash', [path.join(ROOT, 'scripts', 'conectar-apple.sh')], { detached: true, stdio: 'ignore' }).unref();
     return { ok: true, connected: !!appleCredentials() };
   },
-  // Ajustes que el propietario cambia desde Configuración (lista blanca; nada más se puede tocar desde aquí)
-  '/api/settings': async (db, b) => {
-    const allowed: Record<string, string[]> = {
-      tts_voice: ['piper', 'kokoro'],
-      voice_model: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'],
-    };
-    const key = String(b.key ?? ''), value = String(b.value ?? '');
-    if (!allowed[key]?.includes(value)) throw new HttpError(400, 'Ajuste no válido');
-    await db.query(`INSERT INTO system_state (key, value, updated_by) VALUES ($1, $2, 'propietario (panel)')
-      ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now(), updated_by = 'propietario (panel)'`, [key, JSON.stringify(value)]);
-    await audit(db, 'propietario (panel)', 'ajuste.cambiado', { key, value });
-    return { ok: true };
-  },
+  // Ajustes internos: los cambia el propietario en Configuración o KRATOS por voz (ver src/core/bitacora.ts)
+  '/api/settings': async (db, b) => setSetting(db, String(b.key ?? ''), b.value, 'propietario (panel)').catch((e) => { throw new HttpError(400, e.message); }),
+  // Errores que el panel o el universo reportan (bitácora de fallas)
+  '/api/fallas': async (db, b) => { await logFault(db, 'panel', 'error', String(b.message ?? '')); return { ok: true }; },
   '/api/emergency-stop': async (db) => emergencyStop(db, 'propietario (panel)'),
   '/api/resume': async (db) => { await resumeFromEmergency(db, 'propietario (panel)'); return { ok: true }; },
   '/api/automations': async (db, b) => { await setAutomationsPaused(db, !!b.paused, 'propietario (panel)'); return { ok: true }; },
@@ -299,8 +296,9 @@ export function createServer(db: Db) {
           if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Se requiere JSON' });
           const b = JSON.parse((await readRaw(req, 20_000)).toString('utf8') || '{}');
           if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
-          const voice = (await getState(db) as any).tts_voice ?? 'piper';
-          const wav = await synthesize(b.text, undefined, voice).catch((e) => { throw new HttpError(503, e.message); });
+          const st: any = await getState(db);
+          const voice = st.tts_voice ?? 'kokoro';
+          const wav = await synthesize(b.text, undefined, voice, Number(st.voice_speed) || 1).catch((e) => { throw new HttpError(503, e.message); });
           res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'no-store', 'content-length': String(wav.length) });
           return res.end(wav);
         }
@@ -323,7 +321,7 @@ export function createServer(db: Db) {
       send(res, 405, { error: 'Método no permitido' });
     } catch (err: any) {
       const status = err instanceof HttpError ? err.status : 500;
-      if (status === 500) console.error('[server]', err);
+      if (status === 500) { console.error('[server]', err); logFault(db, 'servidor', 'error', String(err?.message ?? err)).catch(() => {}); }
       send(res, status, { error: status === 500 ? 'Error interno (ver registro)' : err.message });
     }
   });
@@ -339,6 +337,8 @@ if (import.meta.main) {
   const server = createServer(db);
   server.listen(config.port, config.host, () => console.log(`[server] panel en http://${config.host}:${config.port}`));
   await audit(db, 'server', 'proceso.iniciado', {});
+  // Muestreo de rendimiento cada 60 s (bitácora de rendimiento)
+  setInterval(() => resources().then((r) => logPerf(db, r)).catch(() => {}), 60_000);
   const beat = setInterval(() => heartbeat(db, 'server').catch((e) => console.error('[server] latido:', e.message)), 15_000);
   heartbeat(db, 'server').catch(() => {});
   const stop = () => { clearInterval(beat); server.close(); db.end().finally(() => process.exit(0)); };

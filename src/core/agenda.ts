@@ -19,14 +19,10 @@ export const hhmm = (d: Date) => d.toLocaleTimeString('es', { hour: 'numeric', m
 // Bienvenida al oír «Hey Kratos» sin orden detrás
 export async function greeting(db: Db): Promise<string> {
   const o = await owner(db);
-  const cap = o.address.charAt(0).toUpperCase() + o.address.slice(1);
-  return pick([
-    `¿Qué tal, ${o.address}? Dígame.`,
-    `Buenas ${part()}, ${o.address}. ¿En qué le ayudo?`,
-    `${cap}, aquí estoy. ¿Qué necesita?`,
-    `A sus órdenes, ${o.address}.`,
-    `Hola, ${o.address}. Le escucho.`,
-  ]);
+  const h = new Date().getHours();
+  // «señor» solo en el saludo de la mañana; el resto del día, por su nombre
+  const hi = h < 12 ? `Buenos días, señor ${o.name}` : h < 20 ? `¿Qué tal, ${o.name}?` : `Buenas noches, ${o.name}`;
+  return pick([`${hi}. Dígame.`, `${hi}. ¿En qué le ayudo?`, `${hi}.`, `Aquí estoy. ¿Qué necesita?`]);
 }
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -113,7 +109,7 @@ async function speech(db: Db, i: AgendaItem): Promise<string> {
     const rest = (await upcoming(db, 16)).filter((x) => x.id !== i.id && new Date(x.at).toDateString() === now.toDateString());
     const pend = (await db.query(`SELECT count(*)::int AS n FROM approvals WHERE status = 'pendiente'`)).rows[0].n;
     const day = now.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-    const lines = [`Buenos ${part(now) === 'días' ? 'días' : part(now) === 'tardes' ? 'tardes' : 'noches'}, ${o.address}. Son las ${hhmm(now)}, ${day}.`];
+    const lines = [`Buenos ${part(now) === 'días' ? 'días' : part(now) === 'tardes' ? 'tardes' : 'noches'}, ${now.getHours() < 12 ? `señor ${o.name}` : o.name}. Son las ${hhmm(now)}, ${day}.`];
     if (i.text && !/^despertar$/i.test(i.text)) lines.push(`Es hora de: ${i.text}.`);
     lines.push(rest.length ? `Hoy tiene ${rest.length === 1 ? 'una cosa' : `${rest.length} cosas`} en la agenda: ${rest.map((x) => `a las ${hhmm(new Date(x.at))}, ${x.text}`).join('; ')}.` : 'No tiene nada más en la agenda de hoy.');
     if (pend) lines.push(`Tiene ${pend} ${pend === 1 ? 'aprobación pendiente' : 'aprobaciones pendientes'} en el panel.`);
