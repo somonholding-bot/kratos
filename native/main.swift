@@ -436,7 +436,9 @@ final class ConnectionsBrowser: NSObject, WKNavigationDelegate, WKUIDelegate, NS
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
   var window: NSWindow!
-  var web: WKWebView!
+  var web: WKWebView!        // universo (se carga una vez y se queda)
+  var panel: WKWebView!      // panel de detalles (se carga una vez y se queda)
+  var showingPanel = false
   var status: NSStatusItem!
   let wake = WakeListener()
   var wakeItem: NSMenuItem!
@@ -457,7 +459,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
       self?.universeJS("window.kratosWoke && window.kratosWoke()")   // al despertar, KRATOS aparece a pantalla completa
     }
     NotificationCenter.default.addObserver(forName: .kratosReplied, object: nil, queue: .main) { [weak self] n in
-      self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
+      self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()"); self?.panel.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
       if (n.object as? String) == "reporte" { self?.universeJS("window.kratosReport && window.kratosReport()") }
     }
     Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }
@@ -472,11 +474,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func applicationShouldTerminateAfterLastWindowClosed(_ s: NSApplication) -> Bool { false }
   // Abrir KRATOS (Dock, Spotlight) siempre lleva al universo a pantalla completa; el panel queda para Esc o el menú
   func applicationShouldHandleReopen(_ s: NSApplication, hasVisibleWindows: Bool) -> Bool { showWindow(); if !onUniverse { openUniverse() }; return true }
-  var onUniverse: Bool { web?.url?.path.hasPrefix("/prototipo") == true && web?.url?.query?.contains("embed") != true }
+  var onUniverse: Bool { !showingPanel && web?.url?.path.hasPrefix("/prototipo") == true }
   var pendingJS: [String] = []
   // Ejecuta en el universo; si estaba en el panel, primero lo abre a pantalla completa y luego lo ejecuta
   func universeJS(_ js: String) {
-    if onUniverse { web.evaluateJavaScript(js); return }
+    if onUniverse, !web.isLoading { web.evaluateJavaScript(js); return }
     pendingJS.append(js); showWindow(); openUniverse()
   }
 
@@ -503,17 +505,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     let cfg = WKWebViewConfiguration()
     cfg.userContentController.add(self, name: "kratos")
     cfg.mediaTypesRequiringUserActionForPlayback = []
+    // Dos vistas fijas: cambiar entre universo y panel solo las muestra u oculta (antes recargaba la página entera)
     web = WKWebView(frame: .zero, configuration: cfg)
-    web.uiDelegate = self
-    web.navigationDelegate = self
-    web.setValue(false, forKey: "drawsBackground")
+    panel = WKWebView(frame: .zero, configuration: cfg)
+    for v in [web!, panel!] {
+      v.uiDelegate = self
+      v.navigationDelegate = self
+      v.setValue(false, forKey: "drawsBackground")
+      v.autoresizingMask = [.width, .height]
+    }
+    panel.isHidden = true
+    let container = NSView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
+    container.autoresizesSubviews = true
+    for v in [web!, panel!] { v.frame = container.bounds; container.addSubview(v) }
     window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
                       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
     window.title = "Kratos"
     window.titlebarAppearsTransparent = true
     window.backgroundColor = NSColor(calibratedRed: 0.016, green: 0.027, blue: 0.047, alpha: 1)
     window.appearance = NSAppearance(named: .darkAqua)
-    window.contentView = web
+    window.contentView = container
     window.isReleasedWhenClosed = false
     window.collectionBehavior = [.fullScreenPrimary]
     window.setFrameAutosaveName("KratosMain")
@@ -531,23 +542,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
 
   // Modo inmersivo: el universo de KRATOS a pantalla completa. Esc o «Salir» llevan al panel de detalles.
   func openUniverse() {
-    web.load(URLRequest(url: BASE.appendingPathComponent("prototipo/")))
+    showingPanel = false
+    if web.url?.path.hasPrefix("/prototipo") != true { web.load(URLRequest(url: BASE.appendingPathComponent("prototipo/"))) }
+    panel.isHidden = true; web.isHidden = false
+    web.evaluateJavaScript("window.kratosHostVisible && window.kratosHostVisible(true)")
+    syncFullScreen()
+    flushPendingJS()
+  }
+  func flushPendingJS() {
+    guard web.url?.path.hasPrefix("/prototipo") == true, !web.isLoading, !pendingJS.isEmpty else { return }
+    let js = pendingJS; pendingJS = []
+    js.forEach { web.evaluateJavaScript($0) }
   }
   // Al terminar de cargar: el universo va a pantalla completa; el panel, en ventana.
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     appLog("nav \(webView.url?.absoluteString ?? "-")")
     syncFullScreen()
-    if onUniverse, !pendingJS.isEmpty {
-      let js = pendingJS; pendingJS = []
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { js.forEach { webView.evaluateJavaScript($0) } }   // tras construir la escena
-    }
+    if webView === web { DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { self.flushPendingJS() } }   // tras construir la escena
   }
   func syncFullScreen() {
     guard window.isVisible else { return }
-    let immersive = (web.url?.path.hasPrefix("/prototipo") ?? false) && !(web.url?.query?.contains("embed") ?? false)
+    let immersive = !showingPanel
     if immersive != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
   }
-  func openDetails() { web.load(URLRequest(url: BASE)) }
+  func openDetails() {
+    showingPanel = true
+    if panel.url == nil { panel.load(URLRequest(url: BASE)) }
+    web.evaluateJavaScript("window.kratosHostVisible && window.kratosHostVisible(false)")   // el universo se pausa mientras no se ve
+    web.isHidden = true; panel.isHidden = false
+    panel.evaluateJavaScript("window.kratosRefreshPanel && window.kratosRefreshPanel()")
+    syncFullScreen()
+  }
 
   func showWindow() {
     NSApp.activate(ignoringOtherApps: true)
@@ -564,6 +589,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   // Enlaces externos se abren en el navegador; la ventana de Kratos solo muestra el panel local.
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, url.host != "127.0.0.1" { NSWorkspace.shared.open(url); return decisionHandler(.cancel) }
+    // Cada vista se queda en su página: los enlaces entre universo y panel cambian de vista en vez de recargar
+    if action.targetFrame?.isMainFrame != false, let url = action.request.url, webView.url != nil {
+      let toUniverse = url.path.hasPrefix("/prototipo") && url.query?.contains("embed") != true
+      if webView === panel && toUniverse { openUniverse(); return decisionHandler(.cancel) }
+      if webView === web && !url.path.hasPrefix("/prototipo") { openDetails(); return decisionHandler(.cancel) }
+    }
     decisionHandler(.allow)
   }
 
@@ -582,7 +613,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
       wake.pausedByPanel = true
       wake.speaker.say(body["text"] as? String ?? "") { [weak self] in
         self?.wake.pausedByPanel = false
-        self?.web.evaluateJavaScript("window.kratosSpoke && window.kratosSpoke()")
+        self?.panel.evaluateJavaScript("window.kratosSpoke && window.kratosSpoke()")
       }
     case "hush": wake.speaker.stop()
     case "openBrowser": ConnectionsBrowser.shared.show(body["url"] as? String)
@@ -633,7 +664,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     wakeItem.state = wake.enabled ? .on : .off
     let cfg = "{wakeWindow:\(wake.wakeWindow),followUp:\(wake.followUpSeconds),sensitivity:\(wake.sensitivity)}"
     let js = "window.kratosNativeState && window.kratosNativeState(\(jsString(s.rawValue)), \(wake.enabled), \(cfg))"
-    web?.evaluateJavaScript(js)
+    web?.evaluateJavaScript(js); panel?.evaluateJavaScript(js)
     if s == .denied { stateItem.title = "Sin permiso de micrófono: Ajustes › Privacidad › Micrófono" }
   }
 
@@ -676,7 +707,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   @objc func emergency() {
     API.post("/api/emergency-stop", [:]) { [weak self] r in
       self?.alert("Parada de emergencia activada", r == nil ? "No se pudo contactar con el servicio." : "Todo el trabajo se ha detenido. Reanuda desde el panel.")
-      self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
+      self?.web.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()"); self?.panel.evaluateJavaScript("window.kratosRefresh && window.kratosRefresh()")
     }
   }
 

@@ -11,6 +11,7 @@ const MAPS = {
   saturno: '/prototipo/textures/saturn.webp',
   luna: '/prototipo/textures/moon.webp',
 };
+THREE.Cache.enabled = true;   // cambiar de calidad no vuelve a descargar ni decodificar las texturas
 const textureLoader = new THREE.TextureLoader();
 const textureCache = new Map();
 function planetMap(id) {

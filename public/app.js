@@ -244,7 +244,9 @@ const screens = {
   },
 
   async ajustes() {
-    const reduce = store('jarvis.reduceMotion') === '1';
+    const aj = await api('/api/ajustes').catch(() => ({}));
+    const reduce = aj.ui_reduced === '1';
+    store('kratos.quality', aj.ui_quality ?? store('kratos.quality') ?? 'media');
     return `<h1>Configuración y privacidad</h1>${meta('local')}
       <h2>Interfaz</h2><label><input type="checkbox" id="reduce" ${reduce ? 'checked' : ''}> Reducir movimiento (escena estática)</label>
       <label style="display:block;margin-top:8px">Calidad gráfica de la escena <select id="quality">${['baja', 'media', 'alta'].map((q) => `<option value="${q}" ${(store('kratos.quality') || 'media') === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
@@ -355,8 +357,9 @@ async function pttStop() {
 // ---------- escena de KRATOS (estados reales) ----------
 const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // El panel muestra el mismo universo 3D de KRATOS, integrado y sin controles propios
+// En la app de Mac el universo ya está en su propia vista: el panel no carga una segunda escena 3D
 const sceneFrame = document.createElement('iframe');
-sceneFrame.src = '/prototipo/?embed=1';
+sceneFrame.src = isNative ? 'about:blank' : '/prototipo/?embed=1';
 sceneFrame.title = 'Universo de KRATOS';
 sceneFrame.className = 'universe-frame';
 $('#scene').append(sceneFrame);
@@ -559,8 +562,8 @@ document.addEventListener('change', async (e) => {
   }
   if (e.target.id === 'cfg-followUp') { await api('/api/settings', { key: 'follow_up', value: Number(e.target.value) }).catch(() => {}); }
   if (e.target.id?.startsWith('cfg-')) voice.setWakeConfig({ [e.target.id.slice(4)]: Number(e.target.value) });
-  if (e.target.id === 'reduce') { store('jarvis.reduceMotion', e.target.checked ? '1' : '0'); document.body.classList.toggle('reduce-motion', e.target.checked); scene.set({ reducedMotion: e.target.checked || prefersReduced }); }
-  if (e.target.id === 'quality') { store('kratos.quality', e.target.value); scene.set({ quality: e.target.value }); }
+  if (e.target.id === 'reduce') { api('/api/settings', { key: 'ui_reduced', value: e.target.checked ? '1' : '0' }).catch(() => {}); store('jarvis.reduceMotion', e.target.checked ? '1' : '0'); document.body.classList.toggle('reduce-motion', e.target.checked); scene.set({ reducedMotion: e.target.checked || prefersReduced }); }
+  if (e.target.id === 'quality') { store('kratos.quality', e.target.value); await api('/api/settings', { key: 'ui_quality', value: e.target.value }).catch(() => {}); toast('Calidad guardada.'); }
 });
 
 document.body.classList.toggle('reduce-motion', store('jarvis.reduceMotion') === '1');

@@ -5,6 +5,7 @@ import { audit } from './state.ts';
 
 export const SETTINGS = {
   ui_quality: { enum: ['baja', 'media', 'alta'] },
+  ui_reduced: { enum: ['0', '1'] },
   voice_speed: { min: 0.7, max: 1.4 },
   follow_up: { min: 5, max: 300 },
   tts_voice: { enum: ['piper', 'kokoro'] },

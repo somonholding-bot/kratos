@@ -44,15 +44,26 @@ const voice = { nativeState: null, enabled: true, awake: false, wokeAt: 0, level
 // «¡Pum!»: al despertar y en cada golpe de voz, el núcleo, las neuronas y el cielo se expanden y vuelven
 const boom = (k) => { voice.burst = Math.max(voice.burst, k); if (k >= 0.6 && world?.shock) world.shock.t = 0; };
 const nativeBridge = window.webkit?.messageHandlers?.kratos ?? null;
+// El botón dice claramente si el micrófono está apagado (el silencio se guarda y sigue al reabrir la app)
+function paintMute() {
+  const b = document.querySelector('[data-act="mute"]');
+  if (!b) return;
+  b.setAttribute('aria-pressed', ui.muted);
+  const label = b.querySelector('span'); if (label) label.textContent = ui.muted ? 'Mic apagado' : 'Silenciar';
+  b.title = ui.muted ? 'Micrófono apagado: pulsa para que KRATOS vuelva a escuchar (M)' : 'Silenciar micrófono (M)';
+  b.style.color = ui.muted ? '#ff8a8a' : '';
+}
 window.kratosNativeState = (state, enabled) => {
   voice.nativeState = state; voice.enabled = enabled;
   if (state === 'Di «Kratos»' || state === 'Escucha apagada') voice.awake = false;
-  ui.muted = !enabled; document.querySelector('[data-act="mute"]')?.setAttribute('aria-pressed', ui.muted);
+  ui.muted = !enabled; paintMute();
 };
 window.kratosWoke = () => { voice.awake = true; voice.wokeAt = performance.now(); boom(1); log('KRATOS ha despertado'); };
 window.kratosSpeechPulse = () => { voice.pulse = 1; boom(0.45); };
 window.kratosMicLevel = (v) => { const l = Math.min(1, v * 9); if (l > voice.level + 0.35) boom(Math.min(1, l)); voice.level = l; };
 window.kratosRefresh = () => refreshReal();
+// La app de Mac avisa cuando el universo deja de verse (panel) y cuando vuelve
+window.kratosHostVisible = (v) => { ui.hostHidden = !v; if (v) { clock.getDelta(); fluid.last = 0; start(); refreshReal(); } };
 function voiceState() {
   const w = voice.nativeState;
   if (performance.now() - voice.wokeAt < 1200) return 'escuchando';
@@ -784,6 +795,7 @@ function governFluidity(now) {
 window.addEventListener('error', (e) => fetch('/api/fallas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: `universo: ${e.message}` }) }).catch(() => {}));
 function tick(now) {
   raf = 0;
+  if (ui.hostHidden) return;   // la app muestra el panel: el universo no dibuja nada
   if (now) governFluidity(now);
   // límite de 30 imágenes por segundo: menos trabajo para la gráfica y el procesador
   if (now && tick.last && now - tick.last < 33) { raf = requestAnimationFrame(tick); return; }
@@ -1024,11 +1036,18 @@ missionForm.addEventListener('submit', async (event) => {
   }
 });
 
-let lastServerQuality = null;
+let lastServerQuality = null, lastServerReduced = null;
+// Los ajustes gráficos viven en el servidor: el panel, el universo y KRATOS por voz ven siempre el mismo valor
+const saveSetting = (key, value) => api('/api/settings', { key, value }).catch(() => {});
 async function refreshReal() {
   try {
     const [agents, overview, businesses, ajustes] = await Promise.all([api('/api/agents'), api('/api/overview'), api('/api/businesses'), api('/api/ajustes').catch(() => null)]);
     // La calidad la puede cambiar el propietario o KRATOS por voz: se aplica cuando cambia en el servidor
+    if (ajustes?.ui_reduced != null && ajustes.ui_reduced !== lastServerReduced) {
+      lastServerReduced = ajustes.ui_reduced;
+      const r = ajustes.ui_reduced === '1';
+      if (r !== ui.reduced) { ui.reduced = r; store('kratos.proto.reduced', r ? '1' : '0'); document.querySelector('[data-act="reduced"]')?.setAttribute('aria-pressed', r); frame(); start(); }
+    }
     if (ajustes?.ui_quality && ajustes.ui_quality !== lastServerQuality) {
       lastServerQuality = ajustes.ui_quality;
       if (ajustes.ui_quality !== ui.quality) { ui.quality = ajustes.ui_quality; store('kratos.proto.quality', ui.quality); build(); frame(); }
@@ -1059,13 +1078,13 @@ async function refreshReal() {
 function act(a) {
   const btn = dock.querySelector(`[data-act="${a}"]`);
   if (a === 'mute') {
-    ui.muted = !ui.muted; btn.setAttribute('aria-pressed', ui.muted);
+    ui.muted = !ui.muted; paintMute();
     if (nativeBridge) nativeBridge.postMessage({ event: 'mute', muted: ui.muted });
     log(ui.muted ? 'Micrófono silenciado: KRATOS no escucha' : nativeBridge ? 'Micrófono activo: di «Hey Kratos»' : 'Micrófono: solo disponible en la app de Mac');
   }
   if (a === 'pause') { ui.paused = !ui.paused; btn.setAttribute('aria-pressed', ui.paused); if (!ui.paused) { clock.getDelta(); start(); } log(ui.paused ? 'Movimiento en pausa' : 'Movimiento reanudado'); }
-  if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); btn.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
-  if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
+  if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); saveSetting('ui_reduced', ui.reduced ? '1' : '0'); btn.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
+  if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); saveSetting('ui_quality', ui.quality); lastServerQuality = ui.quality; document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
   if (a === 'list') { const l = document.getElementById('list'); l.hidden = !l.hidden; btn.setAttribute('aria-pressed', !l.hidden); renderList(); }
   if (a === 'metrics') { metricsEl.hidden = !metricsEl.hidden; btn.setAttribute('aria-pressed', !metricsEl.hidden); updateMetrics(); }
   if (a === 'exit') exitExperience();
