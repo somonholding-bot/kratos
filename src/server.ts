@@ -17,6 +17,7 @@ import { claimDue, greeting, upcoming } from './core/agenda.ts';
 import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
 import { allSettings, logFault, logPerf, setSetting } from './core/bitacora.ts';
+import { subStatus } from './core/subscription.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -98,7 +99,7 @@ const GET: Record<string, Route> = {
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
   '/api/resources': async () => resources(),
-  '/api/ajustes': async (db) => allSettings(db),
+  '/api/ajustes': async (db) => ({ ...(await allSettings(db)), suscripcion: await subStatus(db) }),
   '/api/bitacora': async (db) => ({
     fallas: await q(db, `SELECT at, source, level, message FROM fault_log ORDER BY id DESC LIMIT 100`),
     rendimiento: await q(db, `SELECT at, cpu_busy, ram_used_pct, kratos_ram_mb, kratos_cpu, top_app, top_app_ram_mb FROM perf_log ORDER BY id DESC LIMIT 120`),

@@ -9,6 +9,7 @@ export const SETTINGS = {
   follow_up: { min: 5, max: 300 },
   tts_voice: { enum: ['piper', 'kokoro'] },
   voice_model: { enum: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'] },
+  agents_engine: { enum: ['suscripcion', 'api'] },
 } as const;
 export type SettingKey = keyof typeof SETTINGS;
 export const SETTING_KEYS = Object.keys(SETTINGS) as SettingKey[];

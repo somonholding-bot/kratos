@@ -274,6 +274,8 @@ async function voiceSettings() {
   const st = await api('/api/voice/status');
   const cfg = await api('/api/voz/ajustes');
   app.ttsVoice = cfg.tts_voice; app.voiceModel = cfg.voice_model;
+  const aj = await api('/api/ajustes').catch(() => ({}));
+  app.agentsEngine = aj.agents_engine ?? 'suscripcion'; app.sub = aj.suscripcion ?? null;
   let mics = [];
   try { mics = await voice.devices(); } catch {}
   const voices = voice.spanishVoices();
@@ -284,6 +286,8 @@ async function voiceSettings() {
       <label>Voz de respuesta<br><select id="tts-select"><option value="">Automática (primera voz local en español)</option>${voices.map((v) => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === voice.voiceURI ? 'selected' : ''}>${esc(v.name)} · ${esc(v.lang)} · ${v.localService ? 'local' : 'EN LA NUBE'}</option>`).join('')}</select></label>
       <label><input type="checkbox" id="speak-toggle" ${voice.speakReplies ? 'checked' : ''}> Responder también en voz alta</label>
       <label>Voz natural de KRATOS<br><select id="cfg-tts_voice">${[['kokoro', 'Kokoro · masculina (recomendada)'], ['piper', 'Piper · mexicana']].map(([v, n]) => `<option value="${v}" ${app.ttsVoice === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>Motor de los siete agentes<br><select id="cfg-agents_engine">${[['suscripcion', 'Tu suscripción de Claude (sin gastar API)'], ['api', 'API de Claude (con presupuesto)']].map(([v, n]) => `<option value="${v}" ${app.agentsEngine === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <div class="meta">Suscripción: ${!app.sub ? 'sin usar todavía' : { allowed: 'disponible', allowed_warning: '⚠ cerca del límite', rejected: '⛔ agotada', sin_sesion: '⚠ sin sesión: Terminal → claude → /login', desconocido: 'desconocido' }[app.sub.status] ?? app.sub.status}${app.sub?.resetsAt ? ` · se reinicia ${new Date(app.sub.resetsAt).toLocaleString('es', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}</div>
       <label>Modelo de IA para la conversación por voz<br><select id="cfg-voice_model">${[['claude-haiku-5-5', 'Haiku 5.5 · rápido (recomendado)'], ['claude-sonnet-5-5', 'Sonnet 5.5 · equilibrado'], ['claude-opus-5-5', 'Opus 5.5 · más lento']].map(([v, n]) => `<option value="${v}" ${app.voiceModel === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       ${isNative ? `<label><input type="checkbox" id="wake-toggle" ${app.wake?.enabled !== false ? 'checked' : ''}> Activación por voz: decir «Kratos» (micrófono siempre abierto mientras la app esté abierta)</label>
       <div class="meta">Estado de la escucha: ${esc(app.wake?.state ?? 'desconocido')} · Frases: «Kratos, Kratos» o «Hey Kratos»</div>
@@ -550,7 +554,7 @@ document.addEventListener('change', async (e) => {
   if (e.target.id === 'tts-select') voice.setVoice(e.target.value);
   if (e.target.id === 'speak-toggle') voice.setSpeak(e.target.checked);
   if (e.target.id === 'wake-toggle') voice.setWake(e.target.checked);
-  if (e.target.id === 'cfg-tts_voice' || e.target.id === 'cfg-voice_model') {
+  if (e.target.id === 'cfg-tts_voice' || e.target.id === 'cfg-voice_model' || e.target.id === 'cfg-agents_engine') {
     await api('/api/settings', { key: e.target.id.slice(4), value: e.target.value }); toast('Ajuste guardado.'); return;
   }
   if (e.target.id === 'cfg-followUp') { await api('/api/settings', { key: 'follow_up', value: Number(e.target.value) }).catch(() => {}); }

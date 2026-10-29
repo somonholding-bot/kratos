@@ -3,7 +3,7 @@ import { createPool, type Db } from './db.ts';
 import { config } from './config.ts';
 import { migrate } from './migrate.ts';
 import { audit, heartbeat, isHalted } from './core/state.ts';
-import { claimNext, completeTask, failTask, recoverStale } from './core/tasks.ts';
+import { claimNext, completeTask, deferTask, failTask, recoverStale } from './core/tasks.ts';
 import { handlers } from './core/handlers.ts';
 import { aiStatus } from './core/brain.ts';
 
@@ -27,6 +27,11 @@ export async function tick(db: Db, workerId: string): Promise<'parado' | 'sin_tr
     await completeTask(db, task, workerId, result);
     return 'ejecutada';
   } catch (err: any) {
+    if (err && 'retryAt' in err) {   // suscripción agotada o no disponible: vuelve a la cola sin contar como fallo
+      const until = err.retryAt ? new Date(err.retryAt) : new Date(Date.now() + 30 * 60_000);
+      await deferTask(db, task, workerId, until, String(err.message));
+      return 'aplazada';
+    }
     await failTask(db, task, workerId, String(err?.message ?? err));
     return 'fallida';
   }

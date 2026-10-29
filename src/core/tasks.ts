@@ -84,6 +84,14 @@ export async function completeTask(db: Db, task: any, workerId: string, result: 
   });
 }
 
+// Aplaza una tarea sin contarla como fallo (p. ej. límite de la suscripción hasta su hora de reinicio)
+export async function deferTask(db: Db, task: any, workerId: string, until: Date, reason: string) {
+  await db.query(`UPDATE tasks SET status = 'pendiente', run_at = $3, attempts = greatest(attempts - 1, 0), last_error = $4,
+      locked_by = NULL, locked_until = NULL, updated_at = now() WHERE id = $1 AND status = 'en_ejecucion' AND locked_by = $2`,
+    [task.id, workerId, until, reason.slice(0, 500)]);
+  await audit(db, workerId, 'tarea.aplazada', { id: task.id, hasta: until.toISOString(), motivo: reason.slice(0, 200) }, task.business_id);
+}
+
 export async function failTask(db: Db, task: any, workerId: string, error: string) {
   const retry = task.attempts < task.max_attempts;
   const backoffMin = 2 ** task.attempts; // 2, 4, 8… minutos
