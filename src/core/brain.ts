@@ -611,7 +611,7 @@ export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const recent = (await db.query(`SELECT id, owner_function, title, status, left(coalesce(result::text, last_error, ''), 600) AS resultado
     FROM tasks WHERE type = 'agente' AND updated_at > now() - interval '7 days' ORDER BY updated_at DESC LIMIT 15`)).rows;
   const tools = TOOLS.filter((t) => CEO_TOOLS.includes(t.name));
-  const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 90_000 });
+  const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 300_000 });
   const model: string = st.ai_model ?? 'claude-opus-5-5';
   const messages: any[] = [{ role: 'user', content: `CICLO PROACTIVO DEL CEO (${new Date().toLocaleString('es')}).
 Meta de vida: ${st.mission ?? '100.000 usuarios y 250.000 USD/mes'}.
@@ -632,7 +632,7 @@ Termina con un resumen de 3 líneas: qué cambió en el plan, qué encargaste y 
     if (!r.ok) return { saltado: `presupuesto: ${r.reason}`, costUsd: cost };
     let resp: any;
     try {
-      resp = await client.beta.messages.create({ model, max_tokens: 3000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', output_config: { effort: 'low' },
+      resp = await client.beta.messages.create({ model, max_tokens: 12000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', output_config: { effort: 'low' },
         system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral', ttl: '1h' } }],   // instrucciones y herramientas en caché 1 h: sin arranque en frío tras unos minutos sin hablar
         tools: [...tools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: true })), ...webTools(3)], messages } as any);
     } catch (err: any) { await settle(db, resKey, 0, 'kratos (ciclo CEO)'); throw new Error(`Ciclo CEO: ${err?.status ?? 'sin conexión'}`); }
@@ -643,6 +643,7 @@ Termina con un resumen de 3 líneas: qué cambió en el plan, qué encargaste y 
       [resp.model ?? model, resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0, resp.usage?.cache_read_input_tokens ?? 0, resp.usage?.cache_creation_input_tokens ?? 0, micro, cents]);
     messages.push({ role: 'assistant', content: resp.content });
     summary = resp.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n').trim() || summary;
+    if (resp.stop_reason === 'max_tokens') { summary = `${summary}\n[Respuesta cortada por longitud: el último paso no se completó]`.trim(); await audit(db, 'kratos (ciclo CEO)', 'ceo.respuesta_cortada', { ronda: round }); break; }
     if (resp.stop_reason === 'pause_turn') continue;
     if (resp.stop_reason !== 'tool_use') break;
     const results = [];
