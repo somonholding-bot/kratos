@@ -121,7 +121,30 @@ export function detectWake(text: string): { wake: boolean; mentions: number; hey
   return { wake: hey || mentions >= 2 || leading, mentions, hey, command: command.replace(/[.\s]+$/, '').length >= 2 ? command : '' };
 }
 
+// Servicio persistente de whisper.cpp (com.jarvis.whisper) con Silero VAD: más rápido y sin «palabras» inventadas con ruido.
+// Si no está disponible, se usa whisper-cli como antes.
+const WHISPER_SERVER = process.env.KRATOS_WHISPER_SERVER ?? 'http://127.0.0.1:7432/inference';
+async function whisperServer(wav: Buffer, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'audio.wav');
+    form.append('response_format', 'json');
+    form.append('temperature', '0.0');
+    const r = await fetch(WHISPER_SERVER, { method: 'POST', body: form, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000) });
+    if (!r.ok) return null;
+    const j = await r.json() as { text?: string };
+    return typeof j.text === 'string' ? j.text.replace(/\s+/g, ' ').trim() : null;
+  } catch (e: any) {
+    if (signal?.aborted) throw e;
+    return null;
+  }
+}
+
 async function whisper(wav: Buffer, signal?: AbortSignal): Promise<string> {
+  if (process.env.KRATOS_WHISPER_SERVER !== 'off') {
+    const fast = await whisperServer(wav, signal);
+    if (fast !== null) return fast;
+  }
   fs.mkdirSync(TMP, { recursive: true, mode: 0o700 });
   const file = path.join(TMP, `${crypto.randomUUID()}.wav`);
   fs.writeFileSync(file, wav, { mode: 0o600 });
@@ -164,7 +187,17 @@ const PIPER = path.join(ROOT, '.jarvis', 'tts', 'venv', 'bin', 'piper');
 const PIPER_VOICE = path.join(ROOT, '.jarvis', 'tts', 'es_MX-claude-high.onnx');
 export const naturalVoiceAvailable = () => fs.existsSync(PIPER) && fs.existsSync(PIPER_VOICE);
 
-export async function synthesize(text: string, signal?: AbortSignal): Promise<Buffer> {
+// Servicio de voz persistente (com.jarvis.tts): 0,1 s por frase en vez de ~2 s cargando el modelo cada vez.
+export async function synthesize(text: string, signal?: AbortSignal, voice = 'piper'): Promise<Buffer> {
+  try {
+    const r = await fetch('http://127.0.0.1:7431/tts', { method: 'POST', body: JSON.stringify({ text: text.replace(/[*_#`]/g, '').slice(0, 2000), voice }),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000) });
+    if (r.ok) return smoothEnds(Buffer.from(await r.arrayBuffer()));
+  } catch (e: any) { if (signal?.aborted) throw e; }
+  return synthesizeCli(text, signal);
+}
+
+async function synthesizeCli(text: string, signal?: AbortSignal): Promise<Buffer> {
   if (!naturalVoiceAvailable()) throw new Error('Voz natural no instalada');
   const clean = text.replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 2000);
   fs.mkdirSync(TMP, { recursive: true, mode: 0o700 });

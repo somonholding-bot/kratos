@@ -283,7 +283,8 @@ export function createServer(db: Db) {
           if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Se requiere JSON' });
           const b = JSON.parse((await readRaw(req, 20_000)).toString('utf8') || '{}');
           if (typeof b.text !== 'string' || !b.text.trim()) throw new HttpError(400, 'Texto vacío');
-          const wav = await synthesize(b.text).catch((e) => { throw new HttpError(503, e.message); });
+          const voice = (await getState(db) as any).tts_voice ?? 'piper';
+          const wav = await synthesize(b.text, undefined, voice).catch((e) => { throw new HttpError(503, e.message); });
           res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'no-store', 'content-length': String(wav.length) });
           return res.end(wav);
         }

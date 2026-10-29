@@ -188,6 +188,12 @@ async function phoneIntent(db: Db, t: string, original: string): Promise<Reply |
 
 // «Dame un reporte»: dinero invertido y ganado, trabajo hecho y decisiones pendientes, en voz y en el panel izquierdo.
 async function reportIntent(db: Db, t: string): Promise<Reply | null> {
+  const v = t.match(/\b(?:cambia|pon|usa)\b.*\bvoz\b.*\b(kokoro|piper|normal|anterior)\b/);
+  if (v) {
+    const voice = v[1] === 'kokoro' ? 'kokoro' : 'piper';
+    await db.query(`INSERT INTO system_state (key, value, updated_by) VALUES ('tts_voice', $1, 'propietario') ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now(), updated_by = 'propietario'`, [JSON.stringify(voice)]);
+    return { text: `Voz cambiada a ${voice === 'kokoro' ? 'Kokoro' : 'Piper'}.`, spoken: 'Listo, ¿qué tal suena así?' };
+  }
   if (/^(que hora es|que horas son|dime la hora|la hora)\b/.test(t)) {
     const o = await owner(db); const d = new Date();
     const h = d.toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' }), day = d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });

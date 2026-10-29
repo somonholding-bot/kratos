@@ -31,7 +31,10 @@ $extra
 EOF
   plutil -lint "$AGENTS/$label.plist" >/dev/null
   launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
-  launchctl bootstrap "gui/$(id -u)" "$AGENTS/$label.plist"
+  for _ in 1 2 3 4 5; do   # launchd tarda un momento en soltar el servicio anterior
+    launchctl bootstrap "gui/$(id -u)" "$AGENTS/$label.plist" 2>/dev/null && break
+    sleep 1
+  done
   echo "instalado $label"
 }
 
@@ -40,4 +43,8 @@ KEEP='  <key>RunAtLoad</key><true/>
   <key>ThrottleInterval</key><integer>10</integer>'
 plist server "$KEEP" "$NODE" "$ROOT/src/server.ts"
 plist worker "$KEEP" "$NODE" "$ROOT/src/worker.ts"
+# Transcripción persistente (whisper.cpp con Metal + Silero VAD): el modelo se carga una vez, no en cada frase
+plist whisper "$KEEP" /opt/homebrew/bin/whisper-server -m "$ROOT/.jarvis/models/ggml-large-v3-turbo-q5_0.bin" -l es -nt -t 4 --host 127.0.0.1 --port 7432 --vad -vm "$ROOT/.jarvis/models/ggml-silero-v5.1.2.bin"
+# Voz persistente (Piper cargado en memoria)
+[ -x "$ROOT/.jarvis/tts/venv/bin/python" ] && plist tts "$KEEP" "$ROOT/.jarvis/tts/venv/bin/python" "$ROOT/scripts/tts-server.py"
 plist backup '  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>15</integer></dict>' /bin/bash "$ROOT/scripts/backup.sh"
