@@ -18,6 +18,7 @@ import { buildReport } from './core/report.ts';
 import { resources } from './core/resources.ts';
 import { allSettings, logFault, logPerf, setSetting } from './core/bitacora.ts';
 import { subStatus } from './core/subscription.ts';
+import { taskResult } from './core/registry.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -98,6 +99,7 @@ const GET: Record<string, Route> = {
     recent: await q(db, `SELECT at, model, input_tokens, output_tokens, cache_read_tokens, cost_microusd, charged_cents, purpose FROM ai_usage ORDER BY id DESC LIMIT 20`) }),
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
+  '/api/tasks/:id/result': async (db, _b, [id]) => taskResult(db, Number(id)),
   '/api/resources': async () => resources(),
   '/api/ajustes': async (db) => ({ ...(await allSettings(db)), suscripcion: await subStatus(db) }),
   '/api/bitacora': async (db) => ({

@@ -55,7 +55,6 @@ function paintMute() {
   const f = document.getElementById('mic-float');
   if (f) { f.setAttribute('aria-pressed', ui.muted); f.querySelector('.mic-ico').textContent = ui.muted ? '🔇' : '🎙︎'; f.querySelector('.mic-txt').textContent = ui.muted ? 'Mic apagado' : 'Mic activo'; f.title = b.title; }
 }
-document.getElementById('mic-float')?.addEventListener('click', () => act('mute'));
 window.kratosNativeState = (state, enabled) => {
   voice.nativeState = state; voice.enabled = enabled;
   if (state === 'Di «Kratos»' || state === 'Escucha apagada') voice.awake = false;
@@ -1085,12 +1084,15 @@ function act(a) {
     if (nativeBridge) nativeBridge.postMessage({ event: 'mute', muted: ui.muted });
     log(ui.muted ? 'Micrófono silenciado: KRATOS no escucha' : nativeBridge ? 'Micrófono activo: di «Hey Kratos»' : 'Micrófono: solo disponible en la app de Mac');
   }
-  if (a === 'pause') { ui.paused = !ui.paused; btn.setAttribute('aria-pressed', ui.paused); if (!ui.paused) { clock.getDelta(); start(); } log(ui.paused ? 'Movimiento en pausa' : 'Movimiento reanudado'); }
-  if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); saveSetting('ui_reduced', ui.reduced ? '1' : '0'); btn.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
-  if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); saveSetting('ui_quality', ui.quality); lastServerQuality = ui.quality; document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
-  if (a === 'list') { const l = document.getElementById('list'); l.hidden = !l.hidden; btn.setAttribute('aria-pressed', !l.hidden); renderList(); }
-  if (a === 'metrics') { metricsEl.hidden = !metricsEl.hidden; btn.setAttribute('aria-pressed', !metricsEl.hidden); updateMetrics(); }
+  if (a === 'pause') { ui.paused = !ui.paused; btn?.setAttribute('aria-pressed', ui.paused); if (!ui.paused) { clock.getDelta(); start(); } log(ui.paused ? 'Movimiento en pausa' : 'Movimiento reanudado'); }
+  if (a === 'reduced') { ui.reduced = !ui.reduced; store('kratos.proto.reduced', ui.reduced ? '1' : '0'); saveSetting('ui_reduced', ui.reduced ? '1' : '0'); btn?.setAttribute('aria-pressed', ui.reduced); frame(); start(); log(ui.reduced ? 'Movimiento reducido: imagen fija' : 'Movimiento completo'); }
+  if (a === 'quality') { const order = ['baja', 'media', 'alta']; ui.quality = order[(order.indexOf(ui.quality) + 1) % 3]; store('kratos.proto.quality', ui.quality); saveSetting('ui_quality', ui.quality); lastServerQuality = ui.quality; (document.getElementById('q-label') || {}).textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1); build(); frame(); log(`Calidad ${ui.quality}`); }
+  if (a === 'list') { const l = document.getElementById('list'); l.hidden = !l.hidden; btn?.setAttribute('aria-pressed', !l.hidden); renderList(); }
+  if (a === 'metrics') { metricsEl.hidden = !metricsEl.hidden; btn?.setAttribute('aria-pressed', !metricsEl.hidden); updateMetrics(); }
   if (a === 'exit') exitExperience();
+  if (a === 'text') { if (lastText) window.kratosShowText(lastText); else log('Aún no hay texto de KRATOS'); }
+  if (a === 'tasks') showTasks();
+  if (a === 'chat') { const f = document.getElementById('chat-box'); f.hidden = !f.hidden; if (!f.hidden) document.getElementById('chat-input').focus(); }
 }
 dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
 
@@ -1109,6 +1111,7 @@ function renderList() {
 
 addEventListener('keydown', (e) => {
   wake();
+  if (e.target.closest?.('input, textarea, [contenteditable]')) return;   // escribiendo en el chat: sin atajos
   const k = e.key.toLowerCase();
   if (e.key === 'Escape') {
     const open = ['help', 'list'].map((id) => document.getElementById(id)).find((el) => !el.hidden);
@@ -1117,9 +1120,11 @@ addEventListener('keydown', (e) => {
   }
   if (e.key === ' ') { e.preventDefault(); act('pause'); }
   if (k === 'm') act('mute');
+  if (k === 't') act('text');
+  if (k === 'c') { e.preventDefault(); act('chat'); }
   if (k === 'r') act('reduced');
   if (k === 'q') act('quality');
-  if (k === 'l') act('list');
+  if (k === 'l') act('tasks');
   if (k === 'i') act('metrics');
   if (k === 'h' || k === '?') { const h = document.getElementById('help'); h.hidden = !h.hidden; }
   if (k === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
@@ -1133,8 +1138,8 @@ addEventListener('resize', resize);
 // API para pruebas automáticas (estado y métricas, sin efectos fuera de la página)
 window.kratosProto = { setState, delegate, frame, metrics: () => ({ fps, cpuMs, calls: renderer.info.render.calls, points: renderer.info.render.points, quality: ui.quality }) };
 
-document.getElementById('q-label').textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1);
-dock.querySelector('[data-act="reduced"]').setAttribute('aria-pressed', ui.reduced);
+(document.getElementById('q-label') || {}).textContent = ui.quality[0].toUpperCase() + ui.quality.slice(1);
+dock.querySelector('[data-act="reduced"]')?.setAttribute('aria-pressed', ui.reduced);
 build();
 setState('reposo', false);
 frame();
@@ -1198,3 +1203,37 @@ addEventListener('click', (e) => {
   if (e.target.closest?.('#text-float') && lastText) window.kratosShowText(lastText);
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('lectura')?.classList.contains('open')) { e.stopImmediatePropagation(); document.getElementById('lectura').classList.remove('open'); } }, true);
+
+// El texto de cada respuesta se guarda, pero la ventana solo se abre cuando el propietario pulsa «Texto»
+window.kratosSetText = (text) => { lastText = String(text ?? ''); const b = dock.querySelector('[data-act="text"]'); b?.classList.add('nuevo'); setTimeout(() => b?.classList.remove('nuevo'), 4000); };
+
+// Tareas: lo pendiente, lo que está en marcha y lo último terminado (con su informe)
+async function showTasks() {
+  let rows = [];
+  try { rows = await api('/api/tasks'); } catch { log('No pude leer las tareas'); return; }
+  const name = { pendiente: 'pendiente', en_ejecucion: 'en marcha', esperando_ia: 'esperando IA', esperando_permiso: 'espera tu aprobación', completada: 'terminada', fallida: 'falló', cancelada: 'cancelada', requiere_revision: 'revisar' };
+  const skip = new Set(['revision_salud', 'apple_sync', 'informe_portafolio']);
+  const open = rows.filter((t) => ['pendiente', 'en_ejecucion', 'esperando_ia', 'esperando_permiso', 'requiere_revision'].includes(t.status) && !skip.has(t.type));
+  const done = rows.filter((t) => ['completada', 'fallida'].includes(t.status) && !skip.has(t.type)).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 10);
+  const li = (t) => `<li>#${t.id} <b>${esc(t.owner_function)}</b> · ${esc(t.title)}<span class="st">${name[t.status] ?? t.status}</span>${t.status === 'completada' && t.type === 'agente' ? ` <button type="button" data-task-result="${t.id}">ver informe</button>` : ''}</li>`;
+  window.kratosShowText(`## Pendientes y en marcha (${open.length})\n\n` + (open.length ? '' : 'Nada pendiente.\n') + `\n## Terminadas recientemente\n`);
+  const body = document.querySelector('#lectura .lectura-body');
+  body.innerHTML = `<h4>Pendientes y en marcha (${open.length})</h4><ul id="tareas-lista">${open.map(li).join('') || '<li>Nada pendiente.</li>'}</ul><h4>Terminadas recientemente</h4><ul id="tareas-lista">${done.map(li).join('') || '<li>Ninguna.</li>'}</ul>`;
+}
+addEventListener('click', async (e) => {
+  const b = e.target.closest?.('[data-task-result]');
+  if (!b) return;
+  try { const r = await api(`/api/tasks/${b.dataset.taskResult}/result`); window.kratosShowText(r.informe ? `# Tarea #${r.id} · ${r.agente}\n${r.title}\n\n${r.informe}` : (r.error || r.nota || 'Sin informe')); } catch { log('No pude abrir el informe'); }
+});
+
+// Chat escrito: lo que escribas va a KRATOS como texto; la respuesta se muestra en la ventana de lectura
+document.getElementById('chat-box')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget, input = document.getElementById('chat-input'), text = input.value.trim();
+  if (!text || f.classList.contains('busy')) return;
+  f.classList.add('busy'); input.value = ''; boom(0.6); setState('pensando', false);
+  window.kratosShowText(`**Tú:** ${text}\n\nKRATOS está pensando…`);
+  try { const r = await api('/api/chat', { text, channel: 'texto' }); window.kratosShowText(`**Tú:** ${text}\n\n${r.text}`); }
+  catch (err) { window.kratosShowText(`**Tú:** ${text}\n\nNo pude responder: ${err.message}`); }
+  finally { f.classList.remove('busy'); setState(real.state ?? 'reposo', false); refreshReal(); input.focus(); }
+});

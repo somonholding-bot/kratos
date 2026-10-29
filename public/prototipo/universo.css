@@ -12,8 +12,8 @@ body.idle { cursor: none; }
 .event-log div { animation: fade 6s forwards; }
 @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 .metrics { position: fixed; right: 20px; top: 14px; font: 11px/1.5 ui-monospace, monospace; color: rgba(190,210,240,.75); background: rgba(5,10,20,.55); padding: 6px 10px; border-radius: 8px; }
-.dock { position: fixed; right: 20px; bottom: 20px; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(8,14,28,.45); backdrop-filter: blur(10px); border: 1px solid rgba(140,170,255,.14); opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s; }
-.dock.show, .dock:focus-within { opacity: 1; transform: none; }
+.dock { position: fixed; left: 50%; bottom: 20px; margin-left: -150px; z-index: 36; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(8,14,28,.45); backdrop-filter: blur(10px); border: 1px solid rgba(140,170,255,.14); opacity: .78; transition: opacity .35s; }
+.dock:hover, .dock:focus-within, .dock.show { opacity: 1; }   /* siempre visible, también a pantalla completa */
 .dock button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: 6px 4px; border-radius: 10px; color: #dbe8ff; font-size: 16px; }
 .dock button span { font-size: 10px; letter-spacing: .06em; color: rgba(200,215,240,.7); }
 .dock button:hover, .dock button:focus-visible { background: rgba(120,160,255,.14); outline: none; }
@@ -68,15 +68,6 @@ body.idle { cursor: none; }
 #reporte ul { margin: 0; padding-left: 16px; } #reporte li { margin: 3px 0; }
 #reporte em { font-style: normal; opacity: .6; margin-right: 4px; }
 
-/* Botón de micrófono siempre visible, también a pantalla completa (no se esconde con el resto de controles) */
-#mic-float { position: fixed; top: 18px; right: 18px; z-index: 40; display: flex; align-items: center; gap: 8px;
-  padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(160, 210, 255, 0.35); cursor: pointer;
-  background: rgba(8, 14, 28, 0.62); color: #cfe8ff; font: 12px/1 system-ui, sans-serif; letter-spacing: .04em;
-  backdrop-filter: blur(10px); transition: background .2s, color .2s, border-color .2s; }
-#mic-float:hover { background: rgba(20, 34, 60, 0.85); }
-#mic-float .mic-ico { font-size: 15px; }
-#mic-float[aria-pressed="true"] { color: #ffb0b0; border-color: rgba(255, 120, 120, 0.6); background: rgba(60, 10, 14, 0.7); }
-body.idle #mic-float { cursor: pointer; }
 
 /* Ventana de lectura (abajo, centrada): el texto completo de una respuesta de KRATOS */
 #lectura { position: fixed; left: 50%; bottom: 96px; width: min(760px, calc(100vw - 32px)); max-height: 46vh; z-index: 35;
@@ -91,5 +82,15 @@ body.idle #mic-float { cursor: pointer; }
 #lectura h4, #lectura h5 { margin: 10px 0 4px; font-size: 13px; letter-spacing: .04em; color: #9fd0ff; }
 #lectura ul { margin: 4px 0; padding-left: 18px; } #lectura li { margin: 3px 0; }
 #lectura code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; }
-#text-float { position: fixed; top: 18px; right: 156px; z-index: 40; padding: 9px 14px; border-radius: 999px; cursor: pointer;
-  border: 1px solid rgba(160, 210, 255, 0.35); background: rgba(8, 14, 28, 0.62); color: #cfe8ff; font: 12px/1 system-ui, sans-serif; backdrop-filter: blur(10px); }
+
+/* Chat escrito con KRATOS (sobre la barra inferior) */
+.chat-box { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%); width: min(620px, calc(100vw - 32px)); z-index: 37;
+  display: flex; gap: 8px; padding: 8px; border-radius: 14px; background: rgba(8, 14, 28, 0.82); border: 1px solid rgba(160, 200, 255, 0.25); backdrop-filter: blur(14px); }
+.chat-box[hidden] { display: none; }
+.chat-box input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(160, 200, 255, 0.2); background: rgba(255,255,255,.05); color: #e8f2ff; font: 14px system-ui, sans-serif; outline: none; }
+.chat-box button { padding: 0 16px; border-radius: 10px; border: 0; background: #2d6cdf; color: #fff; font: 13px system-ui, sans-serif; cursor: pointer; }
+.chat-box.busy button { opacity: .5; pointer-events: none; }
+#lectura { bottom: 150px; }
+#tareas-lista li { margin: 6px 0; } #tareas-lista .st { font-size: 11px; opacity: .7; margin-left: 6px; }
+#tareas-lista button { all: unset; cursor: pointer; color: #9fd0ff; text-decoration: underline; font-size: 12px; margin-left: 6px; }
+.dock button.nuevo { color: #7dd3fc; }   /* hay texto nuevo para leer */

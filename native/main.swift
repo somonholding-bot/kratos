@@ -507,7 +507,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
       if (info["action"] as? String) == "reporte" { self.universeJS("window.kratosReport && window.kratosReport()") }
       // Si la respuesta escrita trae más que lo que se dice en voz, se abre la ventana de lectura en el universo
       else if let text = info["text"] as? String, let spoken = info["spoken"] as? String, text.count > spoken.count + 40 {
-        self.universeJS("window.kratosShowText && window.kratosShowText(\(self.jsString(text)))")
+        // se guarda para el botón «Texto»; no se abre solo
+        self.web.evaluateJavaScript("window.kratosSetText && window.kratosSetText(\(self.jsString(text)))")
       }
     }
     Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.heartbeat(); self?.checkAgenda() }

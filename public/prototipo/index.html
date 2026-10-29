@@ -34,17 +34,16 @@
   </aside>
 
   <!-- Controles discretos: aparecen al mover el ratón o pulsar una tecla -->
-  <button id="text-float" type="button" title="Ver el último texto de KRATOS">📄 Texto</button>
-  <button id="mic-float" type="button" aria-pressed="false" title="Silenciar micrófono (M)"><span class="mic-ico">🎙︎</span><span class="mic-txt">Mic activo</span></button>
   <nav id="dock" class="dock" aria-label="Controles de KRATOS">
-    <button data-act="mute" title="Silenciar micrófono (M)">🎙︎<span>Silenciar</span></button>
-    <button data-act="pause" title="Pausar movimiento (Espacio)">❚❚<span>Pausar</span></button>
-    <button data-act="reduced" title="Movimiento reducido (R)">◐<span>Reducir</span></button>
-    <button data-act="quality" title="Calidad gráfica (Q)">◆<span id="q-label">Media</span></button>
-    <button data-act="list" title="Vista en lista (L)">☰<span>Lista</span></button>
-    <button data-act="metrics" title="Consumo (I)">⌁<span>Consumo</span></button>
-    <button data-act="exit" title="Salir (Esc)">✕<span>Salir</span></button>
+    <button data-act="mute" title="Micrófono (M)">🎙︎<span>Micrófono</span></button>
+    <button data-act="text" title="Último texto de KRATOS (T)">📄<span>Texto</span></button>
+    <button data-act="tasks" title="Tareas (L)">☰<span>Tareas</span></button>
+    <button data-act="chat" title="Escribir a KRATOS (C)">✎<span>Chat</span></button>
   </nav>
+  <form id="chat-box" class="chat-box" hidden autocomplete="off">
+    <input id="chat-input" type="text" placeholder="Escribe a KRATOS y pulsa Intro…" maxlength="4000" aria-label="Mensaje para KRATOS">
+    <button type="submit">Enviar</button>
+  </form>
 
   <aside id="list" class="list" hidden aria-label="Especialistas">
     <h2>KRATOS y sus especialistas</h2>
