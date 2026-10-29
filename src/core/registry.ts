@@ -8,6 +8,7 @@ import { subStatus } from './subscription.ts';
 import { appleCredentials } from './apple.ts';
 import { naturalVoiceAvailable } from '../voice.ts';
 import { ROOT } from '../config.ts';
+import { fastStatus } from './local.ts';
 
 // Registro central de KRATOS: informes de las tareas, agentes y herramientas.
 // Así KRATOS consulta datos reales en vez de suponer.
@@ -85,12 +86,18 @@ export async function systemInventory(db: Db) {
   const ext = (await db.query(`SELECT extname FROM pg_extension`)).rows.map((r) => r.extname);
   const plugins = (await db.query(`SELECT slug FROM plugins WHERE status = 'activa'`)).rows.map((r) => r.slug);
   const conn = (await db.query(`SELECT service, status FROM connections WHERE status = 'conectado'`)).rows.map((r) => r.service);
+  const fast = await fastStatus();
+  const brains: Record<string, number> = Object.fromEntries((await db.query(`SELECT CASE WHEN model LIKE 'groq%' THEN 'groq' WHEN model LIKE 'local:%' THEN 'local' ELSE 'claude' END AS b, count(*)::int AS n
+    FROM ai_usage WHERE at > now() - interval '1 day' AND purpose LIKE 'conversación%' GROUP BY 1`)).rows.map((r: any) => [r.b, r.n]));
   const claudeBin = [path.join(os.homedir(), '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude'].some((p) => fs.existsSync(p));
   const has = (cmd: string) => ['/opt/homebrew/bin', '/usr/local/bin', path.join(os.homedir(), '.local', 'bin')].some((d) => fs.existsSync(path.join(d, cmd)));
   const tools: { nombre: string; estado: 'OPERATIVA' | 'CONFIGURADA' | 'INSTALADA' | 'NO INSTALADA' | 'CON ERROR'; detalle: string }[] = [
     { nombre: 'Claude API (conversación y CEO)', estado: ai.keyPresent ? (ai.active ? 'OPERATIVA' : 'CON ERROR') : 'NO INSTALADA', detalle: ai.keyPresent ? `${ai.active ? 'activa' : 'sin presupuesto o detenida'} · disponible ${(ai.availableCents / 100).toFixed(2)} USD` : 'sin clave' },
     { nombre: 'Suscripción de Claude (agentes, claude -p)', estado: !claudeBin ? 'NO INSTALADA' : sub?.status === 'sin_sesion' ? 'CON ERROR' : sub?.status === 'rejected' ? 'CON ERROR' : sub ? 'OPERATIVA' : 'CONFIGURADA', detalle: sub ? `estado ${sub.status}${sub.resetsAt ? `, reinicio ${sub.resetsAt}` : ''}` : 'sin usar aún' },
     { nombre: 'Búsqueda y lectura web (Claude)', estado: ai.active || (sub && sub.status !== 'sin_sesion') ? 'OPERATIVA' : 'CONFIGURADA', detalle: 'web_search y web_fetch en conversación y agentes' },
+    { nombre: 'Cerebro rápido: Groq (gratis, para lo sencillo)', estado: fast.groq === 'sin clave' ? 'NO INSTALADA' : fast.groq === 'sin modelo' ? 'CON ERROR' : 'OPERATIVA', detalle: `${fast.groq} · ${brains.groq ?? 0} respuestas en 24 h` },
+    { nombre: 'Cerebro local: Ollama en el Mac (respaldo sin internet)', estado: fast.local === 'no disponible' ? (fs.existsSync(path.join(ROOT, '.jarvis', 'local-model')) ? 'INSTALADA' : 'NO INSTALADA') : 'OPERATIVA', detalle: `${fast.local} · ${brains.local ?? 0} respuestas en 24 h` },
+    { nombre: 'Claude: respuestas de conversación en 24 h', estado: 'OPERATIVA', detalle: `${brains.claude ?? 0} llamadas (las acciones y los datos)` },
     { nombre: 'Reconocimiento de voz (whisper.cpp + Silero VAD)', estado: (await up('http://127.0.0.1:7432/')) ? 'OPERATIVA' : 'CON ERROR', detalle: 'servicio local 127.0.0.1:7432' },
     { nombre: 'Voz natural (Kokoro / Piper)', estado: (await up('http://127.0.0.1:7431/')) ? 'OPERATIVA' : naturalVoiceAvailable() ? 'INSTALADA' : 'NO INSTALADA', detalle: 'servicio local 127.0.0.1:7431' },
     { nombre: 'PostgreSQL (memoria, tareas, informes)', estado: 'OPERATIVA', detalle: 'base de datos local' },

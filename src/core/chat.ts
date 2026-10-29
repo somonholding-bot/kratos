@@ -17,7 +17,8 @@ import { label, musicControl, musicQuery, type MusicCmd } from './music.ts';
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?(kratos|jarvis)(\W+kratos)?\b\W*/, '').trim();
 
 // action «musica» / «musica_control»: la app de Mac pone la música (query) o la controla (cmd)
-export type Reply = { text: string; spoken: string; action?: string; query?: string; cmd?: MusicCmd };
+// brain: quién respondió (groq:…, local:…, claude o reglas fijas sin IA)
+export type Reply = { text: string; spoken: string; action?: string; query?: string; cmd?: MusicCmd; brain?: string };
 
 // onSpeak: voz en tiempo real; recibe cada frase de la respuesta de Claude en cuanto está lista.
 export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto', onSpeak?: (sentence: string) => void): Promise<Reply> {
@@ -38,7 +39,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
     const local = (await routeLocal(db, channel, text)) ? await answerLocally(db, channel, onSpeak) : null;
     const ai = local ? null : await think(db, channel, onSpeak);
     if (local) reply = local;
-    else if (ai && 'text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects };
+    else if (ai && 'text' in ai) reply = { text: ai.text, spoken: ai.spoken, ...ai.effects, brain: 'claude' };
     else {
       const unavailable = ai && !('text' in ai) ? ai.unavailable : 'desconocido';
       // Sin conexión con Claude: responde el cerebro local antes que el modo demostración
@@ -54,7 +55,7 @@ export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz
     }
   }
   await db.query(`INSERT INTO messages (role, channel, content) VALUES ('jarvis', $1, $2)`, [channel, reply.text]);
-  return reply;
+  return { brain: 'reglas', ...reply };
 }
 
 // Música sin IA: inmediata y gratis
@@ -74,7 +75,7 @@ async function answerLocally(db: Db, channel: 'texto' | 'voz', onSpeak?: (s: str
     const r = await localThink(db, (d) => { said += d; speech?.push(d); }, channel);
     if ('escalate' in r) return null;
     speech?.flush();
-    return { text: r.text, spoken: r.spoken };
+    return { text: r.text, spoken: r.spoken, brain: r.model };
   } catch (e: any) {
     await audit(db, 'kratos (local)', 'local.error', { error: String(e?.message ?? e).slice(0, 200) });
     return said.trim() ? { text: said.trim(), spoken: said.trim().split('\n')[0] } : null;   // ya dijo algo: no se repite con Claude

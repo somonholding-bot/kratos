@@ -31,7 +31,15 @@ test('reparto: charla y cultura general en local; datos y acciones con Claude', 
   assert.equal(await routeLocal(db, 'voz', 'mándale un mensaje a Juan'), false);
   assert.equal(await routeLocal(db, 'voz', '¿cómo van mis negocios?'), false);
   assert.equal(await routeLocal(db, 'voz', 'busca el precio del bitcoin'), false);
-  assert.equal(await routeLocal(db, 'texto', 'cuéntame un chiste'), true);   // también por escrito
+  assert.equal(await routeLocal(db, 'texto', 'cuéntame un chiste'), true);
+  // preguntas sobre el propio KRATOS y charla con palabras comunes: cerebro rápido
+  assert.equal(await routeLocal(db, 'voz', '¿estás usando la IA nueva?'), true);
+  assert.equal(await routeLocal(db, 'voz', '¿qué voz tienes?'), true);
+  assert.equal(await routeLocal(db, 'voz', 'dime un número del uno al diez'), true);
+  // lo que actúa o usa datos: Claude
+  assert.equal(await routeLocal(db, 'voz', '¿qué tengo pendiente?'), false);
+  assert.equal(await routeLocal(db, 'voz', 'crea una tarea para Marte'), false);
+  assert.equal(await routeLocal(db, 'voz', '¿qué noticias hay hoy?'), false);   // también por escrito
 });
 
 test('la respuesta local llega frase a frase', async () => {

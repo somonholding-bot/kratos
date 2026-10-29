@@ -69,19 +69,25 @@ export async function localAvailable(): Promise<boolean> {
 }
 
 // ---------- Reparto ----------
-// Lo que necesita datos del propietario, herramientas o internet va a Claude (normalizado: minúsculas, sin acentos)
-const NEEDS_CLAUDE = /\b(mand\w*|envi\w*|escrib\w*|respond\w*|contest\w*|dile|mensajes?|correos?|email|mail|llam\w*|agenda\w*|alarma|recuerd\w*|recordatorio|avisame|tareas?|delega\w*|negocios?|ventas|ingresos|usuarios|reporte|informe|presupuesto|dinero|gasto|aprobacion\w*|apps?|aplicacion\w*|apple|google play|busca\w*|investiga\w*|internet|noticias?|precio|clima|hoy|ayer|manana|semana|nota|notas|guarda\w*|apunta\w*|anota\w*|plan|estrategia|agentes?|sol|luna|mercurio|venus|marte|jupiter|saturno|codigo|programa\w*|funcion|mejora|diagnostic\w*|falla|ajust\w*|cambia\w*|voz|calidad|preferencia|olvida|claude|contacto|numero|telefono|que hiciste|que hicieron|pendiente\w*|emergencia)\b/;
+// Reparto de funciones (decisión del propietario, 29-oct-2026):
+//   · Groq / IA local: conversación, cultura general, explicaciones, ideas, cálculos, preguntas sobre KRATOS.
+//   · Claude: todo lo que actúa o usa datos del propietario o de hoy (mensajes, agenda, tareas, negocios, informes,
+//     agentes, internet, código) y el trabajo de los siete agentes y del CEO.
+// Se reconoce por verbos de acción y por los datos que se piden (texto normalizado: minúsculas, sin acentos).
+const ACTION = /\b(mand\w*|envi\w*|escribe(le|les)?|respond\w*|contest\w*|dile|diles|llam\w*|marca(le)?|agend\w*|recuerd\w*|avisame|crea|crear|creame|delega\w*|asigna\w*|encarga\w*|guarda\w*|apunta\w*|anota\w*|borra\w*|cancela\w*|cambia\w*|ajusta\w*|configura\w*|activa\w*|desactiva\w*|apaga\w*|enciende|busca\w*|investiga\w*|averigua\w*|revisa\w*|aprueb\w*|autoriz\w*|deten\w*|reanuda\w*|publica\w*|arregla\w*|instala\w*)\b/;
+const DATA = /\b(mensajes?|sms|correos?|email|mail|agenda|alarmas?|recordatorios?|tareas?|negocios?|ventas|ingresos|usuarios|reportes?|informes?|presupuesto|dinero|gastos?|saldo|aprobacion\w*|mis apps|mi app|aplicacion\w*|app store|apple|google play|noticias?|precio|cotizacion|clima|temperatura|hoy|ayer|manana|esta semana|ultim[ao]s?|actual\w*|notas?|obsidian|plan|estrategia|agentes?|especialistas?|mercurio|venus|marte|jupiter|saturno|codigo|diagnostic\w*|fallas?|errores?|preferencias?|contactos?|telefono|que hiciste|que hicieron|pendientes?|emergencia|cliente\w*|factura\w*|contrato\w*|proyecto\w*)\b/;
 
 export async function routeLocal(db: Db, channel: 'texto' | 'voz', text: string): Promise<boolean> {
   const mode = (await getState(db)).cerebro_local ?? 'auto';
   if (mode === 'apagado') return false;
   const t = text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?kratos\b\W*/, '');
-  if (NEEDS_CLAUDE.test(t) || t.length > (channel === 'voz' ? 400 : 600)) return false;
+  if (ACTION.test(t) || DATA.test(t) || t.length > (channel === 'voz' ? 400 : 600)) return false;
   return localAvailable();
 }
 
-const SYSTEM = (name: string, now: string, channel: string) => `Eres Kratos, el asistente personal de ${name}. Hablas español natural, cercano y con humor seco, como JARVIS. Ahora: ${now}.
+const SYSTEM = (name: string, now: string, channel: string, brain: string) => `Eres Kratos, el asistente personal de ${name}. Hablas español natural, cercano y con humor seco, como JARVIS. Ahora: ${now}.
 ${channel === 'voz' ? 'Responde por voz: 1 o 2 frases cortas, sin listas, sin formato y sin emojis.' : 'Responde breve y claro; la primera línea es una frase corta.'} No empieces con el nombre del propietario.
+Cómo funcionas (si te preguntan): tienes dos cerebros. Ahora habla tu cerebro rápido y gratis (${brain}), que se encarga de la conversación, la cultura general, las explicaciones y las ideas. Claude se encarga de lo que actúa o usa datos: mensajes, agenda, tareas, negocios, informes, internet y tus siete agentes. Si Groq llega a su límite o no hay internet, responde el modelo local del Mac (Gemma, con Ollama).
 No tienes acceso a sus mensajes, agenda, tareas, negocios, cuentas ni a internet, y no puedes hacer acciones. Si la petición necesita algo de eso, o datos de hoy, o no estás seguro de la respuesta, responde EXACTAMENTE «${ESCAPE}» y nada más. Nunca inventes datos.`;
 
 export type LocalReply = { text: string; spoken: string; model: string; ms: number } | { escalate: true };
@@ -94,8 +100,8 @@ export async function localThink(db: Db, onToken: (delta: string) => void, chann
   const history = (await db.query(`SELECT role, content FROM messages ORDER BY id DESC LIMIT 8`)).rows.reverse();
   while (history.length && history[0].role !== 'usuario') history.shift();
   const now = new Date().toLocaleString('es', { dateStyle: 'full', timeStyle: 'short' });
-  const messages = [{ role: 'system', content: SYSTEM(o.name, now, channel) },
-    ...history.map((m: any) => ({ role: m.role === 'usuario' ? 'user' : 'assistant', content: String(m.content).slice(0, 600) }))];
+  const convo = history.map((m: any) => ({ role: m.role === 'usuario' ? 'user' : 'assistant', content: String(m.content).slice(0, 600) }));
+  const withSystem = (brain: string) => [{ role: 'system', content: SYSTEM(o.name, now, channel, brain) }, ...convo];
 
   let raw = '', text = '', held = '', released = false, sent = false;
   const feed = (delta: string): 'escalate' | void => {
@@ -130,7 +136,7 @@ export async function localThink(db: Db, onToken: (delta: string) => void, chann
       if (!model) throw new Error('Groq sin modelos de la lista');
       const r = await fetch(`${GROQ}/chat/completions`, {
         method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, signal: AbortSignal.timeout(20_000),
-        body: JSON.stringify({ model, messages, stream: true, temperature: 0.6, max_tokens: channel === 'voz' ? 300 : 900, ...(/gpt-oss/.test(model) ? { reasoning_effort: 'low' } : {}) }),
+        body: JSON.stringify({ model, messages: withSystem(`Groq, modelo ${model}`), stream: true, temperature: 0.6, max_tokens: channel === 'voz' ? 300 : 900, ...(/gpt-oss/.test(model) ? { reasoning_effort: 'low' } : {}) }),
       });
       if (r.status === 429) { groqPausedUntil = Date.now() + Math.min(600, Number(r.headers.get('retry-after')) || 60) * 1000; throw new Error('Groq: límite gratis alcanzado'); }
       if (!r.ok || !r.body) throw new Error(`Groq respondió ${r.status}`);
@@ -155,6 +161,7 @@ export async function localThink(db: Db, onToken: (delta: string) => void, chann
   if (!model) throw new Error('Sin IA rápida disponible');
   // Con Groq conectado, el modelo local es solo respaldo: se libera de la memoria a los 10 min (en un Mac de 16 GB ocupa ~8 GB)
   const keep = groqKey() ? '10m' : '24h';
+  const messages = withSystem(`modelo local ${model}, en este Mac`);
   const body = (think: boolean) => JSON.stringify({ model, messages, stream: true, keep_alive: keep, options: { num_ctx: 4096, temperature: 0.6 }, ...(think ? {} : { think: false }) });
   let r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: body(false), signal: AbortSignal.timeout(30_000) });
   if (r.status === 400) r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: body(true), signal: AbortSignal.timeout(30_000) });   // modelos sin opción «think»
