@@ -247,6 +247,9 @@ const screens = {
     return `<h1>Configuración y privacidad</h1>${meta('local')}
       <h2>Interfaz</h2><label><input type="checkbox" id="reduce" ${reduce ? 'checked' : ''}> Reducir movimiento (escena estática)</label>
       <label style="display:block;margin-top:8px">Calidad gráfica de la escena <select id="quality">${['baja', 'media', 'alta'].map((q) => `<option value="${q}" ${(store('kratos.quality') || 'media') === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
+      <h2>Uso de recursos</h2>
+      <div id="resources"><span class="note">Midiendo…</span></div>
+      <button class="ctl" id="res-refresh" style="margin-top:6px">Actualizar</button>
       <h2>Voz</h2>${await voiceSettings()}
       <h2>Privacidad</h2>
       <div class="note">
@@ -302,6 +305,7 @@ async function render() {
   try { main.innerHTML = await screens[app.screen](); }
   catch (e) { main.innerHTML = `<h1>Sin conexión con Kratos</h1><p class="meta">${esc(e.message)}. Comprueba que el servicio esté activo.</p>`; }
   paintChrome();
+  if (app.screen === 'ajustes') renderResources();
   const log = $('#log'); if (log) log.scrollTop = log.scrollHeight;
 }
 
@@ -474,7 +478,26 @@ voice.addEventListener('pulse', () => scene.pulse());
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (app.screen === 'ajustes') render(); });
 speechSynthesis.addEventListener?.('voiceschanged', () => { if (app.screen === 'ajustes') render(); });
 
+const bar = (pct) => `<div style="height:8px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;width:${Math.min(100, Math.max(0, pct))}%;background:${pct > 85 ? '#ff6b6b' : pct > 60 ? '#ffb547' : '#7dd3fc'}"></div></div>`;
+async function renderResources() {
+  const box = document.getElementById('resources');
+  if (!box) return;
+  let r;
+  try { r = await api('/api/resources'); } catch { box.innerHTML = '<span class="note">No pude medir los recursos.</span>'; return; }
+  const cpu = r.cpuPct ? r.cpuPct.busy : null;
+  const kratosParts = r.kratos.parts.map((p) => `<li>${esc(p.name)} · ${p.ramMb} MB · CPU ${p.cpu}%</li>`).join('');
+  box.innerHTML = `
+    <div class="note">CPU de este Mac: ${cpu === null ? 'desconocido' : cpu + ' %'} (${r.cores} núcleos)</div>${cpu === null ? '' : bar(cpu)}
+    <div class="note" style="margin-top:8px">RAM: ${r.ram.usedPct} % en uso de ${r.ram.totalGb} GB${r.ram.freePct === null ? '' : ` · libre ${r.ram.freePct} %`}</div>${bar(r.ram.usedPct)}
+    <div class="note" style="margin-top:8px">KRATOS: ${r.kratos.ramMb} MB de RAM · CPU ${r.kratos.cpu} %</div>
+    <ul class="note">${kratosParts}</ul>
+    <div class="note" style="margin-top:8px">Apps que más memoria usan:</div>
+    <ul class="note">${r.topApps.map((a) => `<li>${esc(a.name)} · ${a.ramMb} MB · CPU ${a.cpu}%</li>`).join('')}</ul>
+    ${r.warnings.map((w) => `<div class="note" style="color:#ffb547">⚠ ${esc(w)}</div>`).join('')}
+    <div class="note">Se actualiza al abrir esta pantalla. No mide la tarjeta gráfica (macOS no la expone sin permisos de administrador).</div>`;
+}
 document.addEventListener('click', async (e) => {
+  if (e.target.id === 'res-refresh') return renderResources();
   const t = e.target;
   if (t.dataset.say) return say(t.dataset.say);
   if (t.id === 'tts-test') { const was = voice.speakReplies; voice.speakReplies = true; await voice.speak('Hola, soy Kratos. Así sueno.'); voice.speakReplies = was; return; }

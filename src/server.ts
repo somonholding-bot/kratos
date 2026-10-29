@@ -15,6 +15,7 @@ import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
 import { claimDue, greeting, upcoming } from './core/agenda.ts';
 import { buildReport } from './core/report.ts';
+import { resources } from './core/resources.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -95,6 +96,7 @@ const GET: Record<string, Route> = {
     recent: await q(db, `SELECT at, model, input_tokens, output_tokens, cache_read_tokens, cost_microusd, charged_cents, purpose FROM ai_usage ORDER BY id DESC LIMIT 20`) }),
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
+  '/api/resources': async () => resources(),
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
   '/api/apple': async (db) => appleSummary(db),

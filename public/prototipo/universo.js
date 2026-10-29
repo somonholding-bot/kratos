@@ -771,6 +771,11 @@ function governFluidity(now) {
   fluid.lowSince = slow ? fluid.lowSince || now : 0;
   fluid.highSince = fast ? fluid.highSince || now : 0;
   const apply = () => { fluid.resizing = true; resize(); fluid.resizing = false; };
+  // Si ya está en la resolución mínima y sigue lenta (el Mac tiene otras apps pesadas), baja la calidad: sin brillo ni estrellas de más
+  if (fluid.scale <= 0.6 && fluid.lowSince && now - fluid.lowSince > 5000 && ui.quality !== 'baja') {
+    ui.quality = 'baja'; store('kratos.quality', 'baja'); fluid.lowSince = 0; fluid.scale = 1; build(); frame(); log('Calidad baja automática: el Mac está ocupado');
+    return;
+  }
   if (fluid.lowSince && now - fluid.lowSince > 1500 && fluid.scale > 0.6) { fluid.scale = Math.max(0.6, fluid.scale - 0.15); fluid.lowSince = 0; apply(); }
   else if (fluid.highSince && now - fluid.highSince > 8000 && fluid.scale < 1) { fluid.scale = Math.min(1, fluid.scale + 0.1); fluid.highSince = 0; apply(); }
 }
