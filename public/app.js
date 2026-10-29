@@ -268,6 +268,8 @@ const screens = {
 
 async function voiceSettings() {
   const st = await api('/api/voice/status');
+  const cfg = await api('/api/voz/ajustes');
+  app.ttsVoice = cfg.tts_voice; app.voiceModel = cfg.voice_model;
   let mics = [];
   try { mics = await voice.devices(); } catch {}
   const voices = voice.spanishVoices();
@@ -277,11 +279,13 @@ async function voiceSettings() {
       <label>Micrófono<br><select id="mic-select"><option value="">Predeterminado del sistema</option>${mics.map((d) => `<option value="${esc(d.deviceId)}" ${d.deviceId === voice.deviceId ? 'selected' : ''}>${esc(d.label || 'Micrófono (concede permiso para ver el nombre)')}</option>`).join('')}</select></label>
       <label>Voz de respuesta<br><select id="tts-select"><option value="">Automática (primera voz local en español)</option>${voices.map((v) => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === voice.voiceURI ? 'selected' : ''}>${esc(v.name)} · ${esc(v.lang)} · ${v.localService ? 'local' : 'EN LA NUBE'}</option>`).join('')}</select></label>
       <label><input type="checkbox" id="speak-toggle" ${voice.speakReplies ? 'checked' : ''}> Responder también en voz alta</label>
+      <label>Voz natural de KRATOS<br><select id="cfg-tts_voice">${[['kokoro', 'Kokoro · masculina (recomendada)'], ['piper', 'Piper · mexicana']].map(([v, n]) => `<option value="${v}" ${app.ttsVoice === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>Modelo de IA para la conversación por voz<br><select id="cfg-voice_model">${[['claude-haiku-5-5', 'Haiku 5.5 · rápido (recomendado)'], ['claude-sonnet-5-5', 'Sonnet 5.5 · equilibrado'], ['claude-opus-5-5', 'Opus 5.5 · más lento']].map(([v, n]) => `<option value="${v}" ${app.voiceModel === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       ${isNative ? `<label><input type="checkbox" id="wake-toggle" ${app.wake?.enabled !== false ? 'checked' : ''}> Activación por voz: decir «Kratos» (micrófono siempre abierto mientras la app esté abierta)</label>
       <div class="meta">Estado de la escucha: ${esc(app.wake?.state ?? 'desconocido')} · Frases: «Kratos, Kratos» o «Hey Kratos»</div>
       <label>Sensibilidad del detector<br><input type="range" id="cfg-sensitivity" min="0" max="1" step="0.1" value="${app.wake?.cfg?.sensitivity ?? 0.5}"></label>
       <label>Ventana entre «Kratos» y «Kratos» (segundos)<br><input type="number" id="cfg-wakeWindow" min="1" max="6" step="0.5" value="${app.wake?.cfg?.wakeWindow ?? 3}"></label>
-      <label>Tiempo de espera tras despertar (segundos)<br><input type="number" id="cfg-followUp" min="3" max="30" step="1" value="${app.wake?.cfg?.followUp ?? 8}"></label>` : '<div class="meta">La activación diciendo «Kratos» solo está disponible en la app Kratos del Escritorio.</div>'}
+      <label>Conversación abierta sin volver a decir «Kratos» (segundos, 5 a 300)<br><input type="number" id="cfg-followUp" min="5" max="300" step="5" value="${app.wake?.cfg?.followUp ?? 60}"></label>` : '<div class="meta">La activación diciendo «Kratos» solo está disponible en la app Kratos del Escritorio.</div>'}
       <button class="ctl" id="tts-test" type="button">Probar voz</button>
     </form>
     <h2>Latencia medida (mediana, últimos 30 días, ${s.n ?? 0} conversaciones de voz)</h2>
@@ -524,11 +528,14 @@ document.addEventListener('submit', async (e) => {
     try { await api('/api/businesses', data); toast('Expediente creado.'); render(); } catch (err) { toast(err.message); }
   }
 });
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
   if (e.target.id === 'mic-select') voice.setDevice(e.target.value);
   if (e.target.id === 'tts-select') voice.setVoice(e.target.value);
   if (e.target.id === 'speak-toggle') voice.setSpeak(e.target.checked);
   if (e.target.id === 'wake-toggle') voice.setWake(e.target.checked);
+  if (e.target.id === 'cfg-tts_voice' || e.target.id === 'cfg-voice_model') {
+    await api('/api/settings', { key: e.target.id.slice(4), value: e.target.value }); toast('Ajuste guardado.'); return;
+  }
   if (e.target.id?.startsWith('cfg-')) voice.setWakeConfig({ [e.target.id.slice(4)]: Number(e.target.value) });
   if (e.target.id === 'reduce') { store('jarvis.reduceMotion', e.target.checked ? '1' : '0'); document.body.classList.toggle('reduce-motion', e.target.checked); scene.set({ reducedMotion: e.target.checked || prefersReduced }); }
   if (e.target.id === 'quality') { store('kratos.quality', e.target.value); scene.set({ quality: e.target.value }); }

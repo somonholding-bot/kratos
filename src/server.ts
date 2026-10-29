@@ -97,6 +97,7 @@ const GET: Record<string, Route> = {
   '/api/agenda': async (db) => upcoming(db, 24 * 30),
   '/api/report': async (db) => buildReport(db),
   '/api/resources': async () => resources(),
+  '/api/voz/ajustes': async (db) => { const st = await getState(db); return { tts_voice: st.tts_voice ?? 'kokoro', voice_model: st.voice_model ?? 'claude-haiku-5-5' }; },
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
   '/api/apple': async (db) => appleSummary(db),
@@ -153,6 +154,19 @@ const POST: Record<string, Route> = {
     await audit(db, 'propietario (panel)', 'conexion.apple.asistente_abierto', {});
     spawn('/bin/bash', [path.join(ROOT, 'scripts', 'conectar-apple.sh')], { detached: true, stdio: 'ignore' }).unref();
     return { ok: true, connected: !!appleCredentials() };
+  },
+  // Ajustes que el propietario cambia desde Configuración (lista blanca; nada más se puede tocar desde aquí)
+  '/api/settings': async (db, b) => {
+    const allowed: Record<string, string[]> = {
+      tts_voice: ['piper', 'kokoro'],
+      voice_model: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'],
+    };
+    const key = String(b.key ?? ''), value = String(b.value ?? '');
+    if (!allowed[key]?.includes(value)) throw new HttpError(400, 'Ajuste no válido');
+    await db.query(`INSERT INTO system_state (key, value, updated_by) VALUES ($1, $2, 'propietario (panel)')
+      ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now(), updated_by = 'propietario (panel)'`, [key, JSON.stringify(value)]);
+    await audit(db, 'propietario (panel)', 'ajuste.cambiado', { key, value });
+    return { ok: true };
   },
   '/api/emergency-stop': async (db) => emergencyStop(db, 'propietario (panel)'),
   '/api/resume': async (db) => { await resumeFromEmergency(db, 'propietario (panel)'); return { ok: true }; },

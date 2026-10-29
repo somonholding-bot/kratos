@@ -353,7 +353,8 @@ export async function think(db: Db, channel: 'texto' | 'voz'): Promise<BrainRepl
   const key = apiKey();
   if (!key) return { unavailable: 'sin_clave' };
   const st = await getState(db);
-  const model: string = st.ai_model ?? 'claude-opus-5-5';
+  // Por voz se usa un modelo rápido (la respuesta llega antes); por texto, el modelo principal
+  const model: string = channel === 'voz' ? (st.voice_model ?? 'claude-haiku-5-5') : (st.ai_model ?? 'claude-opus-5-5');
   const effort: string = st.ai_effort ?? 'low';
   const acc = (await db.query(`SELECT id FROM budget_accounts WHERE label = $1`, [AI_ACCOUNT])).rows[0];
   if (!acc) return { unavailable: 'sin_cuenta' };

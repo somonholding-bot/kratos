@@ -176,7 +176,7 @@ final class WakeListener {
 
   // Ajustes (configurables desde el panel)
   var wakeWindow: Double { UserDefaults.standard.object(forKey: "wakeWindow") as? Double ?? 3.0 }      // s entre «Kratos» y «Kratos»
-  var followUpSeconds: Double { UserDefaults.standard.object(forKey: "followUp") as? Double ?? 8.0 }   // espera tras despertar
+  var followUpSeconds: Double { UserDefaults.standard.object(forKey: "followUp") as? Double ?? 60.0 }  // ventana sin volver a decir «Kratos» (se renueva en cada respuesta)
   var sensitivity: Double { UserDefaults.standard.object(forKey: "sensitivity") as? Double ?? 0.5 }    // 0 = poco sensible, 1 = muy sensible
 
   private func set(_ s: State, _ msg: String? = nil) {
@@ -191,7 +191,19 @@ final class WakeListener {
     if enabled { start() } else { set(.off) }
   }
 
+  // Cuando vence la ventana de conversación, vuelve a pedir «Kratos» (y el universo entra en reposo)
+  private var expiry: Timer?
+  func startExpiry() {
+    expiry?.invalidate()
+    expiry = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+      guard let self, let until = self.followUpUntil, until <= Date(), !self.busy, !self.speaker.isSpeaking else { return }
+      self.followUpUntil = nil
+      if self.state == .followUp { self.set(self.enabled ? .listening : .off) }
+    }
+  }
+
   func start() {
+    startExpiry()
     switch AVCaptureDevice.authorizationStatus(for: .audio) {
     case .authorized: break
     case .notDetermined:
@@ -311,6 +323,7 @@ final class WakeListener {
     let t0 = Date()
     API.post("/api/chat", ["text": text, "channel": "voz"]) { [weak self] reply in
       guard let self else { return }
+      self.followUpUntil = Date().addingTimeInterval(self.followUpSeconds)   // la conversación sigue abierta
       let thinkMs = Int(Date().timeIntervalSince(t0) * 1000)
       if let id = metricId { API.post("/api/voice/latency", ["metricId": id, "thinkMs": thinkMs]) }
       NotificationCenter.default.post(name: .kratosReplied, object: reply?["action"] as? String)
@@ -326,7 +339,8 @@ final class WakeListener {
       self.busy = false; self.pending = []
       if let next = self.queued, !self.speaker.isSpeaking { self.queued = nil; self.submit(next); return }
       self.queued = nil
-      self.set(self.enabled ? .listening : .off)
+      if self.enabled, let until = self.followUpUntil, until > Date() { self.set(.followUp) }   // sigue la conversación
+      else { self.followUpUntil = nil; self.set(self.enabled ? .listening : .off) }
     }
   }
 
