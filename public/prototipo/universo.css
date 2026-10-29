@@ -8,12 +8,12 @@ body.idle { cursor: none; }
 .label.kratos { letter-spacing: .5em; font-size: 13px; color: rgba(240,246,255,.85); }
 .whisper { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: rgba(200,220,255,.55); pointer-events: none; }
 .proto-tag { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); font-size: 10px; letter-spacing: .18em; color: rgba(180,205,235,.42); border: 0; padding: 2px 8px; pointer-events: none; text-transform: uppercase; }
-.event-log { position: fixed; left: 24px; bottom: 24px; font-size: 12px; color: rgba(220,232,255,.75); pointer-events: none; display: flex; flex-direction: column; gap: 4px; max-width: 360px; }
+.event-log { position: fixed; left: 24px; bottom: 150px; font-size: 12px; color: rgba(220,232,255,.75); pointer-events: none; display: flex; flex-direction: column; gap: 4px; max-width: 360px; }
 .event-log div { animation: fade 6s forwards; }
 @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 .metrics { position: fixed; right: 20px; top: 14px; font: 11px/1.5 ui-monospace, monospace; color: rgba(190,210,240,.75); background: rgba(5,10,20,.55); padding: 6px 10px; border-radius: 8px; }
-.dock { position: fixed; left: 50%; bottom: 20px; margin-left: -150px; z-index: 36; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(8,14,28,.45); backdrop-filter: blur(10px); border: 1px solid rgba(140,170,255,.14); opacity: .78; transition: opacity .35s; }
-.dock:hover, .dock:focus-within, .dock.show { opacity: 1; }   /* siempre visible, también a pantalla completa */
+.dock { position: fixed; left: 20px; bottom: 20px; z-index: 36; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(8,14,28,.45); backdrop-filter: blur(10px); border: 1px solid rgba(140,170,255,.14); opacity: .78; transition: opacity .35s; }
+.dock:hover, .dock:focus-within, .dock.show { opacity: 1; }   /* siempre visible, a la izquierda: no tapa el estado «escuchando» del centro */
 .dock button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: 6px 4px; border-radius: 10px; color: #dbe8ff; font-size: 16px; }
 .dock button span { font-size: 10px; letter-spacing: .06em; color: rgba(200,215,240,.7); }
 .dock button:hover, .dock button:focus-visible { background: rgba(120,160,255,.14); outline: none; }
@@ -84,7 +84,7 @@ body.idle { cursor: none; }
 #lectura code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; }
 
 /* Chat escrito con KRATOS (sobre la barra inferior) */
-.chat-box { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%); width: min(620px, calc(100vw - 32px)); z-index: 37;
+.chat-box { position: fixed; left: 20px; bottom: 86px; width: min(620px, calc(100vw - 32px)); z-index: 37;
   display: flex; gap: 8px; padding: 8px; border-radius: 14px; background: rgba(8, 14, 28, 0.82); border: 1px solid rgba(160, 200, 255, 0.25); backdrop-filter: blur(14px); }
 .chat-box[hidden] { display: none; }
 .chat-box input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(160, 200, 255, 0.2); background: rgba(255,255,255,.05); color: #e8f2ff; font: 14px system-ui, sans-serif; outline: none; }

@@ -6,7 +6,7 @@
   <title>KRATOS · Prototipo de universo</title>
   <link rel="icon" href="/icon.png">
   <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
-  <link rel="stylesheet" href="/prototipo/universo.css?v=cinema-4">
+  <link rel="stylesheet" href="/prototipo/universo.css?v=cinema-5">
 </head>
 <body>
   <canvas id="universo" aria-label="Universo de KRATOS: su mente en el centro y siete especialistas alrededor"></canvas>
@@ -39,6 +39,8 @@
     <button data-act="text" title="Último texto de KRATOS (T)">📄<span>Texto</span></button>
     <button data-act="tasks" title="Tareas (L)">☰<span>Tareas</span></button>
     <button data-act="chat" title="Escribir a KRATOS (C)">✎<span>Chat</span></button>
+    <button data-act="quality" title="Modo gráfico: baja · media · alta (Q)">◆<span id="q-label">Media</span></button>
+    <button data-act="exit" title="Minimizar y abrir el panel de configuración (Esc)">✕<span>Cerrar</span></button>
   </nav>
   <form id="chat-box" class="chat-box" hidden autocomplete="off">
     <input id="chat-input" type="text" placeholder="Escribe a KRATOS y pulsa Intro…" maxlength="4000" aria-label="Mensaje para KRATOS">
@@ -56,6 +58,6 @@
     <p><b>Esc</b> salir · <b>Espacio</b> pausar · <b>M</b> silenciar · <b>R</b> movimiento reducido · <b>Q</b> calidad · <b>L</b> lista · <b>I</b> consumo · <b>F</b> pantalla completa · <b>1–7</b> delegación simulada · <b>S</b> estado simulado</p>
   </div>
 
-  <script type="module" src="/prototipo/universo.js?v=cinema-4"></script>
+  <script type="module" src="/prototipo/universo.js?v=cinema-5"></script>
 </body>
 </html>
