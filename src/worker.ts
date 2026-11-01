@@ -1,8 +1,9 @@
+import { subscriptionAvailable } from './core/subscription.ts';
 import os from 'node:os';
 import { createPool, type Db } from './db.ts';
 import { config } from './config.ts';
 import { migrate } from './migrate.ts';
-import { audit, heartbeat, isHalted } from './core/state.ts';
+import { audit, getState, heartbeat, isHalted } from './core/state.ts';
 import { claimNext, completeTask, deferTask, failTask, recoverStale } from './core/tasks.ts';
 import { handlers } from './core/handlers.ts';
 import { aiStatus } from './core/brain.ts';
@@ -16,7 +17,8 @@ export async function tick(db: Db, workerId: string): Promise<'parado' | 'sin_tr
   const halt = await isHalted(db);
   if (halt.halted) return 'parado';
   const ai = await aiStatus(db);
-  if (ai.active) {
+  const sub = (await getState(db)).agents_engine !== 'api' && (await subscriptionAvailable(db)).ok;   // agentes con la suscripción
+  if (ai.active || sub) {
     await db.query(`UPDATE tasks SET status = 'pendiente', updated_at = now()
       WHERE status = 'esperando_ia' AND type = 'agente'`);
   }

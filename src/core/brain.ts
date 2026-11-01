@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import type { Db } from '../db.ts';
 import { audit, emergencyStop, getState } from './state.ts';
 import { reserve, settle } from './budget.ts';
-import { createTask } from './tasks.ts';
+import { cancelTask, createTask } from './tasks.ts';
 import { requestApproval } from './approvals.ts';
 import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext, skillsFor } from './skills.ts';
@@ -103,7 +103,8 @@ Memoria: tienes una bóveda de Obsidian. Busca en ella antes de responder sobre 
 
 Funciones nuevas: si te piden algo que tus herramientas no cubren y se puede resolver con datos públicos de internet, programa la función con proponer_funcion; el resultado te dice si quedó activa o pendiente del panel. Las herramientas fn_* son funciones ya aprobadas: úsalas. Nunca intentes cambiar tu código central, tus límites ni tus permisos.
 Autonomía nivel 8 (auto-mejora): si el propietario señala un fallo o preguntas por qué algo va mal, diagnostica con diagnostico_propio, leer_codigo y buscar_codigo, explica la causa probable en pocas frases y ofrece una mejora concreta con proponer_mejora (pregunta antes: «¿quieres que lo arregle?»). Nunca la apliques sin su aprobación en el panel. No puedes tocar aprobaciones, presupuesto, accesos ni borrar código.
-Tus capacidades (elige la herramienta adecuada sin preguntar): agentes y ver_skills (quién hace qué y con qué método), crear_tarea (delegar), ver_resultado_tarea y buscar_informes (lo que entregaron), ver_plan y actualizar_plan (estrategia de la empresa), consultar_bd (datos en solo lectura), diagnostico_propio, leer_codigo, buscar_codigo y proponer_mejora (auto-mejora con aprobación), web_search y web_fetch (internet), estado_apple (tus apps), correo, agenda, llamadas y mensajes, herramientas_sistema (qué funciona ahora). Aprendes guardando lecciones (registrar_leccion) y preferencias; mejoras tu código con proponer_mejora.`;
+Tus capacidades (elige la herramienta adecuada sin preguntar): agentes y ver_skills (quién hace qué y con qué método), crear_tarea (delegar), ver_resultado_tarea y buscar_informes (lo que entregaron), ver_plan y actualizar_plan (estrategia de la empresa), consultar_bd (datos en solo lectura), diagnostico_propio, leer_codigo, buscar_codigo y proponer_mejora (auto-mejora con aprobación), web_search y web_fetch (internet), estado_apple (tus apps), correo, agenda, llamadas y mensajes, herramientas_sistema (qué funciona ahora). Aprendes guardando lecciones (registrar_leccion) y preferencias; mejoras tu código con proponer_mejora.
+Libertad de acción (decisión del propietario): actúa sin pedir permiso en todo lo que no sea gastar dinero, publicar, contactar a terceros o cambiar accesos: crea, edita, relanza o cancela tareas; registra negocios y productos; investiga en internet; diagnostica; propone mejoras. Nunca digas «no puedo» sin revisar antes tus herramientas; si de verdad falta una, ofrécete a crearla con proponer_funcion o proponer_mejora.`;
 
 // ctx.lastUser: el último mensaje del propietario en este turno (para comprobar en código que una orden es suya)
 // ctx.effects: lo que la app de Mac debe hacer al terminar (p. ej. poner música)
@@ -150,7 +151,7 @@ export const TOOLS: ToolDef[] = [
       const { task, created } = await createTask(db, {
         businessId: i.negocio_id, ownerFunction: i.responsable, type: 'agente', title: i.titulo, objective: i.objetivo,
         priority: Math.min(5, Math.max(1, i.prioridad)), expectedResult: i.resultado_esperado, verification: i.verificacion,
-        status: 'esperando_ia', createdBy: 'kratos (IA)',
+        status: 'pendiente', createdBy: 'kratos (IA)',   // arranca ya (agentes con la suscripción)
       });
       return { id: task.id, creada: created };
     },
@@ -390,6 +391,44 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => proposeRevert(db, Number(i.mejora), 'kratos (IA)'),
   },
   {
+    name: 'editar_tarea', description: 'Cambia una tarea que aún no ha terminado: título, objetivo, responsable, prioridad o producto.',
+    input_schema: obj({ id: { type: 'integer' }, titulo: { type: 'string' }, objetivo: { type: 'string' }, responsable: { type: 'string' }, prioridad: { type: 'integer' }, producto_id: { type: 'integer' } }, ['id']),
+    run: async (db, i) => {
+      const r = await db.query(`UPDATE tasks SET title = coalesce($2, title), objective = coalesce($3, objective), owner_function = coalesce($4, owner_function),
+          priority = coalesce($5, priority), product_id = coalesce($6, product_id), updated_at = now()
+        WHERE id = $1 AND status NOT IN ('completada','cancelada','en_ejecucion') RETURNING id, title, status`,
+        [Number(i.id), i.titulo ?? null, i.objetivo ?? null, i.responsable ?? null, i.prioridad ?? null, i.producto_id ?? null]);
+      await audit(db, 'kratos (IA)', 'tarea.editada', { id: Number(i.id) });
+      return r.rows[0] ?? { error: 'No existe o ya terminó/está en marcha' };
+    },
+  },
+  {
+    name: 'ejecutar_tarea_ya', description: 'Pone una tarea pendiente, en espera o fallida a ejecutarse ahora mismo (reintento incluido).',
+    input_schema: obj({ id: { type: 'integer' } }, ['id']),
+    run: async (db, i) => {
+      const r = await db.query(`UPDATE tasks SET status = 'pendiente', run_at = now(), attempts = 0, last_error = NULL, updated_at = now()
+        WHERE id = $1 AND status IN ('pendiente','esperando_ia','fallida','requiere_revision') RETURNING id, title`, [Number(i.id)]);
+      await audit(db, 'kratos (IA)', 'tarea.ejecutar_ya', { id: Number(i.id) });
+      return r.rows[0] ? { ok: true, nota: 'El trabajador la toma en segundos' } : { error: 'No existe o no se puede relanzar' };
+    },
+  },
+  {
+    name: 'cancelar_tarea', description: 'Cancela una tarea que ya no hace falta.',
+    input_schema: obj({ id: { type: 'integer' } }, ['id']),
+    run: async (db, i) => ({ cancelada: await cancelTask(db, Number(i.id), 'kratos (IA)') }),
+  },
+  {
+    name: 'crear_negocio', description: 'Registra un negocio real del propietario (para asignarle tareas, productos y planes).',
+    input_schema: obj({ nombre: { type: 'string' }, objetivos: { type: 'string' } }, ['nombre']),
+    run: async (db, i) => (await db.query(`INSERT INTO businesses (name, is_demo) VALUES ($1, false) RETURNING id, name`, [String(i.nombre).slice(0, 120)])).rows[0],
+  },
+  {
+    name: 'crear_producto', description: 'Registra un producto o app de un negocio (nombre, plataformas, público, mercados, modelo de ingresos).',
+    input_schema: obj({ negocio_id: { type: 'integer' }, nombre: { type: 'string' }, plataformas: { type: 'string', description: 'separadas por comas' }, publico: { type: 'string' }, modelo_ingresos: { type: 'string' } }, ['negocio_id', 'nombre']),
+    run: async (db, i) => (await db.query(`INSERT INTO products (business_id, name, platforms, audience, revenue_model) VALUES ($1,$2,$3,$4,$5) RETURNING id, name`,
+      [Number(i.negocio_id), String(i.nombre).slice(0, 120), String(i.plataformas ?? '').split(',').map((x) => x.trim()).filter(Boolean), i.publico ?? null, i.modelo_ingresos ?? null])).rows[0],
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -398,7 +437,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -441,7 +480,7 @@ async function thinkViaSubscription(db: Db, channel: 'texto' | 'voz', messages: 
     const r = await runAgentWithSubscription(db, {
       system: `${SYSTEM}\n\n${context}\n\nUsa las herramientas del servidor «kratos» (mcp__kratos__*) para todo lo que sea de KRATOS. Responde solo con el texto final para el propietario.`,
       prompt: `Conversación reciente (el último mensaje es el que debes responder ahora):\n\n${convo}`,
-      model, toolset: light ? 'voz' : 'texto', lastUser, web, timeoutMs: channel === 'voz' ? 90_000 : 240_000, onText: (d) => speech?.push(d),
+      model, toolset: 'texto', lastUser, web: true, timeoutMs: channel === 'voz' ? 90_000 : 240_000, onText: (d) => speech?.push(d),
     });
     speech?.flush();
     const final = withoutLeadingName(r.text.trim(), (await owner(db)).name);
