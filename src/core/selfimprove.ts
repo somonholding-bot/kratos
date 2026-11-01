@@ -123,7 +123,11 @@ export async function runSelfImprovement(db: Db, task: any) {
   try {
     await git('tag', '-f', tag);
     await git('checkout', '-b', branch);
+    // Mapa del código actualizado (graphify, local y sin coste): el agente lo consulta en vez de leer archivo por archivo
+    const graphify = path.join(os.homedir(), '.local', 'bin', 'graphify');
+    const hasGraph = fs.existsSync(graphify) && (await sh(graphify, ['update', '.'], 120_000)).code === 0;
     const prompt = `Eres KRATOS mejorándote a ti mismo, con permiso del propietario. Repositorio: ${ROOT}.\n\n${job.instructions}\n\n` +
+      (hasGraph ? `Mapa del código: lee primero graphify-out/GRAPH_REPORT.md y usa «graphify query \"pregunta\"», «graphify explain \"símbolo\"» o «graphify affected \"símbolo\"» para encontrar dónde tocar; así gastas muchos menos tokens que leyendo archivos enteros.\n\n` : '') +
       `Reglas obligatorias:\n- No borres archivos.\n- No modifiques: ${PROTECTED.join(', ')}, ni migraciones ya existentes en db/ (puedes crear una nueva).\n` +
       `- Para ver datos reales usa: bash scripts/consulta-bd.sh "SELECT …" (solo lectura). Para ampliar la base de datos crea una migración nueva en db/ (NNN_nombre.sql); se aplica sola al reiniciar.\n- Cambios pequeños y del estilo del código existente.\n- Al terminar ejecuta «npm test» y corrige hasta que pase.\n- No hagas commit ni push: eso lo hace el sistema.\n` +
       `Termina con un resumen en español: qué cambiaste, en qué archivos y por qué.`;

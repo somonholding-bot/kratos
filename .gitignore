@@ -2,3 +2,4 @@ node_modules/
 .jarvis/
 backups/
 build/
+graphify-out/
