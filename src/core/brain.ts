@@ -18,7 +18,7 @@ import { setSetting } from './bitacora.ts';
 import { agentsContext, agentsRegistry, searchReports, systemInventory, taskResult } from './registry.ts';
 import { proposeImprovement, proposeRevert, readCode, searchCode } from './selfimprove.ts';
 import { diagnoseSelf } from './selfdiag.ts';
-import { runWithSubscription, subscriptionAvailable } from './subscription.ts';
+import { runAgentWithSubscription, runWithSubscription, subscriptionAvailable } from './subscription.ts';
 import { inboxContext, recentIncoming } from './inbox.ts';
 import type { MusicCmd, MusicEffect } from './music.ts';
 
@@ -76,7 +76,7 @@ export async function aiStatus(db: Db) {
   };
 }
 
-const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario, Idalmi. Hablas español, con personalidad: ingenioso, seguro, cálido y con humor seco, como el JARVIS de Tony Stark. Suenas como un agente real y competente, no como una máquina.
+export const SYSTEM = `Eres Kratos, el CEO y asistente personal y empresarial de tu propietario, Idalmi. Hablas español, con personalidad: ingenioso, seguro, cálido y con humor seco, como el JARVIS de Tony Stark. Suenas como un agente real y competente, no como una máquina.
 Forma de hablar: no uses el nombre del propietario ni «señor» en las respuestas (solo en el saludo de la mañana). Ve al grano.
 Voz: la transcripción puede confundir nombres de tus agentes: «Benu», «Venu», «Benus» = Venus; «Melcure», «Mercure» = Mercurio; «Saturo» = Saturno; «Jupi» = Júpiter. Interprétalos así. Por voz es una conversación en tiempo real: lo que escribes se dice mientras lo escribes. Empieza SIEMPRE con la respuesta directa en una frase corta, como una persona; responde en 1 o 2 frases, sin listas ni formato. Si necesitas una herramienta lenta (internet, informes), di antes en 3 a 6 palabras qué vas a hacer («Déjame mirarlo.»). Usa como mucho 2 herramientas; si hace falta más, dilo y ofrécelo por escrito. Nada de frases de robot ni de disculpas repetidas.
 Ajustes: puedes cambiar tus propios ajustes (calidad gráfica, velocidad de la voz, tiempo de conversación, voz y modelo) con ajustar_kratos cuando te lo pida; confirma en una frase lo que cambiaste.
@@ -107,8 +107,8 @@ Tus capacidades (elige la herramienta adecuada sin preguntar): agentes y ver_ski
 
 // ctx.lastUser: el último mensaje del propietario en este turno (para comprobar en código que una orden es suya)
 // ctx.effects: lo que la app de Mac debe hacer al terminar (p. ej. poner música)
-type ToolCtx = { lastUser: string; effects?: Partial<MusicEffect> & { action?: string; query?: string; cmd?: MusicCmd } };
-type ToolDef = { name: string; description: string; input_schema: Record<string, unknown>; run: (db: Db, input: any, ctx: ToolCtx) => Promise<unknown> };
+export type ToolCtx = { lastUser: string; effects?: Partial<MusicEffect> & { action?: string; query?: string; cmd?: MusicCmd } };
+export type ToolDef = { name: string; description: string; input_schema: Record<string, unknown>; run: (db: Db, input: any, ctx: ToolCtx) => Promise<unknown> };
 
 // Enviar exige autonomía amplia Y que el propio mensaje del propietario lo pida: una instrucción escondida en un correo,
 // una nota o una página no basta (eso sería contenido de herramienta, no el mensaje del propietario).
@@ -120,7 +120,7 @@ async function mayAutoSend(db: Db, ctx: ToolCtx) {
 }
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
-const TOOLS: ToolDef[] = [
+export const TOOLS: ToolDef[] = [
   {
     name: 'resumen_negocios', description: 'Resumen de negocios, productos, tareas abiertas, aprobaciones pendientes y presupuesto.',
     input_schema: obj({}),
@@ -424,6 +424,35 @@ export async function readOnlyQuery(db: Db, sql: string) {
   finally { c.release(); }
 }
 
+// La conversación con la suscripción: el mismo contexto y las mismas herramientas (servidor MCP), sin coste de API
+const SUB_MODEL: Record<string, string> = { 'claude-haiku-5-5': 'haiku', 'claude-sonnet-5-5': 'sonnet', 'claude-opus-5-5': 'opus' };
+async function thinkViaSubscription(db: Db, channel: 'texto' | 'voz', messages: any[], light: boolean, web: boolean, lastUser: string, st: Record<string, any>,
+  onSpeak?: (sentence: string) => void): Promise<BrainReply | { unavailable: string }> {
+  const av = await subscriptionAvailable(db);
+  if (!av.ok) return { unavailable: `límite de la suscripción${av.until ? ` hasta ${av.until.toLocaleString('es')}` : ''}` };
+  const txt = (c: any) => (typeof c === 'string' ? c : (c ?? []).map((b: any) => b.text ?? '').join(''));
+  const context = messages.filter((m) => m.role === 'system').map((m) => txt(m.content)).join('\n');
+  const convo = messages.filter((m) => m.role !== 'system').map((m) => `${m.role === 'user' ? 'Propietario' : 'KRATOS'}: ${txt(m.content)}`).join('\n\n');
+  const spokenParts: string[] = [];
+  const speech = onSpeak ? sentenceStream((t) => { spokenParts.push(t); onSpeak(t); }) : null;
+  // Por voz, Sonnet (casi tan rápido como Haiku con la suscripción y más listo); por texto, el modelo principal
+  const model = channel === 'voz' ? (st.voice_model === 'claude-opus-5-5' ? 'opus' : 'sonnet') : (SUB_MODEL[st.ai_model] ?? 'opus');
+  try {
+    const r = await runAgentWithSubscription(db, {
+      system: `${SYSTEM}\n\n${context}\n\nUsa las herramientas del servidor «kratos» (mcp__kratos__*) para todo lo que sea de KRATOS. Responde solo con el texto final para el propietario.`,
+      prompt: `Conversación reciente (el último mensaje es el que debes responder ahora):\n\n${convo}`,
+      model, toolset: light ? 'voz' : 'texto', lastUser, web, timeoutMs: channel === 'voz' ? 90_000 : 240_000, onText: (d) => speech?.push(d),
+    });
+    speech?.flush();
+    const final = withoutLeadingName(r.text.trim(), (await owner(db)).name);
+    await audit(db, 'kratos (IA)', 'ia.suscripcion', { canal: channel, modelo: model, herramientas: r.tools });
+    return { text: final, spoken: spokenParts.join(' ') || final.split('\n')[0].replace(/[*_#`>]/g, '').slice(0, 240), costUsd: 0, effects: r.effects as any };
+  } catch (e: any) {
+    await audit(db, 'kratos (IA)', 'ia.suscripcion_error', { error: String(e?.message ?? e).slice(0, 200) });
+    return { unavailable: /límite/i.test(e?.message ?? '') ? 'límite de la suscripción' : `sin conexión con Claude Code (${String(e?.message ?? e).slice(0, 80)})` };
+  }
+}
+
 export type BrainReply = { text: string; spoken: string; costUsd: number; effects?: ToolCtx['effects'] };
 
 // Memoria acumulada: los aprendizajes más recientes y fiables, para el CEO o para un especialista
@@ -541,7 +570,7 @@ export async function executeSpecialistTask(db: Db, task: any): Promise<Speciali
 
 // Por voz, solo las herramientas de la conversación diaria: menos texto que procesar y respuesta antes.
 // Las de código, base de datos, plan y skills entran si la petición las menciona.
-const VOICE_TOOLS = new Set(['resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_notas', 'leer_nota', 'guardar_nota', 'agendar', 'ver_agenda', 'cancelar_agenda',
+export const VOICE_TOOLS = new Set(['agentes', 'resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_notas', 'leer_nota', 'guardar_nota', 'agendar', 'ver_agenda', 'cancelar_agenda',
   'llamar', 'mensaje_texto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'correo_bandeja', 'correo_borrador', 'correo_enviar', 'guardar_contacto', 'ajustar_kratos', 'recordar_preferencia', 'olvidar_preferencia',
   'ver_resultado_tarea', 'buscar_informes', 'estado_apple', 'registrar_leccion', 'solicitar_aprobacion', 'encargar_a_claude_code', 'parada_emergencia']);
 const FULL_TOOLS_HINT = /\b(codigo|programa|funcion|mejora|arregla|diagnost|falla|base de datos|consulta|plan|estrategia|skills?|agentes|herramientas|revert|deshac)/;
@@ -586,14 +615,17 @@ export async function voiceSnapshot(db: Db): Promise<string> {
 }
 
 export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentence: string) => void): Promise<BrainReply | { unavailable: string }> {
-  const key = apiKey();
-  if (!key) return { unavailable: 'sin_clave' };
+  if (process.env.KRATOS_DISABLE_AI === '1') return { unavailable: 'sin_clave' };   // pruebas: sin ningún motor de IA
   const st = await getState(db);
+  // Motor de la conversación: «suscripcion» (Claude Code con tu plan, sin gastar API) o «api»
+  const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
+  const key = apiKey();
+  if (!viaSub && !key) return { unavailable: 'sin_clave' };
   // Por voz se usa un modelo rápido (la respuesta llega antes); por texto, el modelo principal
   const model: string = channel === 'voz' ? (st.voice_model ?? 'claude-haiku-5-5') : (st.ai_model ?? 'claude-opus-5-5');
   const effort: string = st.ai_effort ?? 'low';
   const acc = (await db.query(`SELECT id FROM budget_accounts WHERE label = $1`, [AI_ACCOUNT])).rows[0];
-  if (!acc) return { unavailable: 'sin_cuenta' };
+  if (!acc && !viaSub) return { unavailable: 'sin_cuenta' };
 
   // Memoria de conversación: más turnos, pero cada respuesta antigua recortada (así pesa menos y se piensa antes)
   const history = (await db.query(`SELECT role, content FROM messages ORDER BY id DESC LIMIT 24`)).rows.reverse();
@@ -624,6 +656,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
     run: (db2: Db, i: any) => runPlugin(db2, p.slug, i),
   }))];
   const web = channel === 'texto' || WEB_HINT.test(lastNorm) ? webTools(3) : [];
+  if (viaSub) return thinkViaSubscription(db, channel, messages, light, web.length > 0, String(lastUser), st, onSpeak);
   const ctx: ToolCtx = { lastUser: String(lastUser), effects: {} };
   const spokenParts: string[] = [];
   const speech = onSpeak ? sentenceStream((t) => { spokenParts.push(t); onSpeak(t); }) : null;
@@ -700,14 +733,15 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada 12 horas (tarea recurrente «ciclo_ceo»): revisa estado y resultados, registra aprendizajes
 // y crea como máximo 3 tareas nuevas para los especialistas. Sin IA o sin presupuesto, se salta sin fallar.
-const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'diagnostico_propio'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
-  const key = apiKey();
-  if (!key) return { saltado: 'sin clave de Claude' };
   const st = await getState(db);
+  const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
+  const key = apiKey();
+  if (!key && !viaSub) return { saltado: 'sin clave de Claude' };
   if (st.emergency_stop || st.automations_paused) return { saltado: 'KRATOS detenido o en pausa' };
   const acc = (await db.query(`SELECT id FROM budget_accounts WHERE label = $1`, [AI_ACCOUNT])).rows[0];
-  if (!acc) return { saltado: 'sin cuenta de presupuesto' };
+  if (!acc && !viaSub) return { saltado: 'sin cuenta de presupuesto' };
   const recent = (await db.query(`SELECT id, owner_function, title, status, left(coalesce(result::text, last_error, ''), 600) AS resultado
     FROM tasks WHERE type = 'agente' AND updated_at > now() - interval '7 days' ORDER BY updated_at DESC LIMIT 15`)).rows;
   const tools = TOOLS.filter((t) => CEO_TOOLS.includes(t.name));
@@ -724,6 +758,17 @@ Actúas como el CEO real de esta empresa: tu problema es llegar a la meta y tú 
 4. Crea como máximo 3 tareas nuevas de alto impacto que hagan avanzar el plan, cada una para el agente adecuado (consulta agentes y ver_skills si dudas), sin duplicar tareas abiertas.
 5. Si algo necesita dinero, publicar, contactar a terceros o un acceso nuevo, usa solicitar_aprobacion; no lo hagas.
 Termina con un resumen de 3 líneas: qué cambió en el plan, qué encargaste y qué necesitas del propietario.${skillContext('kratos', 'estrategia delega coordina prioridades marketing usuarios crecimiento')}${await lessonsContext(db)}` }];
+  // Con la suscripción: el mismo ciclo, con las herramientas del CEO por el servidor MCP y sin coste de API
+  if ((st.brain_engine ?? 'suscripcion') === 'suscripcion') {
+    try {
+      const r = await runAgentWithSubscription(db, { system: SYSTEM, prompt: String(messages[0].content), model: 'opus', toolset: 'ceo', web: true, timeoutMs: 15 * 60_000 });
+      appendDaily(`Ciclo del CEO (suscripción): ${r.text.replace(/\n+/g, ' ').slice(0, 400)}`);
+      return { resumen: r.text.slice(0, 1500), costUsd: 0, motor: 'suscripción', herramientas: r.tools };
+    } catch (e: any) {
+      if ('retryAt' in e) throw e;   // límite: el ciclo espera al reinicio
+      return { saltado: `suscripción no disponible: ${String(e.message).slice(0, 160)}` };
+    }
+  }
   const turn = crypto.randomUUID();
   let cost = 0, summary = '';
   for (let round = 0; round < 6; round++) {
