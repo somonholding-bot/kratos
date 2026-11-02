@@ -10,6 +10,7 @@ import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext, skillsFor } from './skills.ts';
 import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
 import { appleSummary } from './apple.ts';
+import { updateVideo, uploadVideo, youtubeSummary } from './youtube.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox, mailSend } from './mail.ts';
 import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
@@ -429,6 +430,36 @@ export const TOOLS: ToolDef[] = [
       [Number(i.negocio_id), String(i.nombre).slice(0, 120), String(i.plataformas ?? '').split(',').map((x) => x.trim()).filter(Boolean), i.publico ?? null, i.modelo_ingresos ?? null])).rows[0],
   },
   {
+    name: 'estado_youtube', description: 'Canal de YouTube del propietario (solo lectura): suscriptores, vistas, vídeos recientes con sus cifras y analítica de los últimos 28 días.',
+    input_schema: obj({}),
+    run: async (db) => { try { return await youtubeSummary(db); } catch (e: any) { return { error: e.message }; } },
+  },
+  {
+    name: 'subir_video_youtube', description: 'Sube un vídeo del Mac a tu canal de YouTube como PRIVADO, con título, descripción y etiquetas. Para que se vea en público usa publicar_video_youtube (requiere aprobación del propietario).',
+    input_schema: obj({ archivo: { type: 'string', description: 'Ruta completa del vídeo en el Mac' }, titulo: { type: 'string' }, descripcion: { type: 'string' }, etiquetas: { type: 'string', description: 'separadas por comas' } }, ['archivo', 'titulo']),
+    run: async (db, i) => {
+      try {
+        const r = await uploadVideo(String(i.archivo), { titulo: String(i.titulo), descripcion: i.descripcion ? String(i.descripcion) : '', etiquetas: String(i.etiquetas ?? '').split(',').map((x) => x.trim()).filter(Boolean) });
+        await audit(db, 'kratos (IA)', 'youtube.subido_privado', { id: r.id, titulo: String(i.titulo).slice(0, 100) });
+        return r;
+      } catch (e: any) { return { error: e.message }; }
+    },
+  },
+  {
+    name: 'editar_video_youtube', description: 'Cambia título, descripción o etiquetas de un vídeo de tu canal (no cambia su visibilidad).',
+    input_schema: obj({ video_id: { type: 'string' }, titulo: { type: 'string' }, descripcion: { type: 'string' }, etiquetas: { type: 'string' } }, ['video_id']),
+    run: async (_db, i) => { try { return await updateVideo(String(i.video_id), { titulo: i.titulo, descripcion: i.descripcion, etiquetas: i.etiquetas ? String(i.etiquetas).split(',').map((x) => x.trim()) : undefined }); } catch (e: any) { return { error: e.message }; } },
+  },
+  {
+    name: 'publicar_video_youtube', description: 'Pide al propietario que apruebe hacer público (o no listado) un vídeo privado del canal. Se publica solo cuando él lo aprueba en el panel.',
+    input_schema: obj({ video_id: { type: 'string' }, titulo: { type: 'string' }, visibilidad: { type: 'string', enum: ['public', 'unlisted'] } }, ['video_id', 'titulo']),
+    run: async (db, i) => {
+      const a = await requestApproval(db, { kind: 'publicacion', description: `Publicar en YouTube: «${String(i.titulo).slice(0, 100)}» (https://youtu.be/${i.video_id}) como ${i.visibilidad === 'unlisted' ? 'no listado' : 'público'}. Revísalo antes de aprobar.`,
+        scope: { tipo: 'youtube_publicar', video_id: String(i.video_id), visibilidad: i.visibilidad ?? 'public' }, validDays: 14, requestedBy: 'kratos (IA)' });
+      return { aprobacion: a.id, estado: 'pendiente: el propietario lo aprueba en el panel' };
+    },
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -437,7 +468,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -609,7 +640,7 @@ export async function executeSpecialistTask(db: Db, task: any): Promise<Speciali
 
 // Por voz, solo las herramientas de la conversación diaria: menos texto que procesar y respuesta antes.
 // Las de código, base de datos, plan y skills entran si la petición las menciona.
-export const VOICE_TOOLS = new Set(['agentes', 'resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_notas', 'leer_nota', 'guardar_nota', 'agendar', 'ver_agenda', 'cancelar_agenda',
+export const VOICE_TOOLS = new Set(['estado_youtube', 'agentes', 'resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_notas', 'leer_nota', 'guardar_nota', 'agendar', 'ver_agenda', 'cancelar_agenda',
   'llamar', 'mensaje_texto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'correo_bandeja', 'correo_borrador', 'correo_enviar', 'guardar_contacto', 'ajustar_kratos', 'recordar_preferencia', 'olvidar_preferencia',
   'ver_resultado_tarea', 'buscar_informes', 'estado_apple', 'registrar_leccion', 'solicitar_aprobacion', 'encargar_a_claude_code', 'parada_emergencia']);
 const FULL_TOOLS_HINT = /\b(codigo|programa|funcion|mejora|arregla|diagnost|falla|base de datos|consulta|plan|estrategia|skills?|agentes|herramientas|revert|deshac)/;
@@ -772,7 +803,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada 12 horas (tarea recurrente «ciclo_ceo»): revisa estado y resultados, registra aprendizajes
 // y crea como máximo 3 tareas nuevas para los especialistas. Sin IA o sin presupuesto, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'diagnostico_propio'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';

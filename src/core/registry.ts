@@ -6,6 +6,7 @@ import { readNote, VAULT, writeNote } from './vault.ts';
 import { apiKey, aiStatus } from './brain.ts';
 import { subStatus } from './subscription.ts';
 import { appleCredentials } from './apple.ts';
+import { youtubeConnected } from './youtube.ts';
 import { naturalVoiceAvailable } from '../voice.ts';
 import { ROOT } from '../config.ts';
 import { fastStatus } from './local.ts';
@@ -104,6 +105,7 @@ export async function systemInventory(db: Db) {
     { nombre: 'pgvector (memoria semántica)', estado: ext.includes('vector') ? 'INSTALADA' : 'NO INSTALADA', detalle: ext.includes('vector') ? 'extensión activa; aún no se usa (falta modelo de embeddings)' : '' },
     { nombre: 'Bóveda Obsidian (notas e informes)', estado: fs.existsSync(VAULT) ? 'OPERATIVA' : 'CON ERROR', detalle: VAULT },
     { nombre: 'App Store Connect', estado: appleCredentials() ? 'OPERATIVA' : 'NO INSTALADA', detalle: appleCredentials() ? 'solo lectura' : 'falta la clave de Apple' },
+    { nombre: 'YouTube (solo lectura)', estado: youtubeConnected() ? 'OPERATIVA' : 'CONFIGURADA', detalle: youtubeConnected() ? 'canal, vídeos y analítica' : 'credencial guardada; falta autorizar (scripts/conectar-youtube.ts)' },
     { nombre: 'Funciones aprobadas (fn_*)', estado: plugins.length ? 'OPERATIVA' : 'CONFIGURADA', detalle: plugins.join(', ') || 'ninguna activa' },
     { nombre: 'Conexiones activas', estado: 'OPERATIVA', detalle: conn.join(', ') || 'ninguna' },
     { nombre: 'n8n (automatizaciones)', estado: has('n8n') ? 'INSTALADA' : 'NO INSTALADA', detalle: 'no se usa todavía' },

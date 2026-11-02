@@ -4,6 +4,7 @@ import { allocate } from './budget.ts';
 import { onApprovalDecided } from './plugins.ts';
 import { onCodeApproval } from './claudecode.ts';
 import { onSelfApproval } from './selfimprove.ts';
+import { onYoutubeApproval } from './youtube.ts';
 
 export type ApprovalRequest = {
   businessId?: number | null;
@@ -64,5 +65,6 @@ export async function decideApproval(db: Db, id: number, approve: boolean, via: 
   await onApprovalDecided(db, a, approve);
   await onCodeApproval(db, a, approve);
   await onSelfApproval(db, a, approve);
+  await onYoutubeApproval(db, a, approve).catch(async (e) => { await audit(db, 'youtube', 'youtube.publicar_error', { id, error: String(e?.message ?? e).slice(0, 200) }); });
   return { ok: true, approval: a };
 }
