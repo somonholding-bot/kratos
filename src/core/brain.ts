@@ -416,7 +416,12 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'cancelar_tarea', description: 'Cancela una tarea que ya no hace falta.',
     input_schema: obj({ id: { type: 'integer' } }, ['id']),
-    run: async (db, i) => ({ cancelada: await cancelTask(db, Number(i.id), 'kratos (IA)') }),
+    run: async (db, i) => {
+      // Su propio ciclo de CEO no lo puede apagar: lo controla el propietario (pausa o parada de emergencia)
+      const t = (await db.query(`SELECT type FROM tasks WHERE id = $1`, [Number(i.id)])).rows[0];
+      if (t?.type === 'ciclo_ceo') return { error: 'El ciclo del CEO no se cancela; si hace falta, el propietario pausa las automatizaciones.' };
+      return { cancelada: await cancelTask(db, Number(i.id), 'kratos (IA)') };
+    },
   },
   {
     name: 'crear_negocio', description: 'Registra un negocio real del propietario (para asignarle tareas, productos y planes).',
