@@ -2,6 +2,7 @@
 //   node scripts/media/fabrica.ts estado                 cola frente a YouTube (visibilidad y fecha de salida reales)
 //   node scripts/media/fabrica.ts ideas <ideas.json>     importa el bloque `ideas` del playbook yt-fabrica-ideas-semanal (sin repetir)
 //   node scripts/media/fabrica.ts qa <id_cola> [video] [miniatura]   puerta de calidad determinista; marca QA o BLOQUEADO
+//   node scripts/media/fabrica.ts preparar <tarea_venus> [id_cola]  traduce el paquete de Venus a epN.py y lo deja en SCRIPT
 //   node scripts/media/fabrica.ts producir <id_cola>     episodio completo desde su storyboard epN.py (lo lanza fabrica_aion en segundo plano)
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -10,7 +11,7 @@ import { createPool } from '../../src/db.ts';
 import { listVideos } from '../../src/core/youtube.ts';
 import path from 'node:path';
 import { isHalted } from '../../src/core/state.ts';
-import { carpeta, checkCredits, clearLock, EPISODIO_DIR, episodeInfo, episodeModule, MEDIA, mediaPython, productionRunning, VOZ, writeLock } from '../../src/core/fabrica.ts';
+import { prepareEpisode, carpeta, checkCredits, clearLock, EPISODIO_DIR, episodeInfo, episodeModule, MEDIA, mediaPython, productionRunning, VOZ, writeLock } from '../../src/core/fabrica.ts';
 
 const db = createPool();
 const [cmd, a, b, c] = process.argv.slice(2);
@@ -71,6 +72,8 @@ if (cmd === 'estado') {
   await db.query(`UPDATE content_queue SET qa = $2, estado = $3, updated_at = now() WHERE id = $1`, [q.id, JSON.stringify(res), falla.length ? 'BLOQUEADO' : 'QA']);
   console.log(JSON.stringify({ id: q.id, resultado: falla.length ? 'BLOQUEADO' : 'pasa', fallos: falla.map(([k, r]) => `${k}: ${r.detalle}`), comprobaciones: res }, null, 1));
   process.exitCode = falla.length ? 1 : 0;
+} else if (cmd === 'preparar') {
+  console.log(JSON.stringify(await prepareEpisode(db, Number(a), b ? Number(b) : undefined, 'script'), null, 1));
 } else if (cmd === 'producir') {
   // Voz Liam (ElevenLabs, con tope de créditos) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
   const id = Number(a); const q = (await db.query(`SELECT * FROM content_queue WHERE id = $1`, [id])).rows[0]; if (!q) throw new Error('No existe ese elemento de la cola');

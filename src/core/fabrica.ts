@@ -75,6 +75,33 @@ async function queueItem(db: Db, id: number) {
 }
 
 // (1) Lanza la producción en segundo plano (horas: la animación va fotograma a fotograma)
+// (0) Del guion de Venus al motor: traduce el «paquete» de su tarea a scripts/media/episodio/epN.py y deja el elemento listo para producir
+export async function prepareEpisode(db: Db, tareaId: number, colaId: number | undefined, actor: string) {
+  const t = (await db.query(`SELECT id, owner_function, status, result->'extraido'->'paquete' AS paquete FROM tasks WHERE id = $1`, [tareaId])).rows[0];
+  if (!t) throw new Error('No existe esa tarea');
+  if (t.owner_function !== 'venus' || t.status !== 'completada' || !t.paquete) throw new Error('La tarea debe ser un episodio de Venus completado, con su bloque «paquete»');
+  const py = mediaPython(); if (!py) throw new Error('Faltan los entornos de vídeo: ejecuta bash scripts/media/instalar.sh');
+  const q = colaId ? await queueItem(db, colaId) : null;
+  if (q && (q.tipo !== 'largo' || !['IDEA', 'RESEARCH', 'SCRIPT', 'REVIEW', 'BLOQUEADO'].includes(q.estado))) throw new Error(`El elemento #${colaId} (${q.tipo}, ${q.estado}) no admite un guion nuevo`);
+  const usados = fs.readdirSync(EPISODIO_DIR).map((f) => /^ep(\d+)\.py$/.exec(f)?.[1]).filter(Boolean).map(Number);
+  const existente = q?.guion_ruta ? /ep(\d+)\.py$/.exec(q.guion_ruta)?.[1] : null;
+  const n = existente ? Number(existente) : Math.max(1, ...usados) + 1;
+  if (existente && n <= 2) throw new Error('Los episodios 1 y 2 son los publicados: no se sobrescriben');
+  const tmp = path.join(os.tmpdir(), `paquete-${tareaId}.json`); fs.writeFileSync(tmp, JSON.stringify(t.paquete));
+  const dest = path.join(EPISODIO_DIR, `ep${n}.py`);
+  const r = spawnSync(py, [path.join(EPISODIO_DIR, 'compilar.py'), tmp, dest], { encoding: 'utf8', timeout: 60_000 });
+  if (r.status !== 0) throw new Error(`No pude traducir el guion: ${(r.stderr || r.stdout).slice(-400)}`);
+  const info = episodeInfo(`ep${n}`);
+  if (info.creditos > CREDITOS_EPISODIO) { fs.rmSync(dest, { force: true }); throw new Error(`El guion costaría ${info.creditos} créditos de voz; el tope por episodio es ${CREDITOS_EPISODIO}. Pide a Venus que lo acorte.`); }
+  const titulo = String(t.paquete.titulo ?? info.titulo ?? `Episodio ${n}`).slice(0, 120);
+  const ruta = `scripts/media/episodio/ep${n}.py`;
+  let id = colaId;
+  if (id) await db.query(`UPDATE content_queue SET estado = 'SCRIPT', guion_ruta = $2, look = $3::jsonb, titulo = $4, notas = $5, updated_at = now() WHERE id = $1`, [id, ruta, JSON.stringify(t.paquete.look ?? {}), titulo, `Guion de la tarea ${tareaId} traducido a ep${n}.py`]);
+  else id = (await db.query(`INSERT INTO content_queue (tipo, titulo, estado, guion_ruta, look, notas) VALUES ('largo', $1, 'SCRIPT', $2, $3::jsonb, $4) RETURNING id`, [titulo, ruta, JSON.stringify(t.paquete.look ?? {}), `Guion de la tarea ${tareaId} traducido a ep${n}.py`])).rows[0].id;
+  await audit(db, actor, 'fabrica.episodio_preparado', { id, tarea: tareaId, episodio: `ep${n}`, beats: info.beats, creditos_voz: info.creditos });
+  return { cola_id: id, episodio: `ep${n}`, beats: info.beats, creditos_voz: info.creditos, titulo, siguiente: 'producir_episodio con este cola_id' };
+}
+
 export async function startProduction(db: Db, id: number, actor: string) {
   const h = await isHalted(db); if (h.halted) throw new Error(`No se produce nada: ${h.reason}`);
   const q = await queueItem(db, id);
