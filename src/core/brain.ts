@@ -460,6 +460,18 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'personalizar_canal_youtube', description: 'Propone la personalización del canal de YouTube (descripción, palabras clave, país, idioma, vídeo destacado, banner y el nombre sugerido). Se aplica cuando el propietario lo aprueba en el panel. El nombre y la foto de perfil los cambia él en YouTube Studio.',
+    input_schema: obj({ nombre_sugerido: { type: 'string', description: 'Nombre propuesto para el canal (lo pone el propietario en Studio)' }, descripcion: { type: 'string' }, palabras_clave: { type: 'string', description: 'separadas por comas' },
+      pais: { type: 'string', description: 'Código de 2 letras, p. ej. US' }, idioma: { type: 'string', description: 'p. ej. es' }, video_destacado: { type: 'string', description: 'ID del vídeo de presentación para no suscritos' }, banner: { type: 'string', description: 'Ruta de la imagen del banner en el Mac (2048×1152 o mayor)' } }, ['descripcion']),
+    run: async (db, i) => {
+      const cambios = { descripcion: String(i.descripcion).slice(0, 1000), palabras_clave: i.palabras_clave ? String(i.palabras_clave).split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+        pais: i.pais ? String(i.pais) : undefined, idioma: i.idioma ? String(i.idioma) : undefined, video_destacado: i.video_destacado ? String(i.video_destacado) : undefined, banner: i.banner ? String(i.banner) : undefined };
+      const a = await requestApproval(db, { kind: 'publicacion', description: `Personalizar el canal de YouTube${i.nombre_sugerido ? ` (nombre sugerido: «${String(i.nombre_sugerido).slice(0, 100)}», ponlo tú en Studio)` : ''}.\nDescripción: ${cambios.descripcion}\n${cambios.palabras_clave ? `Palabras clave: ${cambios.palabras_clave.join(', ')}\n` : ''}${cambios.banner ? `Banner: ${cambios.banner}\n` : ''}Revísalo antes de aprobar.`,
+        scope: { tipo: 'youtube_canal', cambios, nombre_sugerido: i.nombre_sugerido ?? null }, validDays: 14, requestedBy: 'kratos (IA)' });
+      return { aprobacion: a.id, estado: 'pendiente: el propietario lo aprueba en el panel' };
+    },
+  },
+  {
     name: 'parada_emergencia', description: 'Detiene todo el trabajo de Kratos inmediatamente.',
     input_schema: obj({}),
     run: async (db) => emergencyStop(db, 'kratos (IA, a petición del propietario)'),
@@ -468,7 +480,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 

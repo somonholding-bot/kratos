@@ -105,9 +105,44 @@ export async function updateVideo(videoId: string, meta: { titulo?: string; desc
   return { id: videoId, actualizado: true };
 }
 
-// Aprobación del propietario en el panel: solo entonces un vídeo pasa a público
+export type ChannelLook = { descripcion?: string; palabras_clave?: string[]; pais?: string; idioma?: string; video_destacado?: string; banner?: string };
+
+// Personaliza el canal: descripción, palabras clave, país, idioma, vídeo destacado para no suscritos y banner (imagen del Mac, 2048×1152 o mayor).
+// El nombre y la foto de perfil no se pueden cambiar con la API de Google: se hacen en YouTube Studio.
+export async function updateChannel(look: ChannelLook) {
+  const ch = (await get('https://www.googleapis.com/youtube/v3/channels?part=brandingSettings&mine=true')).items?.[0];
+  if (!ch) throw new Error('Esta cuenta de Google no tiene canal de YouTube');
+  const b = ch.brandingSettings ?? {};
+  const channel = { ...(b.channel ?? {}) };
+  if (look.descripcion !== undefined) channel.description = look.descripcion.slice(0, 1000);
+  if (look.palabras_clave) channel.keywords = look.palabras_clave.map((k) => k.trim()).filter(Boolean).map((k) => (k.includes(' ') ? `"${k.replace(/"/g, '')}"` : k)).join(' ').slice(0, 500);
+  if (look.pais) channel.country = look.pais.toUpperCase().slice(0, 2);
+  if (look.idioma) channel.defaultLanguage = look.idioma;
+  if (look.video_destacado) channel.unsubscribedTrailer = look.video_destacado;
+  const image = { ...(b.image ?? {}) };
+  if (look.banner) {
+    const fs = await import('node:fs');
+    if (!fs.existsSync(look.banner)) throw new Error(`No existe la imagen ${look.banner}`);
+    const up = await fetch('https://www.googleapis.com/upload/youtube/v3/channelBanners/insert', { method: 'POST',
+      headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': look.banner.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg' },
+      body: fs.readFileSync(look.banner), signal: AbortSignal.timeout(120_000) });
+    const u: any = await up.json();
+    if (!up.ok) throw new Error(`YouTube no aceptó el banner (${up.status}): ${u.error?.message ?? ''}`.slice(0, 200));
+    image.bannerExternalUrl = u.url;
+  }
+  const r = await fetch('https://www.googleapis.com/youtube/v3/channels?part=brandingSettings', { method: 'PUT',
+    headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ id: ch.id, brandingSettings: { channel, image } }), signal: AbortSignal.timeout(30_000) });
+  const j: any = await r.json();
+  if (!r.ok) throw new Error(`YouTube respondió ${r.status}: ${j.error?.message ?? ''}`.slice(0, 200));
+  return { canal: ch.id, actualizado: Object.keys(look).filter((k) => (look as any)[k] !== undefined) };
+}
+
+// Aprobación del propietario en el panel: solo entonces un vídeo pasa a público o cambia la presentación pública del canal
 export async function onYoutubeApproval(db: Db, approval: any, approved: boolean) {
-  if (approval?.scope?.tipo !== 'youtube_publicar' || !approved) return;
-  await setPrivacy(String(approval.scope.video_id), approval.scope.visibilidad === 'unlisted' ? 'unlisted' : 'public');
+  const tipo = approval?.scope?.tipo;
+  if (!approved || (tipo !== 'youtube_publicar' && tipo !== 'youtube_canal')) return;
+  if (tipo === 'youtube_publicar') await setPrivacy(String(approval.scope.video_id), approval.scope.visibilidad === 'unlisted' ? 'unlisted' : 'public');
+  else await updateChannel(approval.scope.cambios ?? {});
   await db.query(`UPDATE approvals SET status = 'ejecutada' WHERE id = $1`, [approval.id]);
 }
