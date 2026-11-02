@@ -470,6 +470,25 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'producir_video', description: 'Produce un vídeo completo en el Mac, gratis y en segundo plano (10–40 min): voz narradora (en inglés: el canal es en inglés y YouTube traduce y dobla automáticamente), imágenes, música ambiental, subtítulos, montaje y miniatura. Con subir=true lo sube a YouTube como PRIVADO. Escribe el guion completo y las ideas de imagen; sigue el playbook youtube-crecimiento.',
+    input_schema: obj({ titulo: { type: 'string', description: 'Título de YouTube en inglés (≤ 60 caracteres)' }, guion: { type: 'string', description: 'Texto completo que se narra, en inglés' },
+      imagenes: { type: 'string', description: 'Ideas de imagen en inglés separadas por «|» (una cada ~20 s de vídeo; sin texto en la imagen)' },
+      musica: { type: 'string', description: 'Descripción en inglés de la música de fondo' }, formato: { type: 'string', enum: ['horizontal', 'vertical'] },
+      miniatura_texto: { type: 'string', description: '3–4 palabras en inglés para la miniatura' }, descripcion: { type: 'string' }, etiquetas: { type: 'string', description: 'separadas por comas' },
+      subir: { type: 'boolean', description: 'Subirlo a YouTube como privado al terminar' }, negocio_id: { type: 'integer' } }, ['titulo', 'guion']),
+    run: async (db, i) => {
+      const biz = Number(i.negocio_id) || (await db.query(`SELECT id FROM businesses WHERE NOT is_demo ORDER BY id LIMIT 1`)).rows[0]?.id;
+      const { task } = await createTask(db, { businessId: biz, ownerFunction: 'venus', type: 'produccion_video', title: `Vídeo: ${String(i.titulo).slice(0, 90)}`,
+        objective: 'Producir el vídeo completo en el Mac y, si se pidió, subirlo como privado', priority: 2, maxAttempts: 2,
+        inputs: { titulo: String(i.titulo).slice(0, 100), guion: String(i.guion), imagenes: i.imagenes ? String(i.imagenes).split('|').map((x) => x.trim()).filter(Boolean).slice(0, 30) : undefined,
+          musica: i.musica, idioma: 'en', formato: i.formato ?? 'horizontal', miniatura_texto: i.miniatura_texto, descripcion: i.descripcion,
+          etiquetas: i.etiquetas ? String(i.etiquetas).split(',').map((x) => x.trim()).filter(Boolean) : [], subir: i.subir === true },
+        expectedResult: 'video.mp4, subtítulos y miniatura en ~/Movies/Kratos; subido como privado si se pidió', verification: 'El archivo existe y dura lo esperado; en YouTube aparece como privado',
+        status: 'pendiente', createdBy: 'kratos (IA)' });
+      return { tarea: task.id, estado: 'en cola: se produce en segundo plano; mira el resultado con ver_resultado_tarea' };
+    },
+  },
+  {
     name: 'personalizar_canal_youtube', description: 'Propone la personalización del canal de YouTube (descripción, palabras clave, país, idioma, vídeo destacado, banner y el nombre sugerido). Se aplica cuando el propietario lo aprueba en el panel. El nombre y la foto de perfil los cambia él en YouTube Studio.',
     input_schema: obj({ nombre_sugerido: { type: 'string', description: 'Nombre propuesto para el canal (lo pone el propietario en Studio)' }, descripcion: { type: 'string' }, palabras_clave: { type: 'string', description: 'separadas por comas' },
       pais: { type: 'string', description: 'Código de 2 letras, p. ej. US' }, idioma: { type: 'string', description: 'p. ej. es' }, video_destacado: { type: 'string', description: 'ID del vídeo de presentación para no suscritos' }, banner: { type: 'string', description: 'Ruta de la imagen del banner en el Mac (2048×1152 o mayor)' } }, ['descripcion']),
@@ -490,7 +509,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -825,7 +844,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
@@ -860,7 +879,7 @@ Eres el CEO de esta empresa, no un asistente: nadie te va a decir qué hacer. Di
 2. Un agente solo recibe trabajo nuevo cuando terminó lo anterior. No cambies de rumbo por cambiar: mantén las iniciativas del plan hasta tener evidencia.
 3. ${strategic ? 'Revisión estratégica: lee y ajusta el plan maestro (ver_plan / actualizar_plan) con datos reales (resumen_negocios, estado_apple, estado_youtube). Investiga en la web (tendencias, competidores, qué hacen las apps y canales que más crecen en tus nichos, dónde está tu audiencia) y genera 3 ideas nuevas puntuadas (impacto × confianza × facilidad). Las mejores entran al plan y, si hay agentes libres, se asignan.' : 'No hace falta replantear el plan: céntrate en revisar y en asignar lo siguiente a los agentes libres según el plan (ver_plan).'}
 4. Cada tarea nueva lleva resultado esperado y verificación medibles, y va al agente adecuado (agentes, ver_skills).
-5. Avanza tú mismo lo que puedas del canal de YouTube (personalizar_canal_youtube, editar_video_youtube); lo público pasa por la aprobación del propietario.
+5. Avanza tú mismo lo que puedas del canal de YouTube: produce vídeos con producir_video (subir=true los deja privados; uno a la vez, espera a que termine) y personaliza el canal; lo público pasa por la aprobación del propietario.
 6. Límites que no cambian: no gastes dinero, no publiques, no contactes a terceros ni pidas accesos nuevos sin solicitar_aprobacion. Todo lo demás, hazlo sin preguntar.
 Termina con un resumen de 3 líneas: qué funcionó y qué no, qué encargaste, y qué necesitas del propietario (solo si de verdad lo necesitas).${skillContext('kratos', strategic ? 'ideas estrategia crecimiento usuarios marketing prioridades' : 'postmortem aprendizaje fallo que no funciono')}${await lessonsContext(db)}` }];
   // Con la suscripción: el mismo ciclo, con las herramientas del CEO por el servidor MCP y sin coste de API

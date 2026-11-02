@@ -71,7 +71,7 @@ export async function uploadVideo(file: string, meta: { titulo: string; descripc
   if (!fs.existsSync(file)) throw new Error(`No existe el archivo ${file}`);
   const size = fs.statSync(file).size;
   const body = { snippet: { title: meta.titulo.slice(0, 100), description: (meta.descripcion ?? '').slice(0, 5000), tags: meta.etiquetas?.slice(0, 30),
-      categoryId: meta.categoria ?? '22', defaultLanguage: meta.idioma ?? 'es', defaultAudioLanguage: meta.idioma ?? 'es' },
+      categoryId: meta.categoria ?? '22', defaultLanguage: meta.idioma ?? 'en', defaultAudioLanguage: meta.idioma ?? 'en' },
     status: { privacyStatus: 'private', selfDeclaredMadeForKids: false } };
   const init = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', { method: 'POST',
     headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'application/json; charset=UTF-8', 'x-upload-content-length': String(size), 'x-upload-content-type': 'video/*' },
@@ -82,6 +82,30 @@ export async function uploadVideo(file: string, meta: { titulo: string; descripc
   const v: any = await up.json();
   if (!up.ok) throw new Error(`La subida falló (${up.status}): ${v.error?.message ?? ''}`.slice(0, 200));
   return { id: v.id, url: `https://youtu.be/${v.id}`, estado: 'privado (publicarlo requiere tu aprobación)' };
+}
+
+// Miniatura propia (YouTube la permite cuando el canal está verificado con teléfono)
+export async function setThumbnail(videoId: string, file: string) {
+  const fs = await import('node:fs');
+  const r = await fetch(`https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}`, { method: 'POST',
+    headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'image/jpeg' }, body: fs.readFileSync(file), signal: AbortSignal.timeout(60_000) });
+  const j: any = await r.json();
+  if (!r.ok) throw new Error(`Miniatura no aceptada (${r.status}): ${j.error?.message ?? ''}`.slice(0, 200));
+  return { miniatura: true };
+}
+
+// Subtítulos en español (archivo .srt) para un vídeo propio
+export async function uploadCaptions(videoId: string, file: string, language = 'en') {
+  const fs = await import('node:fs');
+  const boundary = `kratos${Date.now()}`;
+  const meta = JSON.stringify({ snippet: { videoId, language, name: language === 'es' ? 'Español' : 'English', isDraft: false } });
+  const body = Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n`),
+    fs.readFileSync(file), Buffer.from(`\r\n--${boundary}--`)]);
+  const r = await fetch('https://www.googleapis.com/upload/youtube/v3/captions?uploadType=multipart&part=snippet', { method: 'POST',
+    headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': `multipart/related; boundary=${boundary}` }, body, signal: AbortSignal.timeout(60_000) });
+  const j: any = await r.json();
+  if (!r.ok) throw new Error(`Subtítulos no aceptados (${r.status}): ${j.error?.message ?? ''}`.slice(0, 200));
+  return { subtitulos: j.id };
 }
 
 // Cambia la visibilidad (public, unlisted, private). Solo se llama tras la aprobación del propietario.

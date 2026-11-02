@@ -8,6 +8,7 @@ import { runCodeJob } from './claudecode.ts';
 import { saveReport } from './registry.ts';
 import { runRevert, runSelfImprovement } from './selfimprove.ts';
 import { audit } from './state.ts';
+import { produceVideo } from './video.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
 // Las tareas de tipo 'agente' quedan en 'esperando_ia' hasta conectar Claude.
@@ -26,6 +27,9 @@ export const handlers: Record<string, Handler> = {
   },
   async claude_code(db, task) {
     return runCodeJob(db, task);
+  },
+  async produccion_video(db, task) {
+    return produceVideo(db, task);
   },
   async apple_sync(db) {
     return appleSync(db);
