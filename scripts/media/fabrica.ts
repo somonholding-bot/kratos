@@ -75,7 +75,7 @@ if (cmd === 'estado') {
 } else if (cmd === 'preparar') {
   console.log(JSON.stringify(await prepareEpisode(db, Number(a), b ? Number(b) : undefined, 'script'), null, 1));
 } else if (cmd === 'producir') {
-  // Voz Liam (ElevenLabs, con tope de créditos) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
+  // Voz local (Chatterbox) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
   const id = Number(a); const q = (await db.query(`SELECT * FROM content_queue WHERE id = $1`, [id])).rows[0]; if (!q) throw new Error('No existe ese elemento de la cola');
   const otro = productionRunning(); if (otro && otro.id !== id) throw new Error(`Ya se está produciendo el elemento #${otro.id}`);
   writeLock(id);
@@ -91,12 +91,10 @@ if (cmd === 'estado') {
   try {
     const ep = episodeModule(q.guion_ruta), py = mediaPython()!, info = episodeInfo(ep), EP = { EPISODIO: ep };
     if (!fs.existsSync(f('voz.wav'))) {
-      await paso(`voz ${VOZ} (${info.creditos} créditos)`);
-      await checkCredits(db, info.creditos);
-      run(py, [path.join(EPISODIO_DIR, 'voz_elevenlabs.py'), VOZ, f('voz.wav'), f('timeline.json')], { ...EP, EL_STABILITY: '0.4', EL_STYLE: '0.45' });
-      await db.query(`INSERT INTO ai_usage (model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_microusd, charged_cents, purpose) VALUES ('elevenlabs:eleven_v4',$1,0,0,0,0,0,$2)`,
-        [info.creditos, `voz ElevenLabs (créditos del plan): cola #${id}`]);
-      await db.query(`UPDATE content_queue SET coste = coste || $2::jsonb WHERE id = $1`, [id, JSON.stringify({ creditos_voz: info.creditos })]);
+      await paso(`voz natural local (Chatterbox${fs.existsSync(path.join(os.homedir(), 'Movies/Kratos/voz/referencia.wav')) ? ', voz propia clonada' : ''})`);
+      const chatter = path.join(MEDIA, 'chatterbox/bin/python');
+      run(fs.existsSync(chatter) ? chatter : py, [path.join(EPISODIO_DIR, 'voz_local.py'), f('voz.wav'), f('timeline.json')], EP, 6);
+      await db.query(`UPDATE content_queue SET coste = coste || '{"voz":"local, sin créditos"}'::jsonb WHERE id = $1`, [id]);
     }
     const tl = JSON.parse(fs.readFileSync(f('timeline.json'), 'utf8')); const total = Math.ceil(0.5 + tl.duration + 3);
     if (!fs.existsSync(f('musica.wav'))) {
@@ -115,6 +113,10 @@ if (cmd === 'estado') {
       for (const c of chunks) { const d = (fin - ini) * c.length / tot; cues.push(`${cues.length + 1}\n${ts(t)} --> ${ts(t + d)}\n${c}\n`); t += d; }
     }
     fs.writeFileSync(f('subtitulos.srt'), cues.join('\n'));
+    if (info.escenarios) {
+      await paso(`escenarios propios del episodio (${info.escenarios} imágenes locales)`);
+      run(path.join(MEDIA, 'mflux/bin/python'), [path.join(EPISODIO_DIR, 'escenarios.py'), f('escenarios')], EP, 4);
+    }
     if (!fs.existsSync(f('video.mp4'))) {
       await paso('animación y montaje (puede tardar horas)');
       run(py, [path.join(EPISODIO_DIR, 'anim2.py'), f('timeline.json'), f('voz.wav'), f('musica.wav'), f('video-parcial.mp4')], EP, 12);

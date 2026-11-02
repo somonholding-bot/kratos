@@ -6,22 +6,6 @@ import json, re, sys
 P = json.load(open(sys.argv[1]))
 beats, look = P['beats'], P.get('look', {})
 
-BG_WORDS = [  # (palabras de la escena, fondo del motor); gana la primera coincidencia
-    ('bedroom|bed |night|sleep|dream', 'bedroom'), ('lab|laborator|clinic|monitor|wired|research|experiment|brain|eeg|study card', 'lab'),
-    ('library|book|manuscript|archive|notebook|scroll', 'library'), ('desert|dune|pyramid|sand', 'desert'), ('city|street|market|crowd|town', 'city'),
-    ('dawn|sunrise|sunset|window|garden|field|hill|mountain|sea|ocean|shore', 'dawn'), ('sky|cloud|star|moon', 'sky'),
-    ('hall|corridor|cloister|arcade|chapel|temple|church|stone', 'hall'), ('room|study|table|desk|office|clock|metronome', 'room'),
-]
-PROP_WORDS = [  # (palabras, factoría de elemento con parámetros ya probados en ep1/ep2)
-    ('ouroboros|serpent|snake|cycle', lambda: "P('ouro', x=640, y=330, r=170, at=0.0)"),
-    ('flower of life|geometry|circle', lambda: "P('flower', x=640, y=330, r=90, at=0.0)"),
-    ('eye|vision|sight', lambda: "P('eyetri', x=640, y=330, s=0.8, at=0.4)"),
-    ('sigil|symbol|seal|glyph', lambda: "P('sigil', x=640, y=340, r=300, alpha=120, gs=44)"),
-    ('tablet|emerald|inscription', lambda: "P('tablet', x=640, y=300, at=0.0)"),
-    ('brain|neuro|mind', lambda: "P('brain', x=640, y=330, s=1.5, on_at=99, at=0.0)"),
-    ('sparkle|glow|light|spark|candle', lambda: "P('sparkle', at=0.0)"),
-    ('ripple|wave|water|fountain', lambda: "P('ripple', x=640, y=330, at=0.1)"),
-]
 PALS = ['dusk', 'navy', 'dark', 'dusk', 'lucid']
 
 def pick(rules, text, default=None):
@@ -45,19 +29,24 @@ def short_label(scene):  # rótulo de pantalla solo si la escena trae un año o 
 out = [f"# Generado por compilar.py desde el paquete de Venus. No editar a mano: se regenera.",
        "from ep1 import B, O, P", f"TITLE = {json.dumps(ascii_(P['titulo']))}", f"MUSICA = {json.dumps(ascii_(look.get('musica') or 'cinematic ambient, slow strings and soft pads, warm and mysterious, no vocals'))}",
        f"LOOK = dict(nombre={json.dumps(ascii_(look.get('nombre', 'episodio')))}, hue={int(look.get('hue', 0)) % 256}, sat={norm(look.get('sat', 1.0))}, val={norm(look.get('val', 1.0))})", "", "BEATS = ["]
-last_bg, run = None, 0
-for i, b in enumerate(beats):
-    text = ascii_(b['texto']); scene = b.get('escena', '')
-    bg = pick(BG_WORDS, scene, ['void', 'room', 'library', 'dawn', 'hall'][i % 5])
-    run = run + 1 if bg == last_bg else 0; last_bg = bg
-    if run >= 3: bg = ['void', 'hall', 'room', 'library'][i % 4]   # nunca más de 3 beats seguidos con el mismo fondo
-    orin = "O(x=640, g=670, s=1.0, e='open', m='smile')" if re.search(r'orin|character|narrator|guide', scene.lower()) or i % 6 == 0 else 'None'
-    prop = pick(PROP_WORDS, scene)
-    props = f"[{prop()}]" if prop else '[]'
-    lb = short_label(scene); label = f", label={json.dumps(lb)}, gold=True, ly=640" if lb else ''
-    para = ', para=True' if i and i % 9 == 0 else ''
-    cam = ", cam='out'" if i % 3 == 2 else ''
-    out.append(f" B({json.dumps(text)}, {bg!r}, {orin}, {props}{label}, pal={PALS[i % len(PALS)]!r}{para}{cam}),")
+STYLE = ("flat 2D vector cartoon illustration background for an animated explainer, simple bold shapes, soft gradients, calm and mysterious mood, "
+         "wide empty open ground across the lower third, no people, no characters, no text, no letters, no logos")
+per = max(1, -(-len(beats) // 14))           # como mucho 14 escenarios por episodio (varios beats seguidos comparten uno)
+groups = [list(range(i, min(i + per, len(beats)))) for i in range(0, len(beats), per)]
+paleta = ', '.join(x for x in [look.get('nombre'), look.get('acento')] if x)
+scenes = []
+for g in groups:
+    desc = re.sub(r'\b(orin|character|narrator|guide)\b[^,]*,?', '', beats[g[0]].get('escena', ''), flags=re.I).strip(' ,')
+    scenes.append(ascii_(f"{STYLE}. Scene: {desc}. Color palette: {paleta}" if paleta else f"{STYLE}. Scene: {desc}"))
+out.insert(5, f"SCENES = {json.dumps(scenes, indent=1)}")
+for gi, g in enumerate(groups):
+    for i in g:
+        b = beats[i]; text = ascii_(b['texto']); scene = b.get('escena', '')
+        orin = "O(x=640, g=670, s=1.0, e='open', m='smile')" if i % 3 == 0 or re.search(r'orin|character|narrator|guide', scene.lower()) else 'None'
+        lb = short_label(scene); label = f", label={json.dumps(lb)}, gold=True, ly=640" if lb else ''
+        para = ', para=True' if i and i % 9 == 0 else ''
+        cam = ", cam='out'" if i % 3 == 2 else ''
+        out.append(f" B({json.dumps(text)}, 'img', {orin}, []{label}{para}{cam}, src='escenarios/e{gi:02d}.png', dir={1 if gi % 2 == 0 else -1}),")
 out.append("]")
 open(sys.argv[2], 'w').write('\n'.join(out) + '\n')
-print(len(beats), 'beats ->', sys.argv[2])
+print(len(beats), 'beats,', len(scenes), 'escenarios ->', sys.argv[2])

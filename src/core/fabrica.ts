@@ -8,7 +8,7 @@ import { audit, isHalted } from './state.ts';
 import { setThumbnail, uploadCaptions, uploadVideo, videoThumbnails } from './youtube.ts';
 
 // Fábrica autónoma de Aion (herramienta fabrica_aion): produce un episodio de la cola con el motor de Orin
-// (scripts/media/episodio: voz Liam en ElevenLabs, animación Pillow + ffmpeg, música ACE-Step, subtítulos), lo pasa por la
+// (scripts/media/episodio: voz local Chatterbox (sin ElevenLabs), escenarios propios generados en local, animación Pillow + ffmpeg, música ACE-Step, subtítulos), lo pasa por la
 // puerta de calidad (scripts/media/fabrica.ts qa) y lo sube como PRIVADO. Publicar o programar sigue exigiendo al propietario
 // (publicar_video_youtube). Aquí no hay borrado ni cambios de presupuesto o permisos.
 
@@ -37,10 +37,10 @@ export function episodeModule(guionRuta: string | null): string {
 }
 
 // Caracteres narrados (= créditos de ElevenLabs), título y música del storyboard
-export function episodeInfo(ep: string): { creditos: number; beats: number; titulo: string | null; musica: string | null } {
+export function episodeInfo(ep: string): { creditos: number; beats: number; titulo: string | null; musica: string | null; escenarios: number } {
   const py = mediaPython(); if (!py) throw new Error('Faltan los entornos de vídeo: ejecuta bash scripts/media/instalar.sh');
   const code = `import importlib,json,os,sys; sys.path.insert(0, ${JSON.stringify(EPISODIO_DIR)}); m = importlib.import_module(os.environ['EPISODIO']); B = m.BEATS
-print(json.dumps({'creditos': sum(len(b['text']) for b in B), 'beats': len(B), 'titulo': getattr(m, 'TITLE', None), 'musica': getattr(m, 'MUSICA', None)}))`;
+print(json.dumps({'creditos': sum(len(b['text']) for b in B), 'beats': len(B), 'titulo': getattr(m, 'TITLE', None), 'musica': getattr(m, 'MUSICA', None), 'escenarios': len(getattr(m, 'SCENES', []))}))`;
   const r = spawnSync(py, ['-c', code], { env: { ...process.env, EPISODIO: ep, PYTHONDONTWRITEBYTECODE: '1' }, encoding: 'utf8', timeout: 60_000 });
   if (r.status !== 0) throw new Error(`No pude leer ${ep}.py: ${(r.stderr || String(r.error)).slice(-300)}`);
   return JSON.parse(r.stdout.trim().split('\n').pop()!);
@@ -92,14 +92,13 @@ export async function prepareEpisode(db: Db, tareaId: number, colaId: number | u
   const r = spawnSync(py, [path.join(EPISODIO_DIR, 'compilar.py'), tmp, dest], { encoding: 'utf8', timeout: 60_000 });
   if (r.status !== 0) throw new Error(`No pude traducir el guion: ${(r.stderr || r.stdout).slice(-400)}`);
   const info = episodeInfo(`ep${n}`);
-  if (info.creditos > CREDITOS_EPISODIO) { fs.rmSync(dest, { force: true }); throw new Error(`El guion costaría ${info.creditos} créditos de voz; el tope por episodio es ${CREDITOS_EPISODIO}. Pide a Venus que lo acorte.`); }
   const titulo = String(t.paquete.titulo ?? info.titulo ?? `Episodio ${n}`).slice(0, 120);
   const ruta = `scripts/media/episodio/ep${n}.py`;
   let id = colaId;
   if (id) await db.query(`UPDATE content_queue SET estado = 'SCRIPT', guion_ruta = $2, look = $3::jsonb, titulo = $4, notas = $5, updated_at = now() WHERE id = $1`, [id, ruta, JSON.stringify(t.paquete.look ?? {}), titulo, `Guion de la tarea ${tareaId} traducido a ep${n}.py`]);
   else id = (await db.query(`INSERT INTO content_queue (tipo, titulo, estado, guion_ruta, look, notas) VALUES ('largo', $1, 'SCRIPT', $2, $3::jsonb, $4) RETURNING id`, [titulo, ruta, JSON.stringify(t.paquete.look ?? {}), `Guion de la tarea ${tareaId} traducido a ep${n}.py`])).rows[0].id;
-  await audit(db, actor, 'fabrica.episodio_preparado', { id, tarea: tareaId, episodio: `ep${n}`, beats: info.beats, creditos_voz: info.creditos });
-  return { cola_id: id, episodio: `ep${n}`, beats: info.beats, creditos_voz: info.creditos, titulo, siguiente: 'producir_episodio con este cola_id' };
+  await audit(db, actor, 'fabrica.episodio_preparado', { id, tarea: tareaId, episodio: `ep${n}`, beats: info.beats, escenarios: info.escenarios });
+  return { cola_id: id, episodio: `ep${n}`, beats: info.beats, escenarios: info.escenarios, titulo, siguiente: 'producir_episodio con este cola_id' };
 }
 
 export async function startProduction(db: Db, id: number, actor: string) {
@@ -110,15 +109,13 @@ export async function startProduction(db: Db, id: number, actor: string) {
   const ep = episodeModule(q.guion_ruta);
   const otro = productionRunning(); if (otro) throw new Error(`Ya se está produciendo el elemento #${otro.id}; espera a que termine`);
   const info = episodeInfo(ep);
-  const cacheada = fs.existsSync(path.join(carpeta(id), 'voz.wav'));
-  const creditos = cacheada ? { usados_mes: await creditsThisMonth(db), nota: 'voz ya generada: no gasta créditos' } : await checkCredits(db, info.creditos);
   await db.query(`UPDATE content_queue SET estado = 'PRODUCTION', notas = $2, updated_at = now() WHERE id = $1`, [id, `Producción lanzada ${new Date().toISOString()} (${ep})`]);
   const logs = path.join(DATA_DIR, 'logs'); fs.mkdirSync(logs, { recursive: true });
   const out = fs.openSync(path.join(logs, `fabrica-${id}.log`), 'a');
   const child = spawn(process.execPath, [path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
   child.unref();
-  await audit(db, actor, 'fabrica.produccion_lanzada', { id, episodio: ep, creditos_voz: cacheada ? 0 : info.creditos, pid: child.pid });
-  return { id, episodio: ep, beats: info.beats, creditos_voz: cacheada ? 0 : info.creditos, ...creditos, carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,
+  await audit(db, actor, 'fabrica.produccion_lanzada', { id, episodio: ep, voz: 'local', pid: child.pid });
+  return { id, episodio: ep, beats: info.beats, escenarios: info.escenarios, voz: 'local (Chatterbox), sin créditos', carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,
     estado: 'PRODUCTION: en segundo plano (voz, música, subtítulos y animación); al terminar ejecuta la acción qa' };
 }
 

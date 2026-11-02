@@ -114,7 +114,21 @@ def bg_bedroom(T, t, k):
 def bg_hall(T, t, k):
     im, d, rect = hallway(T, breathe=k.get('breathe', 0.0), water=k.get('water', False), glow=k.get('glow', 0.5))
     animar._last_rect = rect; return im, d
+# Fondo generado para este episodio (imagen local en escenarios/): cámara lenta con zoom y desplazamiento, para que no se vea estático
+_IMG = {}
+def bg_img(T, t, k):
+    cw, ch = W * K, H * K; src = k['src']
+    if src not in _IMG:
+        im = Image.open(src).convert('RGB'); sc = max(cw * 1.12 / im.width, ch * 1.12 / im.height)
+        _IMG[src] = im.resize((round(im.width * sc), round(im.height * sc)), Image.LANCZOS)
+    big = _IMG[src]; z = 1.0 + 0.06 * min(t / 7.0, 1.0)
+    vw, vh = big.width / 1.12 / z, big.height / 1.12 / z
+    px = (big.width - vw) * (0.5 + 0.35 * (1 if k.get('dir', 1) > 0 else -1) * (min(t / 7.0, 1.0) - 0.5)); py = (big.height - vh) * 0.5
+    im = big.crop((int(px), int(py), int(px + vw), int(py + vh))).resize((cw, ch), Image.BILINEAR)
+    return im, ImageDraw.Draw(im, 'RGBA')
+
 BG = dict(sky=bg_sky, dawn=bg_dawn, void=bg_void, lab=bg_lab, room=bg_room, library=bg_library, desert=bg_desert, city=bg_city, chase=bg_chase, bedroom=bg_bedroom, hall=bg_hall)
+BG['img'] = bg_img
 
 # ---------- objetos ----------
 def pr_qmark(im, d, T, a, p):
@@ -358,7 +372,8 @@ def draw_orin(im, T, t, o):
 
 # ---------- escena ----------
 def render_beat(bt, T, t):
-    im, d = BG[bt['bg']](T, t, bt['bgk']); _look(im)
+    im, d = BG[bt['bg']](T, t, bt['bgk'])
+    if bt['bg'] != 'img': _look(im)
     for p in bt['p']:
         if not p.get('z') and t - p.get('at', 0.0) >= 0: PROP[p['k']](im, ImageDraw.Draw(im, 'RGBA'), T, t - p.get('at', 0.0), p)
     draw_orin(im, T, t, bt['o'])
