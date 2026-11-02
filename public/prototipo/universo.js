@@ -1092,6 +1092,7 @@ function act(a) {
   if (a === 'exit') exitExperience();
   if (a === 'text') { if (lastText) window.kratosShowText(lastText); else log('Aún no hay texto de KRATOS'); }
   if (a === 'tasks') showTasks();
+  if (a === 'approvals') showApprovals();
   if (a === 'chat') { const f = document.getElementById('chat-box'); f.hidden = !f.hidden; if (!f.hidden) document.getElementById('chat-input').focus(); }
 }
 dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
@@ -1124,6 +1125,7 @@ addEventListener('keydown', (e) => {
   if (k === 'c') { e.preventDefault(); act('chat'); }
   if (k === 'r') act('reduced');
   if (k === 'q') act('quality');
+  if (k === 'a' && !e.metaKey && !e.ctrlKey) act('approvals');
   if (k === 'l') act('tasks');
   if (k === 'i') act('metrics');
   if (k === 'h' || k === '?') { const h = document.getElementById('help'); h.hidden = !h.hidden; }
@@ -1225,6 +1227,40 @@ addEventListener('click', async (e) => {
   if (!b) return;
   try { const r = await api(`/api/tasks/${b.dataset.taskResult}/result`); window.kratosShowText(r.informe ? `# Tarea #${r.id} · ${r.agente}\n${r.title}\n\n${r.informe}` : (r.error || r.nota || 'Sin informe')); } catch { log('No pude abrir el informe'); }
 });
+
+// Aprobaciones: lo que KRATOS pide permiso para hacer, con aprobar/rechazar aquí mismo (sin ir al panel)
+let aprPendientes = -1;
+async function refreshApprovals() {
+  try {
+    const rows = await api('/api/approvals');
+    const n = rows.filter((a) => a.status === 'pendiente').length;
+    const badge = document.getElementById('apr-badge'); if (badge) { badge.hidden = n === 0; badge.textContent = n; }
+    const b = dock.querySelector('[data-act="approvals"]');
+    if (aprPendientes >= 0 && n > aprPendientes) { b?.classList.add('nuevo'); log(`KRATOS pide tu aprobación (${n} pendiente${n === 1 ? '' : 's'})`); }
+    if (n === 0) b?.classList.remove('nuevo');
+    aprPendientes = n;
+  } catch {}
+}
+async function showApprovals() {
+  let rows = [];
+  try { rows = await api('/api/approvals'); } catch { log('No pude leer las aprobaciones'); return; }
+  const pend = rows.filter((a) => a.status === 'pendiente'), hist = rows.filter((a) => a.status !== 'pendiente').slice(0, 6);
+  const card = (a) => `<div class="aprobacion" data-apr="${a.id}"><b>#${a.id} · ${esc(a.kind)}</b> <small>${esc(a.requested_by ?? '')}</small><pre>${esc(a.description)}</pre><div class="acciones"><button type="button" data-ok="1">Aprobar</button><button type="button" data-ok="0">Rechazar</button></div></div>`;
+  window.kratosShowText(`## Aprobaciones pendientes (${pend.length})`);
+  const body = document.querySelector('#lectura .lectura-body');
+  body.innerHTML = `<h4>Pendientes (${pend.length})</h4>${pend.map(card).join('') || '<p>Nada pendiente.</p>'}<h4>Últimas decididas</h4><ul>${hist.map((a) => `<li>#${a.id} ${esc(a.status)} · ${esc(String(a.description).slice(0, 90))}</li>`).join('') || '<li>Ninguna.</li>'}</ul>`;
+  dock.querySelector('[data-act="approvals"]')?.classList.remove('nuevo');
+}
+addEventListener('click', async (e) => {
+  const b = e.target.closest?.('.aprobacion button[data-ok]'); if (!b) return;
+  const card = b.closest('.aprobacion'), id = card.dataset.apr, ok = b.dataset.ok === '1';
+  if (!ok && !confirm(`¿Rechazar la aprobación #${id}?`)) return;
+  card.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+  try { const r = await api(`/api/approvals/${id}`, { approve: ok }); card.innerHTML = `<b>#${id}</b> ${ok ? '✅ aprobada y aplicada' : '✖ rechazada'}${r?.error ? ` · ${esc(r.error)}` : ''}`; log(ok ? `Aprobación #${id} aplicada` : `Aprobación #${id} rechazada`); }
+  catch (err) { card.innerHTML += `<p>No se pudo: ${esc(err.message)}</p>`; }
+  refreshApprovals();
+});
+setInterval(refreshApprovals, 15_000); refreshApprovals();
 
 // Chat escrito: lo que escribas va a KRATOS como texto; la respuesta se muestra en la ventana de lectura
 document.getElementById('chat-box')?.addEventListener('submit', async (e) => {

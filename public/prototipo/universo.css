@@ -94,6 +94,14 @@ body.idle { cursor: none; }
 #tareas-lista li { margin: 6px 0; } #tareas-lista .st { font-size: 11px; opacity: .7; margin-left: 6px; }
 #tareas-lista button { all: unset; cursor: pointer; color: #9fd0ff; text-decoration: underline; font-size: 12px; margin-left: 6px; }
 .dock button.nuevo { color: #7dd3fc; }   /* hay texto nuevo para leer */
+.dock button { position: relative; }
+.dock button .badge { position: absolute; top: 2px; right: 6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #f59e0b; color: #1a1200; font: 700 10px/16px system-ui; text-align: center; }
+.aprobacion { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(120,160,255,.08); border: 1px solid rgba(140,170,255,.18); }
+.aprobacion .acciones { margin-top: 8px; display: flex; gap: 8px; }
+.aprobacion button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.aprobacion button[data-ok="1"] { background: #16a34a; color: #fff; }
+.aprobacion button[data-ok="0"] { background: rgba(255,255,255,.12); color: #dbe8ff; }
+.aprobacion pre { white-space: pre-wrap; font: 13px/1.4 system-ui; margin: 6px 0 0; color: rgba(220,232,255,.9); }
 
 /* Música que suena: arriba a la izquierda, pequeña */
 .musica { position: fixed; left: 20px; top: 20px; z-index: 38; display: flex; align-items: center; gap: 10px; width: min(360px, calc(100vw - 40px)); box-sizing: border-box;
