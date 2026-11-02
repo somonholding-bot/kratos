@@ -19,7 +19,8 @@ import { setSetting } from './bitacora.ts';
 import { agentsContext, agentsRegistry, searchReports, systemInventory, taskResult } from './registry.ts';
 import { proposeImprovement, proposeRevert, readCode, searchCode } from './selfimprove.ts';
 import { diagnoseSelf } from './selfdiag.ts';
-import { runAgentWithSubscription, runWithSubscription, subscriptionAvailable, autonomyWindow, subStatus } from './subscription.ts';
+import { runAgentWithSubscription, subscriptionAvailable, autonomyWindow, subStatus } from './subscription.ts';
+import { toolRegistry } from './toolregistry.ts';
 import { inboxContext, recentIncoming } from './inbox.ts';
 import type { MusicCmd, MusicEffect } from './music.ts';
 
@@ -338,6 +339,11 @@ export const TOOLS: ToolDef[] = [
     run: async (db) => systemInventory(db),
   },
   {
+    name: 'registro_herramientas', description: 'Registro central de las herramientas de KRATOS: quién puede usar cada una (conversación, CEO, cada agente), si pide aprobación, uso en 7 días, último uso, último error y salud. Filtra por agente o por nombre.',
+    input_schema: obj({ agente: { type: 'string', description: 'sol, luna, mercurio, venus, marte, jupiter o saturno' }, nombre: { type: 'string' } }),
+    run: async (db, i) => ({ herramientas: await toolRegistry(db, { agent: i.agente ? String(i.agente).toLowerCase() : undefined, name: i.nombre ? String(i.nombre) : undefined }) }),
+  },
+  {
     name: 'recordar_preferencia', description: 'Guarda una preferencia permanente del propietario (trato, tono, longitud, horarios…). Se cumplirá en todas las conversaciones.',
     input_schema: obj({ preferencia: { type: 'string' } }, ['preferencia']),
     run: async (db, i) => { const r = (await db.query(`INSERT INTO preferences (text) VALUES ($1) RETURNING id`, [String(i.preferencia).slice(0, 300)])).rows[0]; await audit(db, 'kratos (IA)', 'preferencia.guardada', { id: r.id }); return { guardada: r.id }; },
@@ -511,7 +517,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -609,10 +615,12 @@ async function executeSpecialistViaSubscription(db: Db, task: any): Promise<Spec
   // el trabajo puede durar minutos: se renueva el bloqueo de la tarea
   const keep = setInterval(() => db.query(`UPDATE tasks SET locked_until = now() + interval '5 minutes' WHERE id = $1 AND status = 'en_ejecucion'`, [task.id]).catch(() => {}), 60_000);
   try {
-    const r = await runWithSubscription(db, { system: specialistSystem(agent, task), prompt: await specialistBrief(db, task, agent, business, product, knowledge) });
+    // Fase C: el especialista trabaja con sus herramientas permitidas (allowed_tools ∩ seguras) por el servidor MCP, además de la web
+    const r = await runAgentWithSubscription(db, { system: `${specialistSystem(agent, task)}\n\nTienes además las herramientas del servidor «kratos» (mcp__kratos__*): úsalas para leer informes anteriores, conocimiento y notas antes de investigar de cero.`,
+      prompt: await specialistBrief(db, task, agent, business, product, knowledge), model: SUB_MODEL[agent.model] ?? 'opus', toolset: `agente:${agent.id}`, web: true, timeoutMs: 15 * 60_000 });
     appendDaily(`${agent.name} completó la tarea #${task.id} con la suscripción: ${task.title}.`);
-    await audit(db, `agente:${agent.id}`, 'agente.suscripcion', { tarea: task.id, coste_equivalente_usd: r.costUsd });
-    return { agent: agent.id, deliverable: r.text, model: 'suscripción (claude -p)', costUsd: 0, verification: 'Pendiente de revisión del propietario' };
+    await audit(db, `agente:${agent.id}`, 'agente.suscripcion', { tarea: task.id, herramientas: r.tools });
+    return { agent: agent.id, deliverable: r.text, model: 'suscripción (claude -p)', costUsd: 0, verification: 'verificación en código al completar (verify.ts) y revisión del CEO' };
   } finally { clearInterval(keep); }
 }
 
@@ -846,7 +854,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';

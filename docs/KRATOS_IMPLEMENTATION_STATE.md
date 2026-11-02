@@ -4,7 +4,7 @@ Programa: «Master execution prompt — KRATOS hybrid agent operating system» (
 Lee este archivo al retomar una sesión; no vuelvas a auditar todo el repositorio.
 
 ## Fase actual
-**C — Registros** (siguiente). A y B terminadas y confirmadas.
+**D — Playbooks** (siguiente). A, B y C terminadas y confirmadas.
 
 ## Línea base (1-nov-2026)
 - Rama de trabajo: `musica-eco` (los servicios launchd `com.jarvis.*` corren desde este checkout, así que no se cambia de rama).
@@ -19,14 +19,16 @@ Lee este archivo al retomar una sesión; no vuelvas a auditar todo el repositori
 - (B) `db/030_resultados_duraderos.sql`: columnas `artifacts`, `checkpoints`, `verification_result`, `verified_at`, `started_at`, `completed_at`, `playbook_id`; índices de búsqueda.
 - (B) `src/core/verify.ts`: verificación objetiva por tipo (informe ≥200 caracteres, guardado y leído de vuelta, sin acciones externas inventadas; vídeo: archivos, duración, miniatura, subtítulos, subida).
 - (B) Estado `verificando` entre ejecutar y completar (`src/worker.ts`, `tasks.ts: markVerifying`); `completeTask` guarda artefactos y comprobaciones; `checkpoint()` para progreso recuperable (usado por `video.ts`).
+- (C) `db/031_registro_herramientas.sql` + `src/core/toolregistry.ts`: tabla `tool_registry` sincronizada desde el código al arrancar servidor y worker (origen, toolsets, agentes, estricta, aprobación) con uso 7 d, último uso, último error y salud desde `audit_log`; herramienta `registro_herramientas` (también en el ciclo del CEO).
+- (C) `allowed_tools` de cada agente se aplica de verdad: el especialista corre por `runAgentWithSubscription` con `KRATOS_TOOLSET=agente:<id>` y el MCP le da solo `allowed_tools ∩ AGENT_SAFE_TOOLS` más un mínimo de lectura (informes, conocimiento, notas) y web. Errores de herramientas auditados (`herramienta.error`).
+- (C) `agentsRegistry` devuelve herramientas, modelo, salud, última actividad y tareas en curso reales.
 - (B) `searchReports` filtra por agente, negocio, playbook, tipo, estado y fechas; `taskResult` devuelve artefactos, verificación y puntos de control; herramienta `buscar_informes` ampliada.
 
 ## Pruebas verificadas
-- `npm test` 75/75 antes de tocar nada; 80/80 con la fase B (`test/verificacion.test.ts`: informe corto/sin archivo no pasa; informe real → verificado, artefacto y búsqueda por agente/tipo/fecha; acciones externas inventadas invalidan; el worker no completa sin verificación; vídeo comprueba archivos y duración; checkpoints).
+- `npm test` 75/75 antes de tocar nada; 80/80 con la fase B; 83/83 con la fase C (`test/herramientas.test.ts`: sincronización, permisos por agente, registro de agentes real) (`test/verificacion.test.ts`: informe corto/sin archivo no pasa; informe real → verificado, artefacto y búsqueda por agente/tipo/fecha; acciones externas inventadas invalidan; el worker no completa sin verificación; vídeo comprueba archivos y duración; checkpoints).
 
 ## Pendiente
 - B (restos para E): `ai_usage` para la suscripción, `lessons.task_id`, idempotencia de tareas del CEO. Reiniciar `com.jarvis.worker` cuando termine el vídeo 342 (hasta entonces corre el código anterior).
-- C: registro de agentes y de herramientas con estado y permisos.
 - D: motor de playbooks (definición, validación, ejecución, prueba, versiones).
 - E: contexto mínimo, enrutado de modelos, caché medida, coste por tarea, límites de ejecución.
 - F: panel: solo añadidos mínimos con los componentes existentes.
@@ -40,4 +42,4 @@ Lee este archivo al retomar una sesión; no vuelvas a auditar todo el repositori
 - Los ocho avatares (KRATOS + 7 planetas) no cambian; la ejecución interna puede compartir sesión/modelo.
 
 ## Siguiente acción exacta
-Fase C: tabla `tool_registry` alimentada desde `audit_log` + `systemInventory`; aplicar `allowed_tools` por agente lanzando al especialista con MCP y `KRATOS_TOOLSET=agente:<id>`; `agentsRegistry` con herramientas y modelo reales.
+Fase D: `playbooks/<agente>/<nombre>.yaml` (id, nombre, versión, objetivo, agente, entradas, herramientas, pasos, salidas, verificación, reintentos, aprobaciones); cargador y validador en `src/core/playbooks.ts`; `tasks.playbook_id`; `specialistBrief` incluye los pasos; `verify.ts` ejecuta las comprobaciones declaradas; herramientas `ver_playbooks`/`ejecutar_playbook`; versiones e historial.

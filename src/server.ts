@@ -10,6 +10,7 @@ import { audit, emergencyStop, getState, heartbeat, resumeFromEmergency, setAuto
 import { cancelTask, createTask } from './core/tasks.ts';
 import { decideApproval } from './core/approvals.ts';
 import { handleMessage } from './core/chat.ts';
+import { syncToolRegistry } from './core/toolregistry.ts';
 import { cleanTmp, synthesize, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
@@ -367,6 +368,7 @@ const page = (msg: string) => `<!doctype html><meta charset="utf-8"><title>Krato
 if (import.meta.main) {
   const db = createPool();
   await migrate(db);
+  await syncToolRegistry(db).catch((e) => console.error('[server] registro de herramientas:', e.message));
   cleanTmp();
   ensureVault();
   const server = createServer(db);

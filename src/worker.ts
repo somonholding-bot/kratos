@@ -6,6 +6,7 @@ import { migrate } from './migrate.ts';
 import { audit, getState, heartbeat, isHalted } from './core/state.ts';
 import { claimNext, completeTask, deferTask, failTask, markVerifying, recoverStale } from './core/tasks.ts';
 import { failedChecks, verifyTask } from './core/verify.ts';
+import { syncToolRegistry } from './core/toolregistry.ts';
 import { handlers } from './core/handlers.ts';
 import { aiStatus } from './core/brain.ts';
 
@@ -64,6 +65,7 @@ if (import.meta.main) {
   process.on('SIGINT', () => stop('SIGINT'));
 
   await migrate(db);
+  await syncToolRegistry(db).catch((e) => console.error('[worker] registro de herramientas:', e.message));
   await audit(db, workerId, 'proceso.iniciado', {});
   console.log(`[worker] activo (${workerId})`);
   while (!stopping) {

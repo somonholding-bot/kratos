@@ -136,7 +136,7 @@ export async function runWithSubscription(db: Db, opts: { system: string; prompt
 
 // Conversación y CEO con la suscripción: Claude Code con las herramientas de KRATOS (servidor MCP) y respuesta por partes.
 // onText recibe el texto a medida que se escribe (para que la voz empiece antes de terminar).
-export async function runAgentWithSubscription(db: Db, opts: { system: string; prompt: string; model: string; toolset: 'voz' | 'texto' | 'ceo'; lastUser?: string;
+export async function runAgentWithSubscription(db: Db, opts: { system: string; prompt: string; model: string; toolset: 'voz' | 'texto' | 'ceo' | `agente:${string}`; lastUser?: string;
   web?: boolean; timeoutMs?: number; onText?: (delta: string) => void }): Promise<{ text: string; effects: Record<string, unknown>; tools: string[] }> {
   if (!CLAUDE) throw new Error('Claude Code no está instalado');
   fs.mkdirSync(WORKDIR, { recursive: true });

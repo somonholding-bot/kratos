@@ -10,6 +10,7 @@ import { youtubeConnected } from './youtube.ts';
 import { naturalVoiceAvailable } from '../voice.ts';
 import { ROOT } from '../config.ts';
 import { fastStatus } from './local.ts';
+import { agentAllowedTools } from './toolregistry.ts';
 
 // Registro central de KRATOS: informes de las tareas, agentes y herramientas.
 // Así KRATOS consulta datos reales en vez de suponer.
@@ -58,7 +59,9 @@ export async function searchReports(db: Db, query: string, agent?: string, f: Re
 // ---------- Agentes ----------
 
 export async function agentsRegistry(db: Db, id?: string) {
-  const agents = (await db.query(`SELECT f.id, f.name, f.purpose, f.deliverables, f.prohibited, f.escalation,
+  const agents = (await db.query(`SELECT f.id, f.name, f.purpose, f.model AS modelo, f.deliverables, f.prohibited, f.escalation,
+      (SELECT max(t.updated_at) FROM tasks t WHERE t.owner_function = f.id) AS ultima_actividad,
+      (SELECT json_agg(x) FROM (SELECT t.id, t.title, t.status, t.started_at FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('en_ejecucion','verificando') ORDER BY t.id) x) AS en_curso,
       (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion','verificando','esperando_ia','esperando_permiso')) AS activas,
       (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status = 'completada') AS completadas,
       (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status = 'fallida' AND t.updated_at > now() - interval '7 days') AS fallos_7d,
@@ -67,7 +70,9 @@ export async function agentsRegistry(db: Db, id?: string) {
   const skillsDir = path.join(ROOT, 'skills');
   for (const a of agents) {
     try { a.skills = fs.readdirSync(path.join(skillsDir, a.id)).filter((n) => fs.existsSync(path.join(skillsDir, a.id, n, 'SKILL.md'))); } catch { a.skills = []; }
-    a.herramientas = a.id === 'kratos' ? 'todas las de KRATOS' : 'búsqueda y lectura web (solo lectura); sin archivos, programas ni contacto con terceros';
+    a.herramientas = a.id === 'kratos' ? 'todas las de KRATOS' : [...await agentAllowedTools(db, a.id), 'WebSearch', 'WebFetch'].filter((t) => t !== 'WebSearch' && t !== 'WebFetch');
+    a.web = a.id !== 'kratos';   // búsqueda y lectura web, además de las anteriores
+    a.salud = a.fallos_7d > 0 ? 'con fallos' : 'ok';
   }
   return agents;
 }
