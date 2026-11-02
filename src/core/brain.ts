@@ -998,7 +998,9 @@ export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const fab = (await db.query(`SELECT count(*) FILTER (WHERE estado IN ('SCRIPT','REVIEW') OR (estado = 'PRODUCTION' AND video_ruta IS NOT NULL) OR estado = 'QA')::int AS pendiente,
       max(updated_at) AS ultimo FROM content_queue`)).rows[0];
   const sinceLast = Date.now() - new Date(last).getTime();
-  const fabricaPendiente = fab.pendiente > 0 && sinceLast > 19 * 60_000;
+  const venusLibre = !openByAgent.some((r: any) => r.agente === 'venus' && r.abiertas > 0);
+  const ideaLista = venusLibre && Number((await db.query(`SELECT count(*)::int AS n FROM content_queue WHERE tipo = 'largo' AND estado = 'IDEA'`)).rows[0].n) > 0;   // hay un largo sin guion y Venus está libre
+  const fabricaPendiente = (fab.pendiente > 0 || ideaLista) && sinceLast > 19 * 60_000;
   const fabricaOciosa = (!fab.ultimo || Date.now() - new Date(fab.ultimo).getTime() > 20 * 3_600_000) && sinceLast > 3 * 3_600_000;
   if (!finished.length && !strategic && !fabricaPendiente && !fabricaOciosa) return { saltado: open > 0 ? `sin novedades: ${open} tarea(s) en curso, los agentes siguen trabajando` : 'sin novedades ni trabajo de fábrica pendiente' };
   const usage = (await subStatus(db).catch(() => null))?.usage;
