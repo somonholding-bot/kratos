@@ -1,0 +1,176 @@
+{
+  "id": "yt-fabrica-ideas-semanal",
+  "nombre": "Fábrica Aion: 30 ideas puntuadas cada semana",
+  "version": 1,
+  "descripcion": "Lunes: investiga y puntúa al menos 30 ideas de vídeo del canal Aion (inglés) con evidencia real, las pasa por el jurado y las lentes de audiencia, y entrega el JSON que importa scripts/media/fabrica.ts.",
+  "objetivo": "Generar y clasificar al menos {{n_ideas}} ideas distintas para la semana del {{ciclo}} en los cinco pilares de Aion (sueños lúcidos, Jung e inconsciente, filosofía hermética, misterios antiguos, meditación práctica), con datos comprobados, y elegir {{n_largos}} vídeos largos y {{n_shorts}} Shorts.",
+  "agentes": {
+    "responsable": "mercurio"
+  },
+  "skill": "competitors",
+  "palabras_clave": [
+    "30 ideas",
+    "ideas de la semana",
+    "investiga ideas",
+    "fábrica de contenido",
+    "planificación semanal",
+    "ideas para aion",
+    "jurado"
+  ],
+  "entradas": {
+    "ciclo": {
+      "tipo": "fecha",
+      "descripcion": "Lunes de la semana a planificar (AAAA-MM-DD)",
+      "requerida": true,
+      "pregunta": "¿Qué semana planifico (lunes, AAAA-MM-DD)?"
+    },
+    "n_ideas": {
+      "tipo": "numero",
+      "descripcion": "Ideas mínimas",
+      "requerida": false,
+      "defecto": 30,
+      "min": 30,
+      "max": 60
+    },
+    "n_largos": {
+      "tipo": "numero",
+      "descripcion": "Episodios largos a elegir",
+      "requerida": false,
+      "defecto": 2,
+      "min": 1,
+      "max": 3
+    },
+    "n_shorts": {
+      "tipo": "numero",
+      "descripcion": "Shorts a elegir",
+      "requerida": false,
+      "defecto": 4,
+      "min": 2,
+      "max": 7
+    }
+  },
+  "herramientas": [
+    "WebSearch",
+    "WebFetch",
+    "estado_youtube",
+    "consultar_bd",
+    "buscar_informes",
+    "buscar_conocimiento"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Contexto sin repetir",
+      "instruccion": "Con consultar_bd lee content_ideas (titulo, estado, huella) y content_queue (titulo, estado) para no repetir temas ya hechos o descartados. Con estado_youtube lee lo publicado y programado (cada vídeo trae visibilidad y fecha) y sus cifras reales. Con buscar_informes revisa investigaciones recientes: si un tema ya está investigado y nada cambió, reutilízalo en vez de volver a buscar.",
+      "herramienta": "consultar_bd"
+    },
+    {
+      "n": 2,
+      "titulo": "Evidencia",
+      "instruccion": "Busca en la web y en YouTube (WebSearch/WebFetch): sugerencias de búsqueda y consultas relacionadas, vídeos en inglés con más vistas de los últimos 12 meses por pilar, tendencias accesibles (Google Trends si carga) y comentarios de vídeos grandes del nicho. Sección «## Evidencia» con una lista de hechos comprobados, cada uno con su URL. Si un dato no se pudo comprobar, escribe «no verificado»; JAMÁS inventes volúmenes de búsqueda, estadísticas de competidores ni vistas previstas."
+    },
+    {
+      "n": 3,
+      "titulo": "Cinco lentes de idea",
+      "instruccion": "Sección «## Ideas»: al menos {{n_ideas}} ideas distintas, repartidas entre cinco lentes: tendencia (qué busca la gente ahora), Jung (inconsciente, sombra, arquetipos, sueños), misterio (historia antigua, hermetismo, mitología), relato (convertir un concepto difícil en una historia con personaje y conflicto), comodín (ideas inesperadas). Cada idea: título provisional en inglés, pilar, lente y la pregunta calibrada What/How que abriría el vídeo."
+    },
+    {
+      "n": 4,
+      "titulo": "Jurado",
+      "instruccion": "Puntúa cada idea de 0 a 10 en: curiosidad, relevancia, demanda, competencia (10 = poco saturado), originalidad, relato, credibilidad, viabilidad (con nuestro motor de Orin 2D: sin 3D, sin stock caro), potencial para Shorts y coste (10 = barato). Total ponderado: curiosidad 20 %, demanda 15 %, relato 15 %, originalidad 10 %, credibilidad 10 %, competencia 10 %, relevancia 8 %, Shorts 6 %, viabilidad 4 %, coste 2 %. Demanda y competencia solo con la evidencia del paso 2; sin evidencia, 5 y la nota «sin datos». Tabla en «## Ranking» con las 10 mejores."
+    },
+    {
+      "n": 5,
+      "titulo": "Lentes de audiencia",
+      "instruccion": "Sección «## Revisión»: para cada una de las {{n_largos}}+{{n_shorts}} ideas finalistas, una línea por lente: escéptico (qué afirmación no se sostiene), principiante curioso (¿se entiende?), explorador espiritual (¿emociona?), aficionado a documentales (¿hay suspense?) y espectador de Shorts (¿engancha en 2 s?). Son críticas editoriales, no predicciones de audiencia; no pongas cifras de visionado."
+    },
+    {
+      "n": 6,
+      "titulo": "Selección y JSON",
+      "instruccion": "Sección «## Elegidas»: {{n_largos}} vídeos largos (8–12 min) y {{n_shorts}} Shorts (20–60 s, cada uno independiente; los mejores salen del mejor largo). Después, el bloque ```json ideas con: ciclo, lista (TODAS las ideas: titulo, pilar, fuente, puntuacion {curiosidad, relevancia, demanda, competencia, originalidad, relato, credibilidad, viabilidad, shorts, coste}, total, evidencia [{url, dato}]) y elegidas (lista de {titulo, tipo: largo|short}). JSON válido, comillas dobles, sin comentarios."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Evidencia, Ideas, Ranking, Revisión y Elegidas de la semana {{ciclo}}",
+      "obligatoria": true
+    },
+    {
+      "nombre": "ideas",
+      "tipo": "bloque_json",
+      "descripcion": "JSON con las ideas puntuadas; se importa con scripts/media/fabrica.ts ideas",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "al menos {{n_ideas}} ideas distintas",
+    "cada dato de demanda o competencia lleva su URL o dice «no verificado»",
+    "ranking con la rúbrica ponderada",
+    "ninguna idea repite lo ya hecho",
+    "elegidas: {{n_largos}} largos y {{n_shorts}} Shorts"
+  ],
+  "verificacion": [
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Evidencia",
+        "Ideas",
+        "Ranking",
+        "Revisión",
+        "Elegidas"
+      ]
+    },
+    {
+      "nombre": "bloque ideas",
+      "tipo": "bloque_json",
+      "bloque": "ideas",
+      "campos": [
+        "ciclo",
+        "lista",
+        "elegidas"
+      ]
+    },
+    {
+      "nombre": "30 ideas",
+      "tipo": "lista_minima",
+      "campo": "ideas.lista",
+      "minimo": "{{n_ideas}}"
+    },
+    {
+      "nombre": "fuentes",
+      "tipo": "fuentes_citadas",
+      "minimo": 8
+    },
+    {
+      "nombre": "sin invenciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "millones de búsquedas mensuales",
+        "views estimadas",
+        "vistas previstas",
+        "datos de ejemplo",
+        "no tengo acceso"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 25,
+    "usd_estimado": 0,
+    "nota": "suscripción; sin gasto de voz"
+  },
+  "idioma_entregable": "mixto"
+}

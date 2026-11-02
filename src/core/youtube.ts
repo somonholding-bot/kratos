@@ -48,7 +48,7 @@ export async function youtubeSummary(_db?: Db, videos = 10) {
   if (!ch) return { error: 'Esta cuenta de Google no tiene canal de YouTube' };
   const uploads = ch.contentDetails?.relatedPlaylists?.uploads;
   const ids = uploads ? (await get(`https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=${Math.min(25, videos)}&playlistId=${uploads}`)).items?.map((i: any) => i.contentDetails.videoId) ?? [] : [];
-  const vids = ids.length ? (await get(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}`)).items ?? [] : [];
+  const vids = ids.length ? (await get(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status&id=${ids.join(',')}`)).items ?? [] : [];
   const end = new Date(), start = new Date(Date.now() - 28 * 86_400_000);
   const d = (x: Date) => x.toISOString().slice(0, 10);
   let analitica: unknown = null;
@@ -60,7 +60,9 @@ export async function youtubeSummary(_db?: Db, videos = 10) {
   return {
     canal: { nombre: ch.snippet?.title, id: ch.id, suscriptores: Number(ch.statistics?.subscriberCount ?? 0), vistas_totales: Number(ch.statistics?.viewCount ?? 0), videos: Number(ch.statistics?.videoCount ?? 0) },
     ultimos_28_dias: analitica,
-    videos_recientes: vids.map((v: any) => ({ titulo: v.snippet?.title, fecha: v.snippet?.publishedAt?.slice(0, 10), vistas: Number(v.statistics?.viewCount ?? 0),
+    videos_recientes: vids.map((v: any) => ({ id: v.id, titulo: v.snippet?.title, fecha: v.snippet?.publishedAt?.slice(0, 10),
+      visibilidad: v.status?.publishAt ? 'programado' : v.status?.privacyStatus === 'private' ? 'privado' : v.status?.privacyStatus === 'public' ? 'publico' : v.status?.privacyStatus,
+      sale_el: v.status?.publishAt ?? null, vistas: Number(v.statistics?.viewCount ?? 0),
       me_gusta: Number(v.statistics?.likeCount ?? 0), comentarios: Number(v.statistics?.commentCount ?? 0), url: `https://youtu.be/${v.id}` })),
   };
 }

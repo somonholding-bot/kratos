@@ -63,3 +63,7 @@ Lee este archivo al retomar una sesión; no vuelvas a auditar todo el repositori
 
 ## Siguiente acción exacta
 1. Confirmar la fase D con el propietario y hacer commit en `musica-eco` (regla del propietario; esta sesión no confirmó nada). 2. Cuando termine el vídeo 342, reiniciar `com.jarvis.worker` y `com.jarvis.server` (`launchctl kickstart -k gui/$(id -u)/com.jarvis.worker`, ídem server): al arrancar importan `playbooks/` y sincronizan el registro. 3. Primera ejecución real: `ejecutar_playbook {id: "yt-investigacion-competencia", negocio_id: <Aion>, parametros: {tema: "planetary hours"}}` y revisar el informe; después `yt-guion-ritual-lunar` (encadena el vídeo). 4. Fase E: contexto mínimo (`Promise.all` en `think`, skill completa solo con puntuación ≥ 3), enrutado de modelos, `ai_usage` para la suscripción, coste por tarea y límites de ejecución.
+
+
+## Fábrica de contenido Aion v2 (2-nov-2026)
+Ver `docs/fabrica-aion.md`. Migración 033 (content_ideas, content_queue, permisos de lectura para agentes), playbooks `yt-fabrica-ideas-semanal` (Mercurio), `yt-episodio-orin` (Venus) y `yt-fabrica-diaria` (Júpiter, recurrente cada 24 h), `scripts/media/fabrica.ts` (estado | ideas | qa) y `estado_youtube` con visibilidad y fecha de salida. Tareas 378 (30 ideas, ciclo 2026-11-02) y 379 (diaria) lanzadas. Pendiente: encadenar guion → voz → animación → QA → subida sin intervención; coste real del primer episodio de la fábrica.

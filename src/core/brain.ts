@@ -454,7 +454,7 @@ export const TOOLS: ToolDef[] = [
       [Number(i.negocio_id), String(i.nombre).slice(0, 120), String(i.plataformas ?? '').split(',').map((x) => x.trim()).filter(Boolean), i.publico ?? null, i.modelo_ingresos ?? null])).rows[0],
   },
   {
-    name: 'estado_youtube', description: 'Canal de YouTube del propietario (solo lectura): suscriptores, vistas, vídeos recientes con sus cifras y analítica de los últimos 28 días.',
+    name: 'estado_youtube', description: 'Canal de YouTube del propietario (solo lectura): suscriptores, vistas, vídeos recientes (cada uno con su visibilidad: publico, privado o programado con su fecha sale_el) con sus cifras y analítica de los últimos 28 días.',
     input_schema: obj({}),
     run: async (db) => { try { return await youtubeSummary(db); } catch (e: any) { return { error: e.message }; } },
   },

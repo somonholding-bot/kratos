@@ -1,0 +1,124 @@
+{
+  "id": "yt-fabrica-diaria",
+  "nombre": "Fábrica Aion: tarea de producción del día y puerta de calidad",
+  "version": 1,
+  "descripcion": "Cada día lee la cola de contenido y lo publicado, decide la tarea del día según el calendario semanal, reparte el trabajo y bloquea cualquier publicación que no pase la puerta de calidad.",
+  "objetivo": "Con la cola de contenido y el estado real del canal al {{hoy}}, decidir y registrar la tarea de producción de hoy (al menos una al día), mantener 7 días de material preparado y revisar qué vídeos pasan la puerta de calidad.",
+  "agentes": {
+    "responsable": "jupiter"
+  },
+  "palabras_clave": [
+    "fábrica diaria",
+    "tarea de hoy",
+    "cola de contenido",
+    "qué toca hoy",
+    "calendario de producción",
+    "puerta de calidad",
+    "revisar la cola"
+  ],
+  "entradas": {
+    "hoy_extra": {
+      "tipo": "texto",
+      "descripcion": "Nota opcional del propietario para hoy",
+      "requerida": false,
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "estado_youtube",
+    "consultar_bd",
+    "buscar_informes",
+    "ver_playbooks",
+    "crear_tarea",
+    "ver_plan",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Estado real",
+      "instruccion": "Con estado_youtube lee lo publicado, lo privado y lo programado (cada vídeo trae visibilidad y fecha de salida). Con consultar_bd lee content_queue (estado, sale_el, youtube_id, qa) y content_ideas elegidas. Compara: toda diferencia entre la cola y YouTube se anota en «## Diferencias» (no la corrijas en silencio).",
+      "herramienta": "estado_youtube"
+    },
+    {
+      "n": 2,
+      "titulo": "Qué toca hoy",
+      "instruccion": "Calendario semanal: lunes investigar y puntuar 30 ideas (playbook yt-fabrica-ideas-semanal); martes y jueves producir y programar un episodio largo (yt-episodio-orin tipo largo, luego voz, animación, QA, subida privada); miércoles, viernes, sábado y domingo producir y programar un Short (yt-episodio-orin tipo short o corte del episodio con scripts/media/episodio/hacer_short.py); domingo además analizar el rendimiento (yt-analisis-semanal) y preparar el ciclo siguiente. Puede adelantarse trabajo. Si ya hay 7 días de material preparado, adelanta el siguiente. Sección «## Tarea de hoy» con la decisión y el porqué."
+    },
+    {
+      "n": 3,
+      "titulo": "Encargar",
+      "instruccion": "Con crear_tarea o ejecutar_playbook (a través del CEO) encarga la tarea de hoy al especialista responsable: Mercurio investiga, Venus escribe, Saturno analiza. Los pasos que gastan créditos de voz o publican en público pasan por las reglas de aprobación; la voz del episodio solo se genera con el guion aprobado y se guarda en caché (nunca se regenera audio aprobado)."
+    },
+    {
+      "n": 4,
+      "titulo": "Puerta de calidad",
+      "instruccion": "Para cada elemento de la cola en QA, indica el resultado de `node scripts/media/fabrica.ts qa <id>` (comprobaciones deterministas: MP4 válido, códecs, duración, relación de aspecto, cuadros negros, volumen, miniatura, título y descripción, sincronía). Sección «## Puerta de calidad» con una tabla: elemento, comprobación, resultado. Ningún vídeo pasa a APPROVED o SCHEDULED con una comprobación obligatoria fallida."
+    },
+    {
+      "n": 5,
+      "titulo": "Informe y avisos",
+      "instruccion": "Sección «## Resumen» (5 líneas: publicado, programado, en producción, bloqueado y por qué, riesgo). Si una tarea falló, dilo; nunca la marques como hecha. Registra con registrar_leccion lo aprendido si hay datos reales."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Diferencias, Tarea de hoy, Puerta de calidad y Resumen del {{hoy}}",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "la cola coincide con YouTube o las diferencias están anotadas",
+    "hay una tarea de producción decidida para hoy",
+    "ningún vídeo avanza con una comprobación obligatoria fallida"
+  ],
+  "verificacion": [
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Diferencias",
+        "Tarea de hoy",
+        "Puerta de calidad",
+        "Resumen"
+      ]
+    },
+    {
+      "nombre": "herramienta de estado",
+      "tipo": "herramienta_usada",
+      "herramienta": "estado_youtube",
+      "nivel": "aviso"
+    },
+    {
+      "nombre": "sin excusas",
+      "tipo": "sin_frases",
+      "frases": [
+        "no pude acceder",
+        "no tengo acceso",
+        "datos de ejemplo"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 1
+  },
+  "aprobaciones": [],
+  "programacion": {
+    "recurrencia_minutos": 1440
+  },
+  "coste": {
+    "duracion_estimada_min": 8,
+    "usd_estimado": 0,
+    "nota": "suscripción"
+  },
+  "idioma_entregable": "es"
+}
