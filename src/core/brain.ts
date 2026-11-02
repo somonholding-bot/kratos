@@ -10,7 +10,7 @@ import { appendDaily, readNote, searchNotes, writeNote } from './vault.ts';
 import { skillContext, skillsFor } from './skills.ts';
 import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
 import { appleSummary } from './apple.ts';
-import { updateVideo, uploadVideo, youtubeSummary } from './youtube.ts';
+import { isVideoId, updateVideo, uploadVideo, youtubeSummary } from './youtube.ts';
 import { runQa, setQueueThumbnail, startProduction, thumbnailStatus, uploadPrivate } from './fabrica.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox, mailSend } from './mail.ts';
@@ -485,6 +485,18 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'borrar_video_youtube', description: 'Pide al propietario que apruebe BORRAR un vídeo del canal (irreversible). Se borra solo cuando él lo aprueba en el panel; una aprobación por vídeo. Los ID salen de estado_youtube.',
+    input_schema: obj({ video_id: { type: 'string', description: 'ID de 11 caracteres del vídeo' }, titulo: { type: 'string', description: 'título del vídeo, para que el propietario lo reconozca' } }, ['video_id']),
+    run: async (db, i) => {
+      const id = String(i.video_id ?? '').trim(), titulo = i.titulo ? String(i.titulo).slice(0, 100) : null;
+      if (!isVideoId(id)) return { error: 'ID de vídeo de YouTube no válido (11 caracteres)' };
+      const a = await requestApproval(db, { kind: 'accion_externa', description: `BORRAR de YouTube${titulo ? `: «${titulo}»` : ''} (https://youtu.be/${id}). Es irreversible: el vídeo, sus vistas y comentarios desaparecen.`,
+        scope: { tipo: 'youtube_borrar', video_id: id, titulo }, validDays: 7, requestedBy: 'kratos (IA)' });
+      await audit(db, 'kratos (IA)', 'youtube.borrado_solicitado', { aprobacion: a.id, id, titulo });
+      return { aprobacion: a.id, estado: 'pendiente: se borra cuando el propietario lo aprueba en el panel' };
+    },
+  },
+  {
     name: 'fabrica_aion', description: 'Fábrica del canal Aion sobre la cola content_queue. producir_episodio: produce en segundo plano (horas) un episodio largo desde su storyboard scripts/media/episodio/epN.py (guion_ruta): voz Liam en ElevenLabs (tope 6.000 créditos por episodio y 40.000 al mes, gasto en ai_usage), música ACE-Step, subtítulos y animación de Orin. qa: puerta de calidad (sin pasarla nada se sube). subir_privado: sube como PRIVADO lo que pasó qa, con título, descripción y etiquetas en inglés y sin mencionar apps. miniatura: pone la miniatura (JPG/PNG < 2 MB). ver_miniaturas: qué vídeos tienen miniatura propia. Publicar o programar en público sigue siendo publicar_video_youtube (aprobación del propietario).',
     input_schema: obj({ accion: { type: 'string', enum: ['producir_episodio', 'qa', 'subir_privado', 'miniatura', 'ver_miniaturas'] }, cola_id: { type: 'integer', description: 'id de content_queue' },
       video_id: { type: 'string', description: 'solo miniatura de un vídeo fuera de la cola' }, miniatura: { type: 'string', description: 'ruta de la imagen en el Mac (qa y miniatura)' },
@@ -616,7 +628,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 

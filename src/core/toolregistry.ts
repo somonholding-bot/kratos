@@ -12,7 +12,7 @@ export const AGENT_SAFE_TOOLS = new Set(['resumen_negocios', 'buscar_conocimient
 // Lo mínimo que todo especialista tiene para no trabajar a ciegas (solo lectura)
 const AGENT_BASE_TOOLS = ['buscar_informes', 'ver_resultado_tarea', 'buscar_conocimiento', 'buscar_notas', 'leer_nota'];
 // Las que piden aprobación del propietario o crean un efecto fuera de KRATOS
-const NEEDS_APPROVAL = new Set(['solicitar_aprobacion', 'publicar_video_youtube', 'personalizar_canal_youtube', 'encargar_codigo', 'proponer_funcion', 'proponer_mejora']);
+const NEEDS_APPROVAL = new Set(['solicitar_aprobacion', 'publicar_video_youtube', 'borrar_video_youtube', 'personalizar_canal_youtube', 'encargar_codigo', 'proponer_funcion', 'proponer_mejora']);
 
 export async function agentAllowedTools(db: Db, agentId: string): Promise<string[]> {
   const a = (await db.query(`SELECT allowed_tools FROM agent_functions WHERE id = $1`, [agentId])).rows[0];

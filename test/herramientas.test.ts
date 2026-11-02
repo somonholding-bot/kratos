@@ -44,3 +44,16 @@ test('el registro de agentes responde con datos reales: herramientas, modelo y s
   const filtered = await toolRegistry(db, { agent: 'venus' });
   assert.deepEqual(filtered.map((t: any) => t.name).filter((n: string) => n !== 'WebSearch' && n !== 'WebFetch').sort(), venus.herramientas.slice().sort());
 });
+
+test('borrar un vídeo de YouTube solo crea una aprobación pendiente y queda en auditoría', async () => {
+  const tool = TOOLS.find((t) => t.name === 'borrar_video_youtube')!;
+  assert.ok(tool);
+  assert.ok((await tool.run(db, { video_id: 'no vale' }) as any).error);
+  const r: any = await tool.run(db, { video_id: 'abcDEF12345', titulo: 'Prueba' });
+  const a = (await db.query(`SELECT status, kind, scope FROM approvals WHERE id = $1`, [r.aprobacion])).rows[0];
+  assert.equal(a.status, 'pendiente');
+  assert.equal(a.scope.tipo, 'youtube_borrar');
+  assert.notEqual(a.kind, 'otro', 'la autonomía delegada nunca puede aprobarlo');
+  assert.ok((await db.query(`SELECT 1 FROM audit_log WHERE action = 'youtube.borrado_solicitado' AND details->>'aprobacion' = $1`, [String(r.aprobacion)])).rows.length);
+  assert.equal((await toolRegistry(db, { name: 'borrar_video_youtube' }))[0].requiere_aprobacion, true);
+});

@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
+import { audit } from './state.ts';
 
 // Canal de YouTube del propietario con acceso completo (YouTube Data API + YouTube Analytics), decidido por el propietario.
 // Subir vídeos: siempre como PRIVADOS. Hacerlos públicos (publicar) exige su aprobación en el panel.
@@ -192,19 +193,27 @@ export async function videoThumbnails(ids: string[]) {
   return Object.fromEntries(vids.map((v: any) => { const t = v.snippet?.thumbnails ?? {}; return [v.id, { url: (t.maxres ?? t.high ?? t.default)?.url ?? null, tamanos: Object.keys(t) }]; }));
 }
 
-// Borra un vídeo propio (irreversible en YouTube). El propietario dio a KRATOS control total del canal (1-nov-2026).
+export const isVideoId = (id: string) => /^[A-Za-z0-9_-]{11}$/.test(id);
+
+// Borra un vídeo propio (irreversible en YouTube). Solo se llama tras la aprobación del propietario en el panel.
 export async function deleteVideo(videoId: string) {
+  if (!isVideoId(videoId)) throw new Error('ID de vídeo de YouTube no válido');
   const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE',
     headers: { authorization: `Bearer ${await accessToken()}` }, signal: AbortSignal.timeout(30_000) });
+  if (r.status === 403) throw new Error('YouTube no deja borrar (403): falta el permiso de gestión completa del canal. Vuelve a conectar con scripts/conectar-youtube.ts y acepta todos los permisos.');
   if (r.status !== 204) { const j: any = await r.json().catch(() => ({})); throw new Error(`YouTube respondió ${r.status}: ${j.error?.message ?? ''}`.slice(0, 200)); }
   return { id: videoId, borrado: true };
 }
 
-// Aprobación del propietario en el panel: solo entonces un vídeo pasa a público o cambia la presentación pública del canal
+// Aprobación del propietario en el panel: solo entonces un vídeo pasa a público, se borra o cambia la presentación pública del canal
 export async function onYoutubeApproval(db: Db, approval: any, approved: boolean) {
   const tipo = approval?.scope?.tipo;
-  if (!approved || (tipo !== 'youtube_publicar' && tipo !== 'youtube_canal')) return;
+  if (!approved || (tipo !== 'youtube_publicar' && tipo !== 'youtube_canal' && tipo !== 'youtube_borrar')) return;
   if (tipo === 'youtube_publicar') await setPrivacy(String(approval.scope.video_id), approval.scope.visibilidad === 'unlisted' ? 'unlisted' : 'public');
+  else if (tipo === 'youtube_borrar') {
+    await deleteVideo(String(approval.scope.video_id));
+    await audit(db, 'propietario', 'youtube.borrado', { aprobacion: approval.id, id: approval.scope.video_id, titulo: approval.scope.titulo ?? null });
+  }
   else await updateChannel(approval.scope.cambios ?? {});
   await db.query(`UPDATE approvals SET status = 'ejecutada' WHERE id = $1`, [approval.id]);
 }
