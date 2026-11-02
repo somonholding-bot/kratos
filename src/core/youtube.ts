@@ -185,6 +185,13 @@ export async function listVideos(max = 25) {
   return { videos: vids.map((v: any) => ({ id: v.id, titulo: v.snippet?.title, fecha: v.snippet?.publishedAt?.slice(0, 10), visibilidad: v.status?.privacyStatus, vistas: Number(v.statistics?.viewCount ?? 0), url: `https://youtu.be/${v.id}` })) };
 }
 
+// Miniaturas que YouTube sirve de cada vídeo (siempre hay alguna automática; si es propia o no, la API no lo dice)
+export async function videoThumbnails(ids: string[]) {
+  if (!ids.length) return {};
+  const vids = (await get(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids.slice(0, 50).map(encodeURIComponent).join(',')}`)).items ?? [];
+  return Object.fromEntries(vids.map((v: any) => { const t = v.snippet?.thumbnails ?? {}; return [v.id, { url: (t.maxres ?? t.high ?? t.default)?.url ?? null, tamanos: Object.keys(t) }]; }));
+}
+
 // Borra un vídeo propio (irreversible en YouTube). El propietario dio a KRATOS control total del canal (1-nov-2026).
 export async function deleteVideo(videoId: string) {
   const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE',

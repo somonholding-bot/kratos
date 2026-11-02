@@ -11,6 +11,7 @@ import { skillContext, skillsFor } from './skills.ts';
 import { addAgenda, cancelAgenda, describe, owner, upcoming } from './agenda.ts';
 import { appleSummary } from './apple.ts';
 import { updateVideo, uploadVideo, youtubeSummary } from './youtube.ts';
+import { runQa, setQueueThumbnail, startProduction, thumbnailStatus, uploadPrivate } from './fabrica.ts';
 import { dial, saveContact, textMessage } from './phone.ts';
 import { mailDraft, mailInbox, mailSend } from './mail.ts';
 import { activePlugins, proposePlugin, runPlugin } from './plugins.ts';
@@ -484,6 +485,28 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'fabrica_aion', description: 'Fábrica del canal Aion sobre la cola content_queue. producir_episodio: produce en segundo plano (horas) un episodio largo desde su storyboard scripts/media/episodio/epN.py (guion_ruta): voz Liam en ElevenLabs (tope 6.000 créditos por episodio y 40.000 al mes, gasto en ai_usage), música ACE-Step, subtítulos y animación de Orin. qa: puerta de calidad (sin pasarla nada se sube). subir_privado: sube como PRIVADO lo que pasó qa, con título, descripción y etiquetas en inglés y sin mencionar apps. miniatura: pone la miniatura (JPG/PNG < 2 MB). ver_miniaturas: qué vídeos tienen miniatura propia. Publicar o programar en público sigue siendo publicar_video_youtube (aprobación del propietario).',
+    input_schema: obj({ accion: { type: 'string', enum: ['producir_episodio', 'qa', 'subir_privado', 'miniatura', 'ver_miniaturas'] }, cola_id: { type: 'integer', description: 'id de content_queue' },
+      video_id: { type: 'string', description: 'solo miniatura de un vídeo fuera de la cola' }, miniatura: { type: 'string', description: 'ruta de la imagen en el Mac (qa y miniatura)' },
+      titulo: { type: 'string', description: 'en inglés, ≤ 100 caracteres' }, descripcion: { type: 'string', description: 'en inglés' }, etiquetas: { type: 'string', description: 'en inglés, separadas por comas' } }, ['accion']),
+    run: async (db, i) => {
+      const id = Number(i.cola_id), actor = 'kratos (IA)';
+      try {
+        if (i.accion === 'ver_miniaturas') return { videos: await thumbnailStatus(db) };
+        if (i.accion === 'miniatura') {
+          if (!i.miniatura) return { error: 'Falta la ruta de la miniatura' };
+          return await setQueueThumbnail(db, id ? { id } : { video_id: String(i.video_id ?? '') }, String(i.miniatura), actor);
+        }
+        if (!id) return { error: 'Falta cola_id' };
+        if (i.accion === 'producir_episodio') return await startProduction(db, id, actor);
+        if (i.accion === 'qa') return await runQa(db, id, i.miniatura ? String(i.miniatura) : undefined);
+        if (i.accion === 'subir_privado') return await uploadPrivate(db, id, { titulo: i.titulo ? String(i.titulo) : undefined, descripcion: i.descripcion ? String(i.descripcion) : undefined,
+          etiquetas: i.etiquetas ? String(i.etiquetas).split(',').map((x) => x.trim()).filter(Boolean) : undefined }, actor);
+        return { error: 'Acción desconocida' };
+      } catch (e: any) { return { error: e.message }; }
+    },
+  },
+  {
     name: 'producir_video', description: 'RETIRADA (no usar): cadena de vídeo antigua rechazada por el propietario. Producía un vídeo completo en el Mac, gratis y en segundo plano (10–40 min): voz narradora (en inglés: el canal es en inglés y YouTube traduce y dobla automáticamente), imágenes, música ambiental, subtítulos, montaje y miniatura. Con subir=true lo sube a YouTube como PRIVADO. Escribe el guion completo y las ideas de imagen; sigue el playbook youtube-crecimiento.',
     input_schema: obj({ titulo: { type: 'string', description: 'Título de YouTube en inglés (≤ 60 caracteres)' }, guion: { type: 'string', description: 'Texto completo que se narra, en inglés' },
       imagenes: { type: 'string', description: 'Ideas de imagen en inglés separadas por «|» (una cada ~20 s de vídeo; sin texto en la imagen)' },
@@ -593,7 +616,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -937,7 +960,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';

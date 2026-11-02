@@ -2,11 +2,15 @@
 //   node scripts/media/fabrica.ts estado                 cola frente a YouTube (visibilidad y fecha de salida reales)
 //   node scripts/media/fabrica.ts ideas <ideas.json>     importa el bloque `ideas` del playbook yt-fabrica-ideas-semanal (sin repetir)
 //   node scripts/media/fabrica.ts qa <id_cola> [video] [miniatura]   puerta de calidad determinista; marca QA o BLOQUEADO
+//   node scripts/media/fabrica.ts producir <id_cola>     episodio completo desde su storyboard epN.py (lo lanza fabrica_aion en segundo plano)
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createPool } from '../../src/db.ts';
 import { listVideos } from '../../src/core/youtube.ts';
+import path from 'node:path';
+import { isHalted } from '../../src/core/state.ts';
+import { carpeta, checkCredits, clearLock, EPISODIO_DIR, episodeInfo, episodeModule, MEDIA, mediaPython, productionRunning, VOZ, writeLock } from '../../src/core/fabrica.ts';
 
 const db = createPool();
 const [cmd, a, b, c] = process.argv.slice(2);
@@ -67,5 +71,57 @@ if (cmd === 'estado') {
   await db.query(`UPDATE content_queue SET qa = $2, estado = $3, updated_at = now() WHERE id = $1`, [q.id, JSON.stringify(res), falla.length ? 'BLOQUEADO' : 'QA']);
   console.log(JSON.stringify({ id: q.id, resultado: falla.length ? 'BLOQUEADO' : 'pasa', fallos: falla.map(([k, r]) => `${k}: ${r.detalle}`), comprobaciones: res }, null, 1));
   process.exitCode = falla.length ? 1 : 0;
-} else console.log('Uso: estado | ideas <json> | qa <id> [video] [miniatura]');
+} else if (cmd === 'producir') {
+  // Voz Liam (ElevenLabs, con tope de créditos) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
+  const id = Number(a); const q = (await db.query(`SELECT * FROM content_queue WHERE id = $1`, [id])).rows[0]; if (!q) throw new Error('No existe ese elemento de la cola');
+  const otro = productionRunning(); if (otro && otro.id !== id) throw new Error(`Ya se está produciendo el elemento #${otro.id}`);
+  writeLock(id);
+  const dir = carpeta(id); fs.mkdirSync(dir, { recursive: true });
+  const f = (n: string) => path.join(dir, n);
+  const log = (m: string) => console.log(`[${new Date().toISOString()}] #${id} ${m}`);
+  const paso = async (m: string) => { const h = await isHalted(db); if (h.halted) throw new Error(`Detenido antes de «${m}»: ${h.reason}`); log(m); };
+  const run = (cmd: string, args: string[], env: Record<string, string> = {}, horas = 1) => {
+    const r = spawnSync(cmd, args, { cwd: dir, env: { ...process.env, ...env }, encoding: 'utf8', timeout: horas * 3600_000, maxBuffer: 64e6 });
+    if (r.status !== 0) throw new Error(`${path.basename(args[0] ?? cmd)} falló: ${(r.stderr || r.stdout || String(r.error)).slice(-600)}`);
+    return r.stdout;
+  };
+  try {
+    const ep = episodeModule(q.guion_ruta), py = mediaPython()!, info = episodeInfo(ep), EP = { EPISODIO: ep };
+    if (!fs.existsSync(f('voz.wav'))) {
+      await paso(`voz ${VOZ} (${info.creditos} créditos)`);
+      await checkCredits(db, info.creditos);
+      run(py, [path.join(EPISODIO_DIR, 'voz_elevenlabs.py'), VOZ, f('voz.wav'), f('timeline.json')], { ...EP, EL_STABILITY: '0.4', EL_STYLE: '0.45' });
+      await db.query(`INSERT INTO ai_usage (model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_microusd, charged_cents, purpose) VALUES ('elevenlabs:eleven_v4',$1,0,0,0,0,0,$2)`,
+        [info.creditos, `voz ElevenLabs (créditos del plan): cola #${id}`]);
+      await db.query(`UPDATE content_queue SET coste = coste || $2::jsonb WHERE id = $1`, [id, JSON.stringify({ creditos_voz: info.creditos })]);
+    }
+    const tl = JSON.parse(fs.readFileSync(f('timeline.json'), 'utf8')); const total = Math.ceil(0.5 + tl.duration + 3);
+    if (!fs.existsSync(f('musica.wav'))) {
+      await paso(`música (${total} s)`);
+      const base = Math.min(600, total);   // ACE-Step genera hasta 600 s; más largo se repite
+      run(path.join(MEDIA, 'acestep/.venv/bin/python'), [path.join(EPISODIO_DIR, '../musica.py'), info.musica ?? 'mysterious ambient score, soft synth pads, gentle piano, warm, cinematic, slow', String(base), f('musica-base.wav')]);
+      run('ffmpeg', ['-y', '-v', 'error', '-stream_loop', '-1', '-i', f('musica-base.wav'), '-t', String(total), '-af', `afade=t=out:st=${total - 3}:d=3`, f('musica.wav')]);
+    }
+    await paso('subtítulos');
+    const ts = (v: number) => { const ms = Math.round(v * 1000); return `${String(Math.floor(ms / 3600000)).padStart(2, '0')}:${String(Math.floor(ms / 60000) % 60).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`; };
+    const cues: string[] = [];
+    for (const s of tl.sentences) {   // mismo troceado que meta_episodio.py: ≤ 42 caracteres, corta en fin de frase
+      const ini = 0.5 + s.start, fin = 0.5 + s.end, chunks: string[] = [];
+      for (const w of String(s.text).split(/\s+/).filter(Boolean)) if (chunks.length && chunks.at(-1)!.length + w.length < 42 && !/[.!?]$/.test(chunks.at(-1)!)) chunks[chunks.length - 1] += ' ' + w; else chunks.push(w);
+      const tot = chunks.reduce((n, c) => n + c.length, 0); let t = ini;
+      for (const c of chunks) { const d = (fin - ini) * c.length / tot; cues.push(`${cues.length + 1}\n${ts(t)} --> ${ts(t + d)}\n${c}\n`); t += d; }
+    }
+    fs.writeFileSync(f('subtitulos.srt'), cues.join('\n'));
+    if (!fs.existsSync(f('video.mp4'))) {
+      await paso('animación y montaje (puede tardar horas)');
+      run(py, [path.join(EPISODIO_DIR, 'anim2.py'), f('timeline.json'), f('voz.wav'), f('musica.wav'), f('video-parcial.mp4')], EP, 12);
+      fs.renameSync(f('video-parcial.mp4'), f('video.mp4'));
+    }
+    await db.query(`UPDATE content_queue SET video_ruta = $2, notas = $3, updated_at = now() WHERE id = $1`, [id, f('video.mp4'), `Producido ${new Date().toISOString()}: falta la puerta de calidad (qa) y la miniatura`]);
+    log('terminado: falta qa');
+  } catch (e: any) {
+    await db.query(`UPDATE content_queue SET estado = 'BLOQUEADO', notas = $2, updated_at = now() WHERE id = $1`, [id, `Producción fallida: ${String(e.message).slice(0, 500)}`]);
+    log(`FALLO: ${e.message}`); process.exitCode = 1;
+  } finally { clearLock(); }
+} else console.log('Uso: estado | ideas <json> | qa <id> [video] [miniatura] | producir <id>');
 await db.end();

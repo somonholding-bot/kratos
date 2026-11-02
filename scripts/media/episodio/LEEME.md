@@ -9,3 +9,4 @@ Cadena aprobada por el propietario (2-nov-2026). Todo con Python en entornos pro
 5. **Arte del canal**: `arte.py` (banner, foto de perfil y miniatura).
 6. **Subida**: `../subir-episodio.ts` (vídeo privado + miniatura + subtítulos + banner).
 7. **Medir una voz**: `medir_voz.py` (error de lectura, tono, expresividad y pausas).
+8. **Desde KRATOS**: herramienta `fabrica_aion` (producir_episodio → qa → miniatura → subir_privado) sobre `content_queue`; la producción es `node ../fabrica.ts producir <id>` (voz Liam con tope de créditos, salida en `~/Movies/Kratos/cola-<id>`, registro en `.jarvis/logs/fabrica-<id>.log`). Publicar sigue siendo `publicar_video_youtube`.
