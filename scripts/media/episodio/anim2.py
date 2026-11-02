@@ -7,7 +7,15 @@ import animar
 animar.K = 3   # lienzo 3840x2160: supersampling 1.5x frente a la salida 2560x1440
 from animar import *   # primitivas, orin, put, stand, label, hallway, stars, moon, base, outro...
 import importlib, os
-BEATS = importlib.import_module(os.environ.get('EPISODIO', 'ep1')).BEATS
+_EP = importlib.import_module(os.environ.get('EPISODIO', 'ep1')); BEATS = _EP.BEATS
+# Cada episodio tiene su propia identidad de color: LOOK = dict(nombre, hue (0-255, vuelta completa = 256), sat, val). Solo cambia los fondos; Orin y el dorado de marca no cambian.
+LOOK = getattr(_EP, 'LOOK', dict(nombre='indigo', hue=0, sat=1.0, val=1.0))
+if os.environ.get('LOOK'): _h, _s, _v = os.environ['LOOK'].split(','); LOOK = dict(nombre='prueba', hue=int(_h), sat=float(_s), val=float(_v))
+def _look(im):
+    if not (LOOK['hue'] or LOOK['sat'] != 1.0 or LOOK['val'] != 1.0): return
+    h, sa, v = im.convert('HSV').split()
+    h = h.point([(x + LOOK['hue']) % 256 for x in range(256)]); sa = sa.point([min(255, int(x * LOOK['sat'])) for x in range(256)]); v = v.point([min(255, int(x * LOOK['val'])) for x in range(256)])
+    im.paste(Image.merge('HSV', (h, sa, v)).convert('RGB'))
 FPS = 30
 OW, OH = 2560, 1440
 APPLE = '/System/Library/Fonts/Apple Symbols.ttf'
@@ -350,7 +358,7 @@ def draw_orin(im, T, t, o):
 
 # ---------- escena ----------
 def render_beat(bt, T, t):
-    im, d = BG[bt['bg']](T, t, bt['bgk'])
+    im, d = BG[bt['bg']](T, t, bt['bgk']); _look(im)
     for p in bt['p']:
         if not p.get('z') and t - p.get('at', 0.0) >= 0: PROP[p['k']](im, ImageDraw.Draw(im, 'RGBA'), T, t - p.get('at', 0.0), p)
     draw_orin(im, T, t, bt['o'])
@@ -362,17 +370,24 @@ def render_beat(bt, T, t):
 _yy, _xx = np.mgrid[0:OH, 0:OW]; _r = np.sqrt(((_xx - OW / 2) / (OW / 2)) ** 2 + ((_yy - OH / 2) / (OH / 2)) ** 2)
 VIG = (1.0 - 0.34 * np.clip((_r - 0.55) / 0.85, 0, 1) ** 1.6).astype(np.float32)[..., None]
 
+import transiciones as TR
+
 def main():
     tlf, voz, musica, out = sys.argv[1:5]
     tl = json.load(open(tlf)); LEAD = float(os.environ.get('LEAD', 0.5)); ST = [LEAD + s['start'] for s in tl['sentences']]; END_V = LEAD + tl['duration']; TOTAL = END_V + 3.0
     starts = [0.0] + [ST[i] - 0.10 for i in range(1, len(BEATS))]; ends = starts[1:] + [END_V + 0.2]
-    def render(T):
-        k = max(i for i, s in enumerate(starts) if T >= s - 1e-9); bt = BEATS[k]; t = T - starts[k]; dur = ends[k] - starts[k]
-        im = render_beat(bt, T, t)
-        if t < 0.14 and k > 0: im = Image.blend(render_beat(BEATS[k - 1], T, T - starts[k - 1]), im, eio(t / 0.14))   # fundido corto entre escenas
+    def scene_frame(k, T):
+        bt = BEATS[k]; t = T - starts[k]; dur = ends[k] - starts[k]; im = render_beat(bt, T, t)
         p = clamp(t / max(0.1, dur)); z = 1.0 + 0.06 * (p if bt['cam'] == 'in' else 1 - p); pan = (-1) ** k * 0.5
         bw, bh = S(W) / z, S(H) / z; x0 = (S(W) - bw) / 2 * (1 + pan * (1 - 2 * p) * 0.6); y0 = (S(H) - bh) / 2
-        frame = im.resize((OW, OH), Image.LANCZOS, box=(x0, y0, x0 + bw, y0 + bh))
+        return im.resize((OW, OH), Image.LANCZOS, box=(x0, y0, x0 + bw, y0 + bh))
+    def render(T):
+        k = max(i for i, s in enumerate(starts) if T >= s - 1e-9); t = T - starts[k]
+        frame = scene_frame(k, T)
+        if k > 0 and os.environ.get('TRANS', '1') != '0':
+            tipo = TR.tipo_para(k, BEATS[k - 1]['bg'], BEATS[k]['bg'], BEATS[k].get('tr'))
+            if t < TR.DUR[tipo]: frame = TR.mezclar(scene_frame(k - 1, T), frame, t / TR.DUR[tipo], tipo)
+        elif t < 0.14 and k > 0: frame = Image.blend(scene_frame(k - 1, T), frame, eio(t / 0.14))
         o = clamp((T - (END_V + 0.7)) / 1.0)
         if o > 0: frame = Image.blend(frame, outro(T, o).resize((OW, OH), Image.LANCZOS), eio(o))
         frame = Image.fromarray((np.asarray(frame, dtype=np.float32) * VIG).astype(np.uint8))
@@ -383,12 +398,13 @@ def main():
         print('previews'); return
     n0, n1 = 0, int(TOTAL * FPS)
     if '--from' in sys.argv: n0 = int(float(sys.argv[sys.argv.index('--from') + 1]) * FPS); n1 = int(float(sys.argv[sys.argv.index('--to') + 1]) * FPS)
-    mus = ['-i', musica] if musica != '-' else []
+    sfx = os.environ.get('SFX'); mus = (['-i', musica] if musica != '-' else []) + (['-i', sfx] if sfx else [])
     af = (f"[1:a]adelay={int(LEAD * 1000)}|{int(LEAD * 1000)},apad[v];" +
-          (f"[2:a]volume=0.42,afade=t=in:d=2,afade=t=out:st={TOTAL - 3:.2f}:d=3[m];[v]asplit=2[v1][sc];[m][sc]sidechaincompress=threshold=0.04:ratio=9:attack=20:release=700[md];[v1][md]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=7[a]"
+          (f"[2:a]volume=0.42,afade=t=in:d=2,afade=t=out:st={TOTAL - 3:.2f}:d=3[m];[v]asplit=2[v1][sc];[m][sc]sidechaincompress=threshold=0.04:ratio=9:attack=20:release=700[md];[v1][md]amix=inputs=2:duration=first:normalize=0[mx];" + (f"[3:a]volume=0.8,apad[fx];[mx][fx]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=7[a]" if os.environ.get('SFX') else "[mx]loudnorm=I=-14:TP=-1.5:LRA=7[a]")
            if musica != '-' else "[v]loudnorm=I=-14:TP=-1.5:LRA=7[a]"))
+    if n0 > 0: af = af[:af.rindex('[a]')] + f'[a0];[a0]atrim=start={n0 / FPS:.3f},asetpts=PTS-STARTPTS[a]'   # tramo parcial: el audio se recorta al mismo punto
     cmd = ['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{OW}x{OH}', '-r', str(FPS), '-i', '-', '-i', voz, *mus,
-           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{TOTAL:.2f}', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-r', str(FPS), '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
+           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{(n1 - n0) / FPS:.2f}', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-r', str(FPS), '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
     pr = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for n in range(n0, n1):
         pr.stdin.write(render(n / FPS).tobytes())

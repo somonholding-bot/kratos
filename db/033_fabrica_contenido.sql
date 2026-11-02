@@ -51,3 +51,7 @@ GRANT SELECT ON content_ideas, content_queue TO jarvis_agent;
 -- Herramientas de lectura que necesitan los playbooks de la fábrica (idempotente: unión sin duplicados)
 UPDATE agent_functions SET allowed_tools = (SELECT ARRAY(SELECT DISTINCT unnest(allowed_tools || ARRAY['estado_youtube','consultar_bd']))) WHERE id IN ('mercurio','venus');
 UPDATE agent_functions SET allowed_tools = (SELECT ARRAY(SELECT DISTINCT unnest(allowed_tools || ARRAY['estado_youtube','consultar_bd','ver_playbooks','crear_tarea','ver_plan','registrar_leccion']))) WHERE id = 'jupiter';
+
+-- Identidad visual de cada episodio (cada vídeo debe tener sus propios colores e imágenes)
+ALTER TABLE content_queue ADD COLUMN IF NOT EXISTS look jsonb NOT NULL DEFAULT '{}';
+UPDATE content_queue SET look = '{"nombre":"indigo","hue":0,"sat":1.0,"val":1.0}' WHERE youtube_id = 'jsIGF__VRSI' AND look = '{}';

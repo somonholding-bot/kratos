@@ -82,17 +82,17 @@
     {
       "n": 5,
       "titulo": "Storyboard",
-      "instruccion": "Sección «## Storyboard»: una tabla con un beat por fila (beat, frase de narración, qué se ve: Orin y su pose o expresión, escenario, símbolo esotérico o prop, cámara y efecto, música/sonido). Un cambio visual cada ~5 s. Solo ilustración 2D de nuestro motor (sin 3D, sin vídeo generado por IA, sin stock de pago)."
+      "instruccion": "Sección «## Storyboard»: una tabla con un beat por fila (beat, frase de narración, qué se ve: Orin y su pose o expresión, escenario, símbolo esotérico o prop, cámara y efecto, tipo de transición, música/sonido). Un cambio visual cada ~5 s. Solo ilustración 2D de nuestro motor (sin 3D, sin vídeo generado por IA, sin stock de pago). ORIGINALIDAD: cada episodio tiene su propia identidad visual. Elige un «look» (paleta de fondos distinta de los 3 últimos episodios, que se leen de content_queue.look con consultar_bd) y escenarios propios del tema (templo, laboratorio, bosque, océano, biblioteca…): no repitas la misma secuencia de fondos ni de imágenes de otros episodios. Orin y el dorado de marca se mantienen."
     },
     {
       "n": 6,
       "titulo": "Voz, visual y hechos",
-      "instruccion": "Sección «## Revisión»: (a) director de voz: frases largas que cortar, nombres difíciles con su pronunciación, pausas; (b) director visual: miniatura (3 conceptos: personaje grande + símbolo + 3–4 palabras, sin engaño), subtítulos legibles; (c) hechos y seguridad: lista de afirmaciones con su fuente y su calificativo, licencias de imágenes y música, cumplimiento de YouTube."
+      "instruccion": "Sección «## Revisión»: (a) director de voz: frases largas que cortar, nombres difíciles con su pronunciación, pausas; (b) director visual: look del episodio, transiciones y banda sonora (música cinematográfica con crescendos en los giros de la historia, efectos suaves en cada transición) y (3 conceptos: personaje grande + símbolo + 3–4 palabras, sin engaño), subtítulos legibles; (c) hechos y seguridad: lista de afirmaciones con su fuente y su calificativo, licencias de imágenes y música, cumplimiento de YouTube."
     },
     {
       "n": 7,
       "titulo": "Paquete",
-      "instruccion": "Al final, un bloque ```json paquete con: titulo, titulos (3), ganchos (5), guion (narración completa, sin encabezados), beats (lista de {texto, escena}), miniaturas (3 conceptos), descripcion (promesa en las 2 primeras líneas, capítulos con el primero en 0:00 y cada uno ≥ 10 s, fuentes, 3 hashtags), etiquetas (8–15), fuentes (lista de URL). JSON válido, comillas dobles."
+      "instruccion": "Al final, un bloque ```json paquete con: titulo, titulos (3), ganchos (5), guion (narración completa, sin encabezados), beats (lista de {texto, escena}), miniaturas (3 conceptos), look ({nombre, hue 0-255, sat, val, fondos: lista de escenarios usados, musica: prompt de la banda sonora}), descripcion (promesa en las 2 primeras líneas, capítulos con el primero en 0:00 y cada uno ≥ 10 s, fuentes, 3 hashtags), etiquetas (8–15), fuentes (lista de URL). JSON válido, comillas dobles."
     }
   ],
   "salidas": [
@@ -118,7 +118,8 @@
     "3 títulos ≤ 60 caracteres y 5 ganchos",
     "storyboard por beats con símbolos esotéricos",
     "afirmaciones con fuente",
-    "paquete JSON válido"
+    "paquete JSON válido",
+    "look propio del episodio, distinto de los últimos tres"
   ],
   "verificacion": [
     {
@@ -146,7 +147,8 @@
         "miniaturas",
         "descripcion",
         "etiquetas",
-        "fuentes"
+        "fuentes",
+        "look"
       ]
     },
     {

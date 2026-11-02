@@ -35,7 +35,7 @@ if (cmd === 'estado') {
   }
   for (const e of j.elegidas ?? []) {
     const idea = (await db.query(`UPDATE content_ideas SET estado = 'elegida' WHERE huella = $1 RETURNING id`, [huella(e.titulo)])).rows[0];
-    await db.query(`INSERT INTO content_queue (tipo, titulo, idea_id, estado) VALUES ($1,$2,$3,'IDEA')`, [e.tipo === 'short' ? 'short' : 'largo', String(e.titulo).slice(0, 200), idea?.id ?? null]);
+    await db.query(`INSERT INTO content_queue (tipo, titulo, idea_id, estado) VALUES ($1,$2,$3,'IDEA')`, [(e.tipo ?? e.formato) === 'short' ? 'short' : 'largo', String(e.titulo).slice(0, 200), idea?.id ?? null]);
   }
   console.log(JSON.stringify({ nuevas, repetidas_omitidas: repetidas, elegidas: (j.elegidas ?? []).length }));
 } else if (cmd === 'qa') {

@@ -10,6 +10,12 @@ Adaptación del prompt «Autonomous YouTube Content Factory V2» a lo que el can
 - **Voz y créditos (límite real):** Starter = 40.000 créditos/mes; un minuto de narración gasta ≈ 800 créditos (ep. 1: 5.545 por 6:53). Un largo de 9 min ≈ 7.200 créditos → con Starter caben unos 5 largos al mes. Para 2 largos por semana hace falta el plan superior (Creator, 100.000 créditos). Los Shorts reutilizan el audio del episodio y no gastan créditos.
 - **Duración:** largos de 8–12 min. El episodio 1 (6:53) queda fuera de ese rango; la puerta de calidad lo marca.
 
+## Estilo de producción v3 (por orden del propietario, 2-nov-2026)
+- **Cada vídeo es original:** el motor aplica un «look» por episodio (`LOOK` en el módulo del episodio: tono, saturación, brillo de los fondos; Orin y el dorado de marca no cambian) y el storyboard debe usar escenarios propios del tema. Venus elige un look distinto de los tres últimos (`content_queue.look`).
+- **Transiciones:** `episodio/transiciones.py` (barrido, empuje, zoom con desenfoque, iris, destello dorado); dentro de una misma escena, fundido corto. Se desactivan con `TRANS=0`.
+- **Sonido:** música cinematográfica épica con ACE-Step (local, gratis; generarla sin otra tarea pesada en marcha, o se queda sin memoria) y efectos de transición sintetizados con `episodio/sfx.py` (variable `SFX=ruta.wav`).
+- Muestra: `~/Movies/Kratos/piloto/demo-v3-transiciones-musica.mp4` y `paletas-por-episodio.jpg`.
+
 ## Piezas (todo reutiliza lo existente)
 | Pieza | Dónde |
 |---|---|
