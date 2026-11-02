@@ -2,10 +2,21 @@
 # Uso: python anim2.py timeline.json voz.wav musica.wav|- salida.mp4 [--preview 3,10,25] [--from 0 --to 20]
 import sys, json, math, random, subprocess
 import numpy as np
-from PIL import Image, ImageDraw
-from animar import *   # primitivas, orin, put, stand, label, hallway, stars, moon, base, outro...
+from PIL import Image, ImageDraw, ImageFont
 import animar
-from ep1 import BEATS
+animar.K = 3   # lienzo 3840x2160: supersampling 1.5x frente a la salida 2560x1440
+from animar import *   # primitivas, orin, put, stand, label, hallway, stars, moon, base, outro...
+import importlib, os
+BEATS = importlib.import_module(os.environ.get('EPISODIO', 'ep1')).BEATS
+FPS = 30
+OW, OH = 2560, 1440
+APPLE = '/System/Library/Fonts/Apple Symbols.ttf'
+_gf = {}
+def gfont(sz):
+    if sz not in _gf: _gf[sz] = ImageFont.truetype(APPLE, S(sz))
+    return _gf[sz]
+def glyph(d, ch, x, y, size, col): d.text((S(x), S(y)), ch, font=gfont(size), fill=col, anchor='mm')
+PLANETS = ['\u2609', '\u263d', '\u263f', '\u2640', '\u2642', '\u2643', '\u2644']
 
 def at(p, a): return a - p.get('at', 0.0)
 
@@ -32,6 +43,7 @@ def bg_void(T, t, k):
             a0 = math.radians(j * 15 + T * 7); a1 = a0 + math.radians(5)
             poly(d, [(640, 330), (640 + 900 * math.cos(a0), 330 + 900 * math.sin(a0)), (640 + 900 * math.cos(a1), 330 + 900 * math.sin(a1))], (255, 220, 140, pal[2]))
     stars(d, T, 190)
+    if k.get('pal', 'dusk') in ('dusk', 'lucid', 'party'): pr_sigil(im, d, T, 99, dict(x=640, y=340, r=330, alpha=34, gs=34))
     return im, d
 def bg_lab(T, t, k):
     im = base((8, 14, 40), (14, 24, 66)); d = ImageDraw.Draw(im, 'RGBA')
@@ -235,7 +247,10 @@ def pr_shadow_chase(im, d, T, a, p):
 def pr_words(im, d, T, a, p):
     for j, w in enumerate(p['items']):
         st = a - j * p.get('every', 1.2)
-        if st >= 0: pop = back(st / 0.4); text(d, w, 220 + j * 280, 320 + 40 * math.sin(T * 1.5 + j), int(66 * pop) + 1, (*[GOLD, ROSE, TEAL, (200, 214, 255)][j % 4], 255))
+        if st >= 0:
+            pop = back(st / 0.4); col = (*[GOLD, ROSE, TEAL, (200, 214, 255)][j % 4], 255)
+            if p.get('stack'): text(d, w, 640, 150 + j * 120, int(74 * pop) + 1, col)
+            else: text(d, w, 220 + j * 280, 320 + 40 * math.sin(T * 1.5 + j), int(66 * pop) + 1, col)
 def pr_house(im, d, T, a, p):
     x = p.get('x', 640); names = ['UPPER ROOMS', 'THE CELLAR', 'THE CAVE']; cols = [(120, 90, 130), (70, 60, 100), (40, 34, 64)]
     hl = -1 if p.get('hl', -9) < 0 and a < 0 else int(max(0, (a - p.get('hl', 0)) / p.get('every', 1.6))) if p.get('hl', -9) >= 0 else -1
@@ -253,6 +268,65 @@ def pr_cycles(im, d, T, a, p):
             if last: d.rounded_rectangle([S(x - 8), S(base_y - hgt - 8), S(x + w + 8), S(base_y + 6)], radius=S(12), outline=GOLD, width=S(3))
 def pr_clock(im, d, T, a, p):
     x, y = p.get('x', 1000), p.get('y', 150); rrect(d, x - 120, y - 46, x + 120, y + 46, 12, (8, 10, 28)); d.rounded_rectangle([S(x - 120), S(y - 46), S(x + 120), S(y + 46)], radius=S(12), outline=(*TEAL, 200), width=S(3)); text(d, p['text'], x, y, 54, TEAL)
+
+def pr_sigil(im, d, T, a, p):
+    x, y, r, al, gs = p.get('x', 640), p.get('y', 330), p.get('r', 300), p.get('alpha', 255), p.get('gs', 56); rot = T * 0.12
+    for rr, w in ((r, 4), (r * 0.80, 2), (r * 1.08, 2)): d.ellipse([S(x - rr), S(y - rr), S(x + rr), S(y + rr)], outline=(*GOLD, int(al * 0.8)), width=S(w))
+    for q in range(72):
+        ang = math.radians(q * 5) - rot * 0.5; l0, l1 = r * 1.08, r * (1.15 if q % 6 == 0 else 1.12); d.line([(S(x + l0 * math.cos(ang)), S(y + l0 * math.sin(ang))), (S(x + l1 * math.cos(ang)), S(y + l1 * math.sin(ang)))], fill=(*GOLD, int(al * 0.7)), width=S(2))
+    for q, ch in enumerate(PLANETS):
+        ang = rot + q * 2 * math.pi / 7 - math.pi / 2; glyph(d, ch, x + r * 0.9 * math.cos(ang), y + r * 0.9 * math.sin(ang), gs, (*GOLD, al))
+    pts = [(x + r * 0.8 * math.cos(rot + q * 2 * math.pi / 7), y + r * 0.8 * math.sin(rot + q * 2 * math.pi / 7)) for q in range(7)]
+    for q in range(7): d.line([(S(pts[q][0]), S(pts[q][1])), (S(pts[(q + 3) % 7][0]), S(pts[(q + 3) % 7][1]))], fill=(*GOLD, int(al * 0.45)), width=S(2))
+def pr_flower(im, d, T, a, p):
+    x, y, r = p.get('x', 640), p.get('y', 330), p.get('r', 80); rot = T * 0.08; pop = eo(a / 0.8); al = int(p.get('alpha', 230) * pop)
+    for i in range(-3, 4):
+        for j in range(-3, 4):
+            cx, cy = (i + j * 0.5) * r * pop, j * r * 0.8660254 * pop
+            if math.hypot(cx, cy) <= 2.05 * r * pop:
+                px, py = x + cx * math.cos(rot) - cy * math.sin(rot), y + cx * math.sin(rot) + cy * math.cos(rot)
+                d.ellipse([S(px - r * pop), S(py - r * pop), S(px + r * pop), S(py + r * pop)], outline=(*GOLD, al), width=S(3))
+    d.ellipse([S(x - 2.05 * r * pop), S(y - 2.05 * r * pop), S(x + 2.05 * r * pop), S(y + 2.05 * r * pop)], outline=(*GOLD, al), width=S(5))
+def pr_ouro(im, d, T, a, p):
+    x, y, r = p.get('x', 640), p.get('y', 330), p.get('r', 150); rot = T * 20; pop = eo(a / 0.7)
+    for q in range(46):
+        t0 = q / 46; ang = math.radians(rot + 25 + t0 * 320); w = 8 + 24 * t0
+        circ(d, x + r * math.cos(ang), y + r * math.sin(ang), w * 0.5 * pop, (*(int(40 + 190 * t0), int(150 + 60 * t0), int(80)), 255))
+    ang = math.radians(rot + 25 + 320); hx, hy = x + r * math.cos(ang), y + r * math.sin(ang); circ(d, hx, hy, 24 * pop, (230, 200, 90)); circ(d, hx + 6, hy - 6, 5, INK)
+    d.ellipse([S(x - r * 0.7), S(y - r * 0.7), S(x + r * 0.7), S(y + r * 0.7)], outline=(*GOLD, 70), width=S(2))
+def pr_eyetri(im, d, T, a, p):
+    x, y, s = p.get('x', 640), p.get('y', 300), p.get('s', 1.0); pop = back(a / 0.5) * s
+    for q in range(-6, 7): line(d, (x, y - 10 * pop), (x + q * 90 * pop, y - 330 * pop), 2, (*GOLD, 60))
+    poly(d, [(x, y - 150 * pop), (x - 160 * pop, y + 120 * pop), (x + 160 * pop, y + 120 * pop)], (*GOLD, 40))
+    for q in range(3): ang = [math.radians(-90), math.radians(30), math.radians(150)]; line(d, (x + 170 * pop * math.cos(ang[q]), y + 5 * pop + 170 * pop * math.sin(ang[q])), (x + 170 * pop * math.cos(ang[(q + 1) % 3]), y + 5 * pop + 170 * pop * math.sin(ang[(q + 1) % 3])), 6, GOLD)
+    ell(d, x, y + 20 * pop, 64 * pop, 34 * pop, (255, 255, 255)); circ(d, x + 8 * math.sin(T * 1.3), y + 20 * pop, 22 * pop, TEAL); circ(d, x + 8 * math.sin(T * 1.3), y + 20 * pop, 10 * pop, INK)
+def pr_card(im, d, T, a, p):
+    x, y = p.get('x', 640), p.get('y', 330) + 6 * math.sin(T * 1.5); pop = back(a / 0.5)
+    rrect(d, x - 150 * pop, y - 230 * pop, x + 150 * pop, y + 230 * pop, 18, (244, 232, 208)); rrect(d, x - 134 * pop, y - 214 * pop, x + 134 * pop, y + 214 * pop, 10, (20, 24, 76))
+    d.rounded_rectangle([S(x - 134 * pop), S(y - 214 * pop), S(x + 134 * pop), S(y + 214 * pop)], radius=S(10), outline=GOLD, width=S(4))
+    if pop > 0.9:
+        text(d, 'XVIII', x, y - 185, 30, GOLD); moon(d, x, y - 40, 78, True, GOLD, (20, 24, 76)); circ(d, x + 6, y - 40, 22, (20, 24, 76)); circ(d, x + 4, y - 36, 18, (244, 232, 208, 235))
+        for sg in (-1, 1): rrect(d, x + sg * 96 - 20, y + 40, x + sg * 96 + 20, y + 130, 4, (150, 140, 190)); poly(d, [(x + sg * 96 - 26, y + 40), (x + sg * 96, y + 14), (x + sg * 96 + 26, y + 40)], (150, 140, 190))
+        d.arc([S(x - 70), S(y + 80), S(x + 70), S(y + 190)], 200, 340, fill=(*TEAL, 255), width=S(5)); text(d, 'THE MOON', x, y + 185, 34, GOLD)
+def pr_alchemy(im, d, T, a, p):
+    names = [('NIGREDO', 'THE BLACKENING', (10, 10, 18), (230, 230, 255)), ('ALBEDO', 'THE WHITENING', (240, 240, 250), INK), ('RUBEDO', 'THE REDDENING', (170, 40, 60), (255, 230, 230))]
+    for j in range(p.get('n', 3)):
+        st = a - j * p.get('every', 2.2)
+        if st < 0: continue
+        pop = back(st / 0.5); cx = 280 + j * 360; circ(d, cx, 300, 120 * pop, names[j][2]); d.ellipse([S(cx - 120 * pop), S(300 - 120 * pop), S(cx + 120 * pop), S(300 + 120 * pop)], outline=GOLD, width=S(4))
+        text(d, names[j][0], cx, 470, int(44 * pop) + 1, GOLD); text(d, names[j][1], cx, 520, int(26 * pop) + 1, (200, 214, 255))
+def pr_tablet(im, d, T, a, p):
+    x, y = p.get('x', 640), p.get('y', 330); pop = back(a / 0.5)
+    for q in range(5): d.rounded_rectangle([S(x - 300 * pop - q * 6), S(y - 150 * pop - q * 6), S(x + 300 * pop + q * 6), S(y + 150 * pop + q * 6)], radius=S(20), outline=(70, 220, 150, 40 - q * 6), width=S(4))
+    rrect(d, x - 300 * pop, y - 150 * pop, x + 300 * pop, y + 150 * pop, 20, (18, 90, 70)); d.rounded_rectangle([S(x - 280 * pop), S(y - 130 * pop), S(x + 280 * pop), S(y + 130 * pop)], radius=S(12), outline=(150, 255, 210), width=S(3))
+    if pop > 0.9:
+        text(d, 'THE EMERALD TABLET', x, y - 90, 30, (190, 255, 225)); text(d, 'THAT WHICH IS BELOW', x, y - 10, 42, (255, 255, 255)); text(d, 'IS LIKE THAT WHICH IS ABOVE', x, y + 50, 42, (255, 255, 255))
+def pr_bigtext(im, d, T, a, p):
+    y = p.get('y', 330)
+    for j, (txt, size) in enumerate(p['lines']):
+        st = a - j * p.get('every', 0.5)
+        if st >= 0: pop = back(st / 0.4); text(d, txt, 640, y + j * (size + 18), int(size * pop) + 1, (*(GOLD if j == len(p['lines']) - 1 and p.get('gold_last') else (255, 255, 255)), int(255 * clamp(st / 0.2))))
+
 PROP = {k[3:]: v for k, v in globals().items() if k.startswith('pr_')}
 PROP['shadow_near'] = pr_shadow_near
 
@@ -266,8 +340,10 @@ def draw_orin(im, T, t, o):
     if mv == 'jump': y_off = -abs(math.sin(T * 4.2)) * 34; ll, lr = 14 + 10 * math.sin(T * 8.4), 14 - 10 * math.sin(T * 8.4)
     if mv == 'run': sw = math.sin(T * 9.5) * 38; al, ar, ll, lr = 40 - sw, 40 + sw, -sw * 1.2, sw * 1.2; y_off = -abs(math.sin(T * 9.5)) * 10
     if mv == 'rub': al, ar = 18 + 6 * math.sin(T * 14), 18 - 6 * math.sin(T * 14)
-    blink = 1.0 if (T % 4.1) < 0.12 and o.get('e', 'open') == 'open' else 0.0
-    L = orin(o.get('e', 'open') if o.get('e') != 'half' else 'open', o.get('m', 'smile'), o.get('look', (0, 0)), al, ar, ll, lr, o.get('shadow', False), o.get('tint'), 0.55 if o.get('e') == 'half' else blink)
+    ee, mm = o.get('e', 'open'), o.get('m', 'smile')
+    if o.get('e2_at') is not None and t >= o['e2_at']: ee, mm = o.get('e2', ee), o.get('m2', mm)
+    blink = 1.0 if (T % 4.1) < 0.12 and ee == 'open' else 0.0
+    L = orin(ee if ee != 'half' else 'open', mm, o.get('look', (0, 0)), al, ar, ll, lr, o.get('shadow', False), o.get('tint'), 0.55 if ee == 'half' else blink)
     if mv == 'fly':
         put(im, L, o.get('x', 640) + 40 * math.sin(T * 0.9), o.get('y', 300) + 22 * math.sin(T * 1.6), s, rot=-72 - 6 * math.sin(T * 1.6), flip=o.get('flip', False)); return
     stand(im, L, o.get('x', 640), o.get('g', 650) + y_off, s, rot=rot, flip=o.get('flip', False))
@@ -283,9 +359,12 @@ def render_beat(bt, T, t):
     if bt['label']: label(im, bt['label'], t - bt['lt'], 640, bt['ly'], 38, gold=bt['gold'])
     return im
 
+_yy, _xx = np.mgrid[0:OH, 0:OW]; _r = np.sqrt(((_xx - OW / 2) / (OW / 2)) ** 2 + ((_yy - OH / 2) / (OH / 2)) ** 2)
+VIG = (1.0 - 0.34 * np.clip((_r - 0.55) / 0.85, 0, 1) ** 1.6).astype(np.float32)[..., None]
+
 def main():
     tlf, voz, musica, out = sys.argv[1:5]
-    tl = json.load(open(tlf)); LEAD = 1.4; ST = [LEAD + s['start'] for s in tl['sentences']]; END_V = LEAD + tl['duration']; TOTAL = END_V + 3.0
+    tl = json.load(open(tlf)); LEAD = float(os.environ.get('LEAD', 0.5)); ST = [LEAD + s['start'] for s in tl['sentences']]; END_V = LEAD + tl['duration']; TOTAL = END_V + 3.0
     starts = [0.0] + [ST[i] - 0.10 for i in range(1, len(BEATS))]; ends = starts[1:] + [END_V + 0.2]
     def render(T):
         k = max(i for i, s in enumerate(starts) if T >= s - 1e-9); bt = BEATS[k]; t = T - starts[k]; dur = ends[k] - starts[k]
@@ -293,11 +372,12 @@ def main():
         if t < 0.14 and k > 0: im = Image.blend(render_beat(BEATS[k - 1], T, T - starts[k - 1]), im, eio(t / 0.14))   # fundido corto entre escenas
         p = clamp(t / max(0.1, dur)); z = 1.0 + 0.06 * (p if bt['cam'] == 'in' else 1 - p); pan = (-1) ** k * 0.5
         bw, bh = S(W) / z, S(H) / z; x0 = (S(W) - bw) / 2 * (1 + pan * (1 - 2 * p) * 0.6); y0 = (S(H) - bh) / 2
-        frame = im.resize((W, H), Image.LANCZOS, box=(x0, y0, x0 + bw, y0 + bh))
+        frame = im.resize((OW, OH), Image.LANCZOS, box=(x0, y0, x0 + bw, y0 + bh))
         o = clamp((T - (END_V + 0.7)) / 1.0)
-        if o > 0: frame = Image.blend(frame, outro(T, o).resize((W, H), Image.LANCZOS), eio(o))
+        if o > 0: frame = Image.blend(frame, outro(T, o).resize((OW, OH), Image.LANCZOS), eio(o))
+        frame = Image.fromarray((np.asarray(frame, dtype=np.float32) * VIG).astype(np.uint8))
         fade = clamp(T / 0.8) * clamp((TOTAL - T) / 0.9)
-        return Image.blend(Image.new('RGB', (W, H), (0, 0, 0)), frame, fade) if fade < 1 else frame
+        return Image.blend(Image.new('RGB', (OW, OH), (0, 0, 0)), frame, fade) if fade < 1 else frame
     if '--preview' in sys.argv:
         for T in [float(x) for x in sys.argv[sys.argv.index('--preview') + 1].split(',')]: render(T).save(f'/tmp/f2-{T:06.1f}.png')
         print('previews'); return
@@ -307,8 +387,8 @@ def main():
     af = (f"[1:a]adelay={int(LEAD * 1000)}|{int(LEAD * 1000)},apad[v];" +
           (f"[2:a]volume=0.42,afade=t=in:d=2,afade=t=out:st={TOTAL - 3:.2f}:d=3[m];[v]asplit=2[v1][sc];[m][sc]sidechaincompress=threshold=0.04:ratio=9:attack=20:release=700[md];[v1][md]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=7[a]"
            if musica != '-' else "[v]loudnorm=I=-14:TP=-1.5:LRA=7[a]"))
-    cmd = ['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-', '-i', voz, *mus,
-           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{TOTAL:.2f}', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
+    cmd = ['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{OW}x{OH}', '-r', str(FPS), '-i', '-', '-i', voz, *mus,
+           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{TOTAL:.2f}', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-r', str(FPS), '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
     pr = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for n in range(n0, n1):
         pr.stdin.write(render(n / FPS).tobytes())

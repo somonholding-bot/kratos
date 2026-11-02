@@ -3,7 +3,8 @@
 import sys, json, wave
 import numpy as np
 from kokoro_onnx import Kokoro
-from ep1 import BEATS
+import importlib, os
+BEATS = importlib.import_module(os.environ.get('EPISODIO', 'ep1')).BEATS
 
 speed, out, tl = float(sys.argv[1]), sys.argv[2], sys.argv[3]
 k = Kokoro('/Users/unidad/Jarvis/.jarvis/tts/kokoro/kokoro-v1.0.onnx', '/Users/unidad/Jarvis/.jarvis/tts/kokoro/voices-v1.0.bin')
