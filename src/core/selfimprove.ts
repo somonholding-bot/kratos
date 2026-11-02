@@ -113,10 +113,21 @@ export async function runSelfImprovement(db: Db, task: any) {
   const id = Number(task.inputs?.job_id);
   const job = (await db.query(`SELECT * FROM code_jobs WHERE id = $1 AND project = $2 AND status IN ('aprobada','en_ejecucion')`, [id, PROJECT])).rows[0];
   if (!job) throw new Error('Mejora no aprobada o inexistente');
-  if (!CLAUDE) throw new Error('Claude Code no está instalado');
-  const dirty = (await git('status', '--porcelain')).out.trim();
-  if (dirty) throw new Error('Hay cambios sin guardar en el código de KRATOS; no se toca nada hasta que estén guardados');
-  if ((await git('branch', '--show-current')).out.trim() !== 'main') throw new Error('El código no está en la rama principal');
+  // Las condiciones previas también marcan la mejora como fallida y avisan (antes la dejaban «aprobada» en silencio)
+  const pre = async () => {
+    if (!CLAUDE) return 'Claude Code no está instalado';
+    if ((await git('status', '--porcelain')).out.trim()) return 'Hay cambios sin guardar en el código de KRATOS; no se toca nada hasta que estén guardados';
+    if ((await git('branch', '--show-current')).out.trim() !== 'main') return 'El código no está en la rama principal (main)';
+    return '';
+  };
+  const bad = await pre();
+  if (bad) {
+    if (Number(task.attempts ?? 1) >= Number(task.max_attempts ?? 3)) {
+      await db.query(`UPDATE code_jobs SET status = 'fallida', result = $2, finished_at = now() WHERE id = $1`, [id, JSON.stringify({ error: bad })]);
+      await addAgenda(db, { at: new Date(), kind: 'aviso', text: `no pude aplicar la mejora número ${id}: ${bad}. El código quedó como estaba.` }, 'auto-mejora');
+    }
+    throw new Error(bad);
+  }
   await db.query(`UPDATE code_jobs SET status = 'en_ejecucion' WHERE id = $1`, [id]);
   const keep = setInterval(() => db.query(`UPDATE tasks SET locked_until = now() + interval '5 minutes' WHERE id = $1 AND status = 'en_ejecucion'`, [task.id]).catch(() => {}), 60_000);
   const tag = `respaldo/mejora-${id}`, branch = `mejora/${id}`;

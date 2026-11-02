@@ -85,9 +85,9 @@ test('validatePlaybook comprueba agente, skill y herramientas contra la base de 
 // ---------- 3 ----------
 test('syncPlaybooksFromFiles importa, detecta cambios y aísla los archivos inválidos sin lanzar', async () => {
   const first = await syncPlaybooksFromFiles(db);
-  assert.equal(first.importados.length, 4, JSON.stringify(first));
+  assert.equal(first.importados.length, 7, JSON.stringify(first));
   const second = await syncPlaybooksFromFiles(db);
-  assert.equal(second.sin_cambios.length, 4); assert.equal(second.importados.length, 0);
+  assert.equal(second.sin_cambios.length, 7); assert.equal(second.importados.length, 0);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kratos-pb-'));
   fs.mkdirSync(path.join(dir, 'venus')); fs.mkdirSync(path.join(dir, 'mercurio'));
   fs.writeFileSync(path.join(dir, 'venus', 'malo.json'), JSON.stringify({ id: 'malo' }));
@@ -361,7 +361,7 @@ test('regla de un solo fallo, reversión con historial y verificación con la ve
 test('herramientas: registro, ≤ 20 estrictas, entrevista, no duplicar, selección y regla del CEO', async () => {
   const reg = async (n: string) => (await db.query(`SELECT toolsets, agents FROM tool_registry WHERE name = $1`, [n])).rows[0];
   const ver = await reg('ver_playbooks');
-  assert.ok(ver.toolsets.includes('texto') && ver.toolsets.includes('voz') && ver.toolsets.includes('ceo')); assert.deepEqual(ver.agents, []);
+  assert.ok(ver.toolsets.includes('texto') && ver.toolsets.includes('voz') && ver.toolsets.includes('ceo')); assert.deepEqual(ver.agents, ['jupiter']);
   assert.ok((await reg('ejecutar_playbook')).toolsets.includes('ceo') && !(await reg('ejecutar_playbook')).toolsets.includes('voz'));
   assert.ok(!(await reg('editar_playbook')).toolsets.includes('voz'));
   assert.ok(toolCount().strict <= 20, JSON.stringify(toolCount()));
