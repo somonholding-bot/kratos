@@ -108,6 +108,16 @@ export async function uploadCaptions(videoId: string, file: string, language = '
   return { subtitulos: j.id };
 }
 
+// Programa la publicación: el vídeo queda privado y YouTube lo hace público a la hora indicada (ISO en UTC)
+export async function schedulePublish(videoId: string, isoUtc: string) {
+  const r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=status', { method: 'PUT',
+    headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ id: videoId, status: { privacyStatus: 'private', publishAt: isoUtc, selfDeclaredMadeForKids: false } }), signal: AbortSignal.timeout(30_000) });
+  const j: any = await r.json();
+  if (!r.ok) throw new Error(`YouTube respondió ${r.status}: ${j.error?.message ?? ''}`);
+  return { id: videoId, programado: isoUtc };
+}
+
 // Cambia la visibilidad (public, unlisted, private). Solo se llama tras la aprobación del propietario.
 export async function setPrivacy(videoId: string, privacy: 'public' | 'unlisted' | 'private') {
   const r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=status', { method: 'PUT',

@@ -32,8 +32,10 @@ def banner(out):
     im.paste(L, (2050 - L.width // 2, 930 - L.height // 2), L)
     sh = orin(shadow=True, armL=60, armR=60, mouth='flat'); Ls = sh.resize((int(sh.width * 0.95), int(sh.height * 0.95)), Image.LANCZOS)
     im.paste(Ls, (2400 - Ls.width // 2, 980 - Ls.height // 2), Ls)
-    d.text((1280, 640), 'AION', font=font_px(250), fill=GOLD, anchor='mm')
-    d.text((1280, 820), 'DREAMS  -  MIND  -  MEANING', font=font_px(64), fill=(210, 220, 255), anchor='mm')
+    d.text((1280, 590), 'AION', font=font_px(230), fill=GOLD, anchor='mm', stroke_width=6, stroke_fill=(20, 14, 50))
+    d.text((1280, 748), 'WAKE UP INSIDE YOUR DREAMS', font=font_px(74), fill=(255, 255, 255), anchor='mm', stroke_width=4, stroke_fill=(20, 14, 50))
+    d.text((1280, 832), 'LUCID DREAMING  -  JUNG  -  HERMETIC SECRETS', font=font_px(46), fill=(210, 220, 255), anchor='mm')
+    d.rounded_rectangle([1020, 874, 1540, 934], radius=30, fill=(238, 188, 78)); d.text((1280, 905), 'NEW EPISODE EVERY WEEK', font=font_px(36), fill=(20, 14, 50), anchor='mm')
     d.ellipse([1180, 440, 1380, 640 - 70], outline=(*GOLD, 0))
     im.convert('RGB').save(out, 'JPEG', quality=94); print(out, im.size)
 
