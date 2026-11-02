@@ -8,7 +8,7 @@ import sys, os, json, wave, subprocess, urllib.request, urllib.error, importlib
 import numpy as np
 
 BEATS = importlib.import_module(os.environ.get('EPISODIO', 'ep1')).BEATS
-MODEL = os.environ.get('EL_MODEL', 'eleven_multilingual_v2')   # eleven_v3 es más expresivo (límite 5.000 caracteres por llamada)
+MODEL = os.environ.get('EL_MODEL', 'eleven_v4')   # Eleven v4 (el más expresivo, límite 10.000 caracteres); alternativas: eleven_multilingual_v2, eleven_v3 (5.000)
 SETTINGS = dict(stability=float(os.environ.get('EL_STABILITY', 0.45)), similarity_boost=0.80, style=float(os.environ.get('EL_STYLE', 0.35)), use_speaker_boost=True)
 
 def key():
