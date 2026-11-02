@@ -22,6 +22,9 @@ kratos|$CL|scenario-war-room|c-level-advisor/skills/scenario-war-room/SKILL.md
 kratos|$CL|company-os|c-level-advisor/skills/company-os/SKILL.md
 kratos|$CL|postmortem|c-level-advisor/executive-mentor/skills/postmortem/SKILL.md
 kratos|$SF|startup-context
+kratos|$MK|marketing-ideas
+kratos|$MK|marketing-loops
+kratos|$MK|marketing-psychology
 sol|$SF|roadmap-planning
 luna|$SF|user-research-synthesis
 luna|$SF|daily-product-digest
@@ -42,6 +45,7 @@ sol|$MK|product-marketing
 sol|$MK|marketing-plan
 sol|$MK|offers
 sol|$MK|pricing
+sol|$MK|paywalls
 luna|$MK|onboarding
 luna|$MK|churn-prevention
 luna|$MK|emails
@@ -56,6 +60,7 @@ mercurio|$MK|public-relations
 venus|$MK|ad-creative
 venus|$MK|image
 venus|$MK|video
+venus|$MK|marketing-psychology
 venus|$MK|social
 venus|$MK|influencer-marketing
 venus|$MK|co-marketing

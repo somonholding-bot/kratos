@@ -62,6 +62,21 @@ export async function subscriptionAvailable(db: Db): Promise<{ ok: boolean; unti
   return { ok: true };
 }
 
+// Trabajo autónomo (ciclo del CEO y agentes): usa el plan hasta el tope elegido por el propietario (90 % por defecto)
+// de la ventana de 5 horas o de la semanal, y entonces espera al reinicio. La conversación con el propietario no tiene este tope.
+export async function autonomyWindow(db: Db): Promise<{ ok: boolean; until?: Date; reason?: string }> {
+  const av = await subscriptionAvailable(db);
+  if (!av.ok) return av;
+  const cap = Number((await db.query(`SELECT value FROM system_state WHERE key = 'autonomy_usage_cap'`)).rows[0]?.value ?? 0.9);
+  const u = (await subStatus(db))?.usage;
+  for (const k of ['seven_day', 'five_hour'] as const) {
+    const resets = u?.[`${k}_resets` as const];
+    if ((u?.[k] ?? 0) >= cap && resets && new Date(resets) > new Date())
+      return { ok: false, until: new Date(resets), reason: `uso del plan al ${Math.round((u?.[k] ?? 0) * 100)} % (${k === 'five_hour' ? 'ventana de 5 h' : 'semanal'}): espera al reinicio` };
+  }
+  return { ok: true };
+}
+
 const toIso = (v: unknown): string | null => {
   if (v == null) return null;
   const n = Number(v);

@@ -80,6 +80,9 @@ const HINTS: Record<string, string[]> = {
   'cold-outreach': ['contactar', 'primer mensaje', 'mensaje en frio', 'propuesta de colaboracion'],
   'community-discovery': ['donde esta mi audiencia', 'comunidades', 'subreddit', 'grupos de nicho'],
   'earned-media-outreach': ['periodistas', 'podcast', 'entrevista', 'cobertura', 'menciones'],
+  paywalls: ['paywall', 'pantalla de pago', 'suscripcion premium', 'convertir a pago', 'upgrade'],
+  'marketing-psychology': ['psicologia', 'persuasion', 'sesgos', 'motivar', 'convencer'],
+  'youtube-crecimiento': ['youtube', 'canal', 'video', 'miniatura', 'shorts', 'meditacion', 'espiritualidad', 'suscriptores'],
   'churn-analysis': ['analisis de bajas', 'churn', 'cancelaciones', 'retencion'],
 };
 

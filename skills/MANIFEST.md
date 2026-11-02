@@ -14,6 +14,9 @@ Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado
 | kratos | company-os | [alirezarezvani/claude-skills@5434623a78](https://github.com/alirezarezvani/claude-skills/blob/5434623a788ec3105d238328cfe554e1e2242ff7/c-level-advisor/skills/company-os/SKILL.md) | MIT |
 | kratos | postmortem | [alirezarezvani/claude-skills@5434623a78](https://github.com/alirezarezvani/claude-skills/blob/5434623a788ec3105d238328cfe554e1e2242ff7/c-level-advisor/executive-mentor/skills/postmortem/SKILL.md) | MIT |
 | kratos | startup-context | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/startup-context/SKILL.md) | MIT |
+| kratos | marketing-ideas | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-ideas/SKILL.md) | MIT |
+| kratos | marketing-loops | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-loops/SKILL.md) | MIT |
+| kratos | marketing-psychology | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-psychology/SKILL.md) | MIT |
 | sol | roadmap-planning | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/roadmap-planning/SKILL.md) | MIT |
 | luna | user-research-synthesis | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/user-research-synthesis/SKILL.md) | MIT |
 | luna | daily-product-digest | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/daily-product-digest/SKILL.md) | MIT |
@@ -34,6 +37,7 @@ Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado
 | sol | marketing-plan | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-plan/SKILL.md) | MIT |
 | sol | offers | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/offers/SKILL.md) | MIT |
 | sol | pricing | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/pricing/SKILL.md) | MIT |
+| sol | paywalls | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/paywalls/SKILL.md) | MIT |
 | luna | onboarding | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/onboarding/SKILL.md) | MIT |
 | luna | churn-prevention | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/churn-prevention/SKILL.md) | MIT |
 | luna | emails | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/emails/SKILL.md) | MIT |
@@ -48,6 +52,7 @@ Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado
 | venus | ad-creative | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/ad-creative/SKILL.md) | MIT |
 | venus | image | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/image/SKILL.md) | MIT |
 | venus | video | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/video/SKILL.md) | MIT |
+| venus | marketing-psychology | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-psychology/SKILL.md) | MIT |
 | venus | social | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/social/SKILL.md) | MIT |
 | venus | influencer-marketing | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/influencer-marketing/SKILL.md) | MIT |
 | venus | co-marketing | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/co-marketing/SKILL.md) | MIT |
