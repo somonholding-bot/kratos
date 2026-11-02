@@ -11,6 +11,7 @@ import { createPool } from '../../src/db.ts';
 import { listVideos } from '../../src/core/youtube.ts';
 import path from 'node:path';
 import { isHalted } from '../../src/core/state.ts';
+import { ROOT } from '../../src/config.ts';
 import { prepareEpisode, carpeta, checkCredits, clearLock, EPISODIO_DIR, episodeInfo, episodeModule, MEDIA, mediaPython, productionRunning, VOZ, writeLock } from '../../src/core/fabrica.ts';
 
 const db = createPool();
@@ -75,7 +76,7 @@ if (cmd === 'estado') {
 } else if (cmd === 'preparar') {
   console.log(JSON.stringify(await prepareEpisode(db, Number(a), b ? Number(b) : undefined, 'script'), null, 1));
 } else if (cmd === 'producir') {
-  // Voz local (Chatterbox) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
+  // Voz local (Kokoro bm_george) → música ACE-Step → subtítulos → animación de Orin y montaje. Cada paso se salta si ya existe.
   const id = Number(a); const q = (await db.query(`SELECT * FROM content_queue WHERE id = $1`, [id])).rows[0]; if (!q) throw new Error('No existe ese elemento de la cola');
   const otro = productionRunning(); if (otro && otro.id !== id) throw new Error(`Ya se está produciendo el elemento #${otro.id}`);
   writeLock(id);
@@ -91,9 +92,9 @@ if (cmd === 'estado') {
   try {
     const ep = episodeModule(q.guion_ruta), py = mediaPython()!, info = episodeInfo(ep), EP = { EPISODIO: ep };
     if (!fs.existsSync(f('voz.wav'))) {
-      await paso(`voz natural local (Chatterbox${fs.existsSync(path.join(os.homedir(), 'Movies/Kratos/voz/referencia.wav')) ? ', voz propia clonada' : ''})`);
-      const chatter = path.join(MEDIA, 'chatterbox/bin/python');
-      run(fs.existsSync(chatter) ? chatter : py, [path.join(EPISODIO_DIR, 'voz_local.py'), f('voz.wav'), f('timeline.json')], EP, 6);
+      await paso('voz local Kokoro bm_george (narrador británico, sin créditos)');
+      const tts = path.join(ROOT, '.jarvis/tts/venv/bin/python');
+      run(fs.existsSync(tts) ? tts : py, [path.join(EPISODIO_DIR, 'voz_local.py'), f('voz.wav'), f('timeline.json')], EP, 3);
       await db.query(`UPDATE content_queue SET coste = coste || '{"voz":"local, sin créditos"}'::jsonb WHERE id = $1`, [id]);
     }
     const tl = JSON.parse(fs.readFileSync(f('timeline.json'), 'utf8')); const total = Math.ceil(0.5 + tl.duration + 3);

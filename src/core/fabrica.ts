@@ -8,7 +8,7 @@ import { audit, isHalted } from './state.ts';
 import { setThumbnail, uploadCaptions, uploadVideo, videoThumbnails } from './youtube.ts';
 
 // Fábrica autónoma de Aion (herramienta fabrica_aion): produce un episodio de la cola con el motor de Orin
-// (scripts/media/episodio: voz local Chatterbox (sin ElevenLabs), escenarios propios generados en local, animación Pillow + ffmpeg, música ACE-Step, subtítulos), lo pasa por la
+// (scripts/media/episodio: voz local Kokoro bm_george (sin ElevenLabs), escenarios propios generados en local, animación Pillow + ffmpeg, música ACE-Step, subtítulos), lo pasa por la
 // puerta de calidad (scripts/media/fabrica.ts qa) y lo sube como PRIVADO. Publicar o programar sigue exigiendo al propietario
 // (publicar_video_youtube). Aquí no hay borrado ni cambios de presupuesto o permisos.
 
@@ -115,7 +115,7 @@ export async function startProduction(db: Db, id: number, actor: string) {
   const child = spawn(process.execPath, [path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
   child.unref();
   await audit(db, actor, 'fabrica.produccion_lanzada', { id, episodio: ep, voz: 'local', pid: child.pid });
-  return { id, episodio: ep, beats: info.beats, escenarios: info.escenarios, voz: 'local (Chatterbox), sin créditos', carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,
+  return { id, episodio: ep, beats: info.beats, escenarios: info.escenarios, voz: 'local (Kokoro bm_george), sin créditos', carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,
     estado: 'PRODUCTION: en segundo plano (voz, música, subtítulos y animación); al terminar ejecuta la acción qa' };
 }
 
