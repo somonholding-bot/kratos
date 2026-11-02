@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
 import { autoApprove, requestApproval } from './approvals.ts';
+import { onPlaybookApproval } from './playbooks.ts';
 
 // Funciones nuevas («autoprogramación» con permiso):
 // - KRATOS propone una función (código pequeño en JavaScript) y una solicitud de aprobación.
@@ -44,6 +45,8 @@ export async function proposePlugin(db: Db, p: { name: string; description: stri
 
 // Al aprobar en el panel: se activa (y la versión anterior queda sustituida)
 export async function onApprovalDecided(db: Db, approval: any, approved: boolean) {
+  // Fase D: la aprobación previa de un playbook se resuelve aquí (approvals.ts no cambia; mismo gancho que las funciones)
+  if (approval?.scope?.tipo === 'playbook_ejecucion') return onPlaybookApproval(db, approval, approved);
   if (approval?.scope?.tipo !== 'nueva_funcion') return;
   const id = Number(approval.scope.plugin_id);
   if (!approved) { await db.query(`UPDATE plugins SET status = 'rechazada' WHERE id = $1 AND status = 'propuesta'`, [id]); return; }

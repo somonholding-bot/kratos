@@ -24,18 +24,20 @@ export type NewTask = {
   status?: string;
   isDemo?: boolean;
   createdBy: string;
+  playbookId?: string | null;        // fase D: procedimiento que la originó y versión exacta con la que se verifica
+  playbookVersion?: number | null;
 };
 
 // Crea una tarea. Si la clave de idempotencia ya existe, devuelve la existente (sin duplicar).
 export async function createTask(db: Db, t: NewTask) {
   const { rows } = await db.query(
     `INSERT INTO tasks (business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
-       has_side_effects, run_at, recurrence_minutes, depends_on, expected_result, verification, max_attempts, idempotency_key, status, is_demo, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+       has_side_effects, run_at, recurrence_minutes, depends_on, expected_result, verification, max_attempts, idempotency_key, status, is_demo, created_by, playbook_id, playbook_version)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
      ON CONFLICT (idempotency_key) DO NOTHING RETURNING *`,
     [t.businessId, t.productId ?? null, t.ownerFunction, t.type, t.title, t.objective, t.priority ?? 3, t.inputs ?? {}, t.allowedActions ?? [],
      t.quota ?? {}, t.hasSideEffects ?? false, t.runAt ?? new Date(), t.recurrenceMinutes ?? null, t.dependsOn ?? null, t.expectedResult,
-     t.verification, t.maxAttempts ?? 3, t.idempotencyKey ?? null, t.status ?? 'pendiente', t.isDemo ?? false, t.createdBy]);
+     t.verification, t.maxAttempts ?? 3, t.idempotencyKey ?? null, t.status ?? 'pendiente', t.isDemo ?? false, t.createdBy, t.playbookId ?? null, t.playbookVersion ?? null]);
   if (rows[0]) {
     await audit(db, t.createdBy, 'tarea.creada', { id: rows[0].id, title: t.title, type: t.type }, t.businessId);
     return { task: rows[0], created: true };
@@ -78,9 +80,9 @@ export async function completeTask(db: Db, task: any, workerId: string, result: 
       next.setSeconds(0, 0);
       await tx.query(
         `INSERT INTO tasks (business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
-           has_side_effects, run_at, recurrence_minutes, expected_result, verification, max_attempts, idempotency_key, is_demo, created_by)
+           has_side_effects, run_at, recurrence_minutes, expected_result, verification, max_attempts, idempotency_key, is_demo, created_by, playbook_id, playbook_version)
          SELECT business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
-           has_side_effects, $2, recurrence_minutes, expected_result, verification, max_attempts, $3, is_demo, 'planificador'
+           has_side_effects, $2, recurrence_minutes, expected_result, verification, max_attempts, $3, is_demo, 'planificador', playbook_id, playbook_version
          FROM tasks WHERE id = $1
          ON CONFLICT (idempotency_key) DO NOTHING`,
         [task.id, next, `${task.type}:${task.business_id}:${next.toISOString()}`]);

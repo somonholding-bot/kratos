@@ -2,12 +2,16 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { readNote } from './vault.ts';
+import { runChecks } from './playbookchecks.ts';
+import { loadTaskPlaybook } from './playbooks.ts';
 
 // Verificación objetiva de cada tarea antes de darla por completada (fase B del sistema híbrido).
 // Una respuesta «bonita» del modelo no es prueba de nada: aquí se comprueban hechos (archivos, tamaños, duraciones,
 // informes leídos de vuelta). Si falla, la tarea no se completa: se reintenta o queda fallida con el motivo.
+// Fase D: si la tarea nace de un playbook, se ejecutan además las comprobaciones declaradas en la versión exacta
+// con la que se creó («playbook · nombre»); las de nivel «aviso» se registran pero no bloquean.
 
-export type Check = { nombre: string; ok: boolean; detalle?: string };
+export type Check = { nombre: string; ok: boolean; detalle?: string; nivel?: 'bloqueante' | 'aviso' };
 export type Artifact = { tipo: string; ruta?: string; url?: string; bytes?: number; nota?: string };
 export type Verification = { ok: boolean; comprobaciones: Check[]; artefactos: Artifact[]; verificado_en: string };
 
@@ -57,7 +61,17 @@ export async function verifyTask(_db: Db, task: any, result: Record<string, any>
     default:   // tipos sin comprobación específica (apple_sync, auto_mejora…): basta con que el manejador haya terminado sin error
       checks.push({ nombre: 'manejador terminado sin error', ok: true, detalle: result == null ? 'sin datos de resultado' : undefined });
   }
-  return { ok: checks.every((c) => c.ok), comprobaciones: checks, artefactos: artifacts, verificado_en: new Date().toISOString() };
+  // Fase D: comprobaciones declaradas por el playbook (texto del informe y bloques JSON extraídos)
+  if (task.playbook_id && task.type === 'agente') {
+    const pb = await loadTaskPlaybook(_db, task);
+    if (!pb) checks.push({ nombre: 'playbook · versión', ok: false, detalle: `no existe el playbook ${task.playbook_id} v${task.playbook_version ?? '?'}` });
+    else {
+      const ctx = { texto: String(r.deliverable ?? ''), params: (task.inputs?.parametros ?? {}) as Record<string, unknown>, extraido: {} as Record<string, any>, task, db: _db };
+      checks.push(...await runChecks(pb.verificacion ?? [], ctx));
+      if (Object.keys(ctx.extraido).length) r.extraido = ctx.extraido;   // queda en tasks.result para el encadenado (producir_video)
+    }
+  }
+  return { ok: checks.every((c) => c.ok || c.nivel === 'aviso'), comprobaciones: checks, artefactos: artifacts, verificado_en: new Date().toISOString() };
 }
 
-export const failedChecks = (v: Verification) => v.comprobaciones.filter((c) => !c.ok).map((c) => `${c.nombre}${c.detalle ? ` (${c.detalle})` : ''}`).join('; ');
+export const failedChecks = (v: Verification) => v.comprobaciones.filter((c) => !c.ok && c.nivel !== 'aviso').map((c) => `${c.nombre}${c.detalle ? ` (${c.detalle})` : ''}`).join('; ');

@@ -9,6 +9,7 @@ import { saveReport } from './registry.ts';
 import { runRevert, runSelfImprovement } from './selfimprove.ts';
 import { audit } from './state.ts';
 import { produceVideo } from './video.ts';
+import { cancelExpiredPlaybookTasks } from './playbooks.ts';
 
 // Manejadores deterministas que el trabajador ejecuta sin IA y sin coste.
 // Las tareas de tipo 'agente' quedan en 'esperando_ia' hasta conectar Claude.
@@ -44,6 +45,7 @@ export const handlers: Record<string, Handler> = {
 
   async revision_salud(db, task) {
     const expired = await expireApprovals(db, 'trabajador');
+    await cancelExpiredPlaybookTasks(db);   // fase D: una tarea de playbook cuya aprobación caducó se cancela (no espera para siempre)
     const hb = (await db.query(`SELECT process, extract(epoch FROM now() - at)::int AS age FROM heartbeats`)).rows;
     const stale = hb.filter((h) => h.age > config.worker.heartbeatStaleSeconds && h.process !== 'worker').map((h) => h.process);
     const stuck = (await db.query(`SELECT count(*)::int AS n FROM tasks WHERE status = 'requiere_revision'`)).rows[0].n;

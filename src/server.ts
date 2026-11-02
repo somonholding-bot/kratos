@@ -11,6 +11,7 @@ import { cancelTask, createTask } from './core/tasks.ts';
 import { decideApproval } from './core/approvals.ts';
 import { handleMessage } from './core/chat.ts';
 import { syncToolRegistry } from './core/toolregistry.ts';
+import { syncPlaybooksFromFiles } from './core/playbooks.ts';
 import { cleanTmp, synthesize, transcribe, transcribeWake, voiceAvailable } from './voice.ts';
 import { aiStatus } from './core/brain.ts';
 import { ensureVault, VAULT } from './core/vault.ts';
@@ -369,6 +370,8 @@ if (import.meta.main) {
   const db = createPool();
   await migrate(db);
   await syncToolRegistry(db).catch((e) => console.error('[server] registro de herramientas:', e.message));
+  // Fase D: los archivos playbooks/<agente>/<id>.json son la semilla; cada cambio en el repo crea y activa una versión «archivo»
+  await syncPlaybooksFromFiles(db).then((r) => { if (r.invalidos.length) console.error('[server] playbooks inválidos:', r.invalidos.map((i) => `${i.archivo}: ${i.errores.join('; ')}`).join(' | ')); }).catch((e) => console.error('[server] playbooks:', e.message));
   cleanTmp();
   ensureVault();
   const server = createServer(db);

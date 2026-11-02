@@ -1,0 +1,49 @@
+{
+  "id": "yt-guion-ritual-lunar",
+  "nombre": "Guion de meditación o ritual lunar para el canal Aion",
+  "version": 1,
+  "descripcion": "Guion completo en inglés (narración, planos e imágenes) listo para producir_video; al verificarse se encarga la producción automáticamente.",
+  "objetivo": "Escribir el guion en inglés de un vídeo de tipo {{tipo}} de {{duracion_min}} minutos sobre «{{tema}}» para el canal Aion, con beat map, lista de planos (keyframes) y el encargo de producción en JSON, siguiendo el método cinematic-director y el playbook youtube-crecimiento.",
+  "agentes": { "responsable": "venus" },
+  "skill": "cinematic-director",
+  "palabras_clave": ["guion", "escribe el guion", "meditacion", "meditación guiada", "ritual lunar", "ritual", "luna llena", "luna nueva", "afirmaciones", "video de meditacion", "narracion", "para dormir", "sleep meditation"],
+  "entradas": {
+    "tema": { "tipo": "texto", "descripcion": "Tema o título de trabajo en inglés (p. ej. Full Moon in Taurus: 7-Minute Release Ritual)", "pregunta": "¿Cuál es el tema del vídeo (en inglés)?", "requerida": true, "max_caracteres": 120 },
+    "tipo": { "tipo": "opcion", "descripcion": "Formato del vídeo", "requerida": false, "defecto": "meditacion", "opciones": ["meditacion", "ritual", "afirmaciones"] },
+    "duracion_min": { "tipo": "numero", "descripcion": "Duración objetivo en minutos", "requerida": false, "defecto": 7, "min": 3, "max": 20 },
+    "subir": { "tipo": "booleano", "descripcion": "Subir el vídeo producido a YouTube como privado", "requerida": false, "defecto": true },
+    "investigacion_tarea": { "tipo": "numero", "descripcion": "Número de la tarea de investigación de competencia previa (si la hay)", "requerida": false, "min": 1 }
+  },
+  "herramientas": ["buscar_informes", "ver_resultado_tarea", "buscar_notas"],
+  "pasos": [
+    { "n": 1, "titulo": "Investigación previa", "instruccion": "Si la entrada investigacion_tarea trae un número, lee esa tarea con ver_resultado_tarea; si no, busca con buscar_informes (playbook yt-investigacion-competencia) la investigación más reciente del tema «{{tema}}». Usa su patrón ganador y su hueco; si no hay ninguna, dilo en «## Promise» y escribe igualmente.", "herramienta": "buscar_informes" },
+    { "n": 2, "titulo": "Promise", "instruccion": "Sección «## Promise»: para quién es el vídeo, qué siente o consigue al terminar, por qué haría clic en este y no en otro, y qué calcula la app Aion que se puede mostrar de forma natural (Luna real, fase, hora planetaria). Tono de marca: tentativo, sin predicciones, sin promesas médicas (nada de curar, sanar enfermedades ni sustituir a un médico)." },
+    { "n": 3, "titulo": "Beat map", "instruccion": "Sección «## Beat map»: la estructura por bloques con minuto de inicio (0–15 s promesa y prueba; un cambio cada 60–90 s; cierre con una acción concreta), siguiendo el método cinematic-director: subtexto, beats, blocking y plan de sonido en una tabla breve." },
+    { "n": 4, "titulo": "Script", "instruccion": "Sección «## Script»: la narración completa en inglés sencillo, frases cortas, pausas marcadas con «…», para {{duracion_min}} minutos a unas 110–140 palabras por minuto (es decir, {{duracion_min}}*125 palabras aproximadamente). Es un vídeo de tipo {{tipo}}. Sin saludos largos ni logos; sin texto que haya que leer en pantalla." },
+    { "n": 5, "titulo": "Titles", "instruccion": "Sección «## Titles»: 3 títulos en inglés (≤ 60 caracteres, beneficio + concreción), 3 ideas de miniatura (3 palabras como máximo, una idea visual) y la descripción de YouTube con la primera línea pensada para el enlace de la app." },
+    { "n": 6, "titulo": "Encargo", "instruccion": "Al final, un bloque de código ```json encargo con exactamente: titulo (el título elegido, ≤ 60 caracteres), guion (la narración completa de «Script», sin encabezados), imagenes (lista de {{duracion_min}}*2 prompts de imagen en inglés, uno cada ~30 s, sin texto en la imagen: los keyframes de la lista de planos), musica (descripción en inglés de la música ambiental), miniatura_texto (3–4 palabras en inglés), descripcion (descripción de YouTube), etiquetas (lista de 8–15 etiquetas en inglés), formato (\"horizontal\"). Es JSON válido: comillas dobles, sin comentarios." }
+  ],
+  "salidas": [
+    { "nombre": "informe", "tipo": "informe", "descripcion": "Promise, Beat map, Script, Titles sobre «{{tema}}» ({{tipo}}, {{duracion_min}} min)", "obligatoria": true },
+    { "nombre": "encargo", "tipo": "bloque_json", "descripcion": "Bloque ```json encargo con titulo, guion, imagenes, musica, miniatura_texto, descripcion, etiquetas; con él se crea la tarea producir_video", "obligatoria": true }
+  ],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["guion en inglés al ritmo de narración correcto para {{duracion_min}} minutos", "al menos {{duracion_min}}*2 imágenes (keyframes)", "título ≤ 60 caracteres", "sin promesas médicas ni predicciones", "encargo JSON válido"],
+  "verificacion": [
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Promise", "Beat map", "Script", "Titles"] },
+    { "nombre": "bloque encargo", "tipo": "bloque_json", "bloque": "encargo", "campos": ["titulo", "guion", "imagenes", "musica", "miniatura_texto", "descripcion", "etiquetas"] },
+    { "nombre": "título corto", "tipo": "campo_longitud", "campo": "encargo.titulo", "minimo": 10, "maximo": 60 },
+    { "nombre": "ritmo del guion", "tipo": "ritmo", "campo": "encargo.guion", "duracion": "{{duracion_min}}", "ppm_min": 90, "ppm_max": 170 },
+    { "nombre": "imágenes suficientes", "tipo": "lista_minima", "campo": "encargo.imagenes", "minimo": "{{duracion_min}}*2" },
+    { "nombre": "idioma", "tipo": "idioma", "campo": "encargo.guion", "idioma": "en" },
+    { "nombre": "sin promesas médicas", "tipo": "sin_promesas_medicas", "campo": "encargo.guion" },
+    { "nombre": "temas fuera de la app", "tipo": "sin_frases", "campo": "encargo.guion", "frases": ["tarot", "runes", "kybalion"] },
+    { "nombre": "sin excusas", "tipo": "sin_frases", "frases": ["no pude acceder", "no tengo acceso", "datos de ejemplo"] }
+  ],
+  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
+  "reintentos": { "max": 2 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 10, "usd_estimado": 0, "nota": "suscripción; la producción posterior tarda 10–40 min en el Mac" },
+  "tras_completar": { "accion": "producir_video" },
+  "idioma_entregable": "en"
+}

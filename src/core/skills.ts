@@ -111,10 +111,11 @@ export function pickSkill(agent: string, text: string): Skill | null {
   return best;
 }
 
-export function skillContext(agent: string, text: string): string {
+// forced: skill fijada por un playbook (fase D); si no existe para el agente, se elige por palabras clave como siempre
+export function skillContext(agent: string, text: string, forced?: string | null): string {
   const all = skillsFor(agent);
   if (!all.length) return '';
-  const chosen = pickSkill(agent, text);
+  const chosen = (forced && all.find((s) => s.name === forced)) || pickSkill(agent, text);
   const index = all.map((s) => `- ${s.name}${s.name === chosen?.name ? ' (aplicada)' : ''}`).join('\n');
   let body = '';
   if (chosen) {

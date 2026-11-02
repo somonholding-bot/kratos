@@ -162,6 +162,25 @@ export async function updateChannel(look: ChannelLook) {
   return { canal: ch.id, actualizado: Object.keys(look).filter((k) => (look as any)[k] !== undefined) };
 }
 
+// Lista los vídeos del canal con su visibilidad (para gestionar: editar, publicar u ocultar, borrar)
+export async function listVideos(max = 25) {
+  const ch = (await get('https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true')).items?.[0];
+  const uploads = ch?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploads) return { videos: [] };
+  const ids = (await get(`https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=${Math.min(50, max)}&playlistId=${uploads}`)).items?.map((i: any) => i.contentDetails.videoId) ?? [];
+  if (!ids.length) return { videos: [] };
+  const vids = (await get(`https://www.googleapis.com/youtube/v3/videos?part=snippet,status,statistics&id=${ids.join(',')}`)).items ?? [];
+  return { videos: vids.map((v: any) => ({ id: v.id, titulo: v.snippet?.title, fecha: v.snippet?.publishedAt?.slice(0, 10), visibilidad: v.status?.privacyStatus, vistas: Number(v.statistics?.viewCount ?? 0), url: `https://youtu.be/${v.id}` })) };
+}
+
+// Borra un vídeo propio (irreversible en YouTube). El propietario dio a KRATOS control total del canal (1-nov-2026).
+export async function deleteVideo(videoId: string) {
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE',
+    headers: { authorization: `Bearer ${await accessToken()}` }, signal: AbortSignal.timeout(30_000) });
+  if (r.status !== 204) { const j: any = await r.json().catch(() => ({})); throw new Error(`YouTube respondió ${r.status}: ${j.error?.message ?? ''}`.slice(0, 200)); }
+  return { id: videoId, borrado: true };
+}
+
 // Aprobación del propietario en el panel: solo entonces un vídeo pasa a público o cambia la presentación pública del canal
 export async function onYoutubeApproval(db: Db, approval: any, approved: boolean) {
   const tipo = approval?.scope?.tipo;

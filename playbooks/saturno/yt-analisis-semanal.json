@@ -1,0 +1,38 @@
+{
+  "id": "yt-analisis-semanal",
+  "nombre": "Análisis semanal de resultados del canal Aion",
+  "version": 1,
+  "objetivo": "Medir con datos reales de estado_youtube qué funcionó y qué no en los últimos {{dias}} días del canal Aion, comparar con la semana anterior y proponer como mucho 3 acciones con su playbook.",
+  "agentes": { "responsable": "saturno" },
+  "skill": "analytics",
+  "palabras_clave": ["analisis semanal", "resultados del canal", "como va youtube", "metricas de youtube", "vistas", "que funciono", "weekly review", "analitica", "rendimiento del canal"],
+  "entradas": {
+    "dias": { "tipo": "numero", "descripcion": "Días a analizar", "requerida": false, "defecto": 7, "min": 3, "max": 28 },
+    "objetivo_semana": { "tipo": "texto", "descripcion": "Objetivo de la semana, si lo hay", "requerida": false, "max_caracteres": 200 }
+  },
+  "herramientas": ["estado_youtube", "buscar_informes", "ver_resultado_tarea", "listar_tareas"],
+  "pasos": [
+    { "n": 1, "titulo": "Datos reales", "instruccion": "Llama a estado_youtube. Sección «Cifras de la semana»: suscriptores, vistas totales y por vídeo reciente (vistas, me gusta, comentarios) y la analítica de 28 días tal como la devuelve la herramienta. Hoy NO da CTR ni retención: no los inventes; si faltan, dilo. Si el canal no está conectado, escribe un informe corto que lo diga en «## Limitaciones» y no inventes nada.", "herramienta": "estado_youtube" },
+    { "n": 2, "titulo": "Semana anterior", "instruccion": "Con buscar_informes (playbook yt-analisis-semanal) lee el informe anterior y compara en la sección «Comparación»: qué subió, qué bajó, con cifras.", "herramienta": "buscar_informes" },
+    { "n": 3, "titulo": "Qué funcionó y qué no", "instruccion": "Secciones «Qué funcionó» y «Qué cambiar»: por vídeo, con cifras; si un tema supera la media ×2, propón 3 variantes." },
+    { "n": 4, "titulo": "Lecciones", "instruccion": "Sección «Lecciones»: 3 lecciones con evidencia numérica, redactadas para que KRATOS las guarde con registrar_leccion.{{objetivo_semana}}" },
+    { "n": 5, "titulo": "Próxima semana", "instruccion": "Sección «Próxima semana»: como mucho 3 acciones, cada una con el playbook a ejecutar (yt-investigacion-competencia, yt-guion-ritual-lunar o yt-calendario-30-dias) y sus parámetros." }
+  ],
+  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Cifras de la semana, Comparación, Qué funcionó, Qué cambiar, Lecciones, Próxima semana", "obligatoria": true }],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["todas las cifras salen de estado_youtube", "3 lecciones con evidencia", "≤ 3 acciones con playbook y parámetros"],
+  "verificacion": [
+    { "nombre": "usó estado_youtube", "tipo": "herramienta_usada", "herramienta": "estado_youtube" },
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Cifras de la semana", "Comparación", "Qué funcionó", "Qué cambiar", "Lecciones", "Próxima semana"] },
+    { "nombre": "longitud", "tipo": "longitud_minima", "caracteres": 1200 },
+    { "nombre": "lecciones", "tipo": "numero_de_items", "minimo": 3, "seccion": "Lecciones" },
+    { "nombre": "sin datos inventados", "tipo": "sin_frases", "frases": ["datos de ejemplo", "cifras estimadas", "ctr estimado", "retención estimada", "no tengo acceso"] }
+  ],
+  "recuperacion": { "si_falla_verificacion": "revisar", "si_falta_herramienta": "revisar" },
+  "reintentos": { "max": 1 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 8, "usd_estimado": 0, "nota": "suscripción" },
+  "programacion": { "recurrencia_minutos": 10080 },
+  "tras_completar": { "accion": "instruccion_ceo", "instruccion": "Guarda las 3 lecciones con registrar_leccion (tarea_id y playbook yt-analisis-semanal) y ejecuta las acciones propuestas, una por agente." },
+  "idioma_entregable": "es"
+}

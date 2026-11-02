@@ -30,7 +30,7 @@ export function saveReport(task: { id: number; title: string; owner_function: st
 
 export async function taskResult(db: Db, id: number) {
   const t = (await db.query(`SELECT t.id, t.type AS tipo, t.title, t.objective, t.owner_function AS agente, t.status, t.created_at, t.started_at, t.completed_at, t.updated_at, t.last_error,
-      t.playbook_id, t.artifacts AS artefactos, t.verification_result AS verificacion, t.checkpoints,
+      t.playbook_id, t.playbook_version, t.artifacts AS artefactos, t.verification_result AS verificacion, t.checkpoints, t.result->>'siguiente_paso' AS siguiente_paso,
       t.result->>'deliverable' AS informe, t.result->>'report' AS archivo, t.result->>'model' AS motor,
       CASE WHEN t.type <> 'agente' THEN t.result END AS resultado
     FROM tasks t WHERE t.id = $1`, [id])).rows[0];
@@ -72,6 +72,7 @@ export async function agentsRegistry(db: Db, id?: string) {
     try { a.skills = fs.readdirSync(path.join(skillsDir, a.id)).filter((n) => fs.existsSync(path.join(skillsDir, a.id, n, 'SKILL.md'))); } catch { a.skills = []; }
     a.herramientas = a.id === 'kratos' ? 'todas las de KRATOS' : [...await agentAllowedTools(db, a.id), 'WebSearch', 'WebFetch'].filter((t) => t !== 'WebSearch' && t !== 'WebFetch');
     a.web = a.id !== 'kratos';   // búsqueda y lectura web, además de las anteriores
+    a.playbooks = (await db.query(`SELECT id, estado, version_activa, exitos, fallos_seguidos FROM playbooks WHERE agente = $1 AND estado <> 'retirado' ORDER BY id`, [a.id]).catch(() => ({ rows: [] }))).rows;
     a.salud = a.fallos_7d > 0 ? 'con fallos' : 'ok';
   }
   return agents;

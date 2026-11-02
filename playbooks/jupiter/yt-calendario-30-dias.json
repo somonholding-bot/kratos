@@ -1,0 +1,44 @@
+{
+  "id": "yt-calendario-30-dias",
+  "nombre": "Calendario de contenido de 30 días del canal Aion",
+  "version": 1,
+  "descripcion": "Plan de 30 piezas (vídeos largos y Shorts) en inglés alineadas con las fases lunares reales y con lo que la app Aion calcula.",
+  "objetivo": "Planificar 30 días de contenido del canal Aion (inglés) desde {{fecha_inicio}}: eventos lunares reales con fuente, temas semanales dentro de los pilares de la app, una pieza por día con fecha y título, y los cinco primeros encargos en orden.",
+  "agentes": { "responsable": "jupiter" },
+  "palabras_clave": ["calendario", "calendario de contenido", "30 dias", "treinta dias", "plan de contenido", "plan del mes", "que publicamos", "programacion del canal", "calendario editorial", "fases lunares del mes"],
+  "entradas": {
+    "fecha_inicio": { "tipo": "fecha", "descripcion": "Primer día del calendario (AAAA-MM-DD)", "requerida": false, "defecto": "hoy" },
+    "piezas_por_semana": { "tipo": "numero", "descripcion": "Cuántos vídeos largos por semana (el resto son Shorts)", "requerida": false, "defecto": 2, "min": 1, "max": 7 },
+    "foco": { "tipo": "texto", "descripcion": "Pilar o tema prioritario del mes, si lo hay (p. ej. horas planetarias)", "requerida": false, "max_caracteres": 120 }
+  },
+  "herramientas": ["WebSearch", "WebFetch", "buscar_informes", "buscar_conocimiento"],
+  "pasos": [
+    { "n": 1, "titulo": "Eventos lunares", "instruccion": "Busca en la web (web_search, web_fetch) las fechas reales de luna nueva, cuarto creciente, luna llena y cuarto menguante entre {{fecha_inicio}} y 30 días después, y el signo de cada luna llena y nueva. Sección «## Eventos lunares» con una tabla fecha | evento | signo | fuente (URL). Sin eclipses ni solsticios: la app no los calcula.", "herramienta": "WebSearch" },
+    { "n": 2, "titulo": "Temas semanales", "instruccion": "Con buscar_conocimiento y buscar_informes (investigaciones y análisis semanales anteriores) elige un pilar por semana entre los 12 de Aion (fases lunares, Luna natal, horas planetarias, hora y día de poder, correspondencias planetarias, casas y aspectos Luna–Sol, retorno lunar, sueños junguianos, ayunos con propósito, ciclos de abstinencia, almanaque del cielo, meditación con respiración). Foco del mes: {{foco}}. Sección «## Temas semanales»: 4 semanas, pilar, por qué ahora (evento lunar o estacionalidad) y resultado esperado.", "herramienta": "buscar_informes" },
+    { "n": 3, "titulo": "Calendario", "instruccion": "Sección «## Calendario»: una tabla Markdown con 30 filas (una por día desde {{fecha_inicio}}): fecha | título en inglés (≤ 60 caracteres) | formato (video o short; {{piezas_por_semana}} vídeos largos por semana, el resto Shorts de 20–45 s) | pilar | evento lunar si lo hay. Los vídeos de luna llena y luna nueva se publican 1–2 días antes del evento." },
+    { "n": 4, "titulo": "Primeros cinco", "instruccion": "Sección «## Primeros cinco»: lista de las 5 primeras piezas a producir en orden, cada una con el tema de investigación para yt-investigacion-competencia (en inglés) y el tipo de guion para yt-guion-ritual-lunar (meditacion, ritual o afirmaciones) con su duración." },
+    { "n": 5, "titulo": "Fuentes y bloque", "instruccion": "Sección «## Fuentes» con las URLs de las efemérides lunares y páginas consultadas. Al final, un bloque de código ```json calendario con el campo dias: lista de 30 objetos {fecha, titulo, formato, pilar, evento}. JSON válido, comillas dobles." }
+  ],
+  "salidas": [
+    { "nombre": "informe", "tipo": "informe", "descripcion": "Eventos lunares, Temas semanales, Calendario (30 filas), Primeros cinco y Fuentes desde {{fecha_inicio}}", "obligatoria": true },
+    { "nombre": "calendario", "tipo": "bloque_json", "descripcion": "Bloque ```json calendario con dias (30 piezas con fecha, titulo, formato, pilar, evento)", "obligatoria": true }
+  ],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["30 piezas con fecha y título en inglés", "fases lunares reales con fuente", "ningún tema fuera de lo que Aion calcula"],
+  "verificacion": [
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Eventos lunares", "Temas semanales", "Calendario", "Primeros cinco", "Fuentes"] },
+    { "nombre": "filas del calendario", "tipo": "tabla_filas", "minimo": 30, "seccion": "Calendario" },
+    { "nombre": "bloque calendario", "tipo": "bloque_json", "bloque": "calendario", "campos": ["dias"] },
+    { "nombre": "30 días", "tipo": "lista_minima", "campo": "calendario.dias", "minimo": 30 },
+    { "nombre": "fuentes", "tipo": "fuentes_citadas", "minimo": 2 },
+    { "nombre": "longitud", "tipo": "longitud_minima", "caracteres": 4000 },
+    { "nombre": "temas fuera de la app", "tipo": "sin_frases", "frases": ["tarot", "runes", "runas", "eclipse", "kybalion"] },
+    { "nombre": "sin excusas", "tipo": "sin_frases", "frases": ["no pude acceder", "no tengo acceso", "datos de ejemplo"] }
+  ],
+  "recuperacion": { "si_falla_verificacion": "revisar", "si_falta_herramienta": "fallar" },
+  "reintentos": { "max": 1 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 20, "usd_estimado": 0, "nota": "suscripción" },
+  "tras_completar": { "accion": "instruccion_ceo", "instruccion": "Encarga los «Primeros cinco» en orden: investigación (yt-investigacion-competencia) y después guion (yt-guion-ritual-lunar), uno a la vez." },
+  "idioma_entregable": "mixto"
+}

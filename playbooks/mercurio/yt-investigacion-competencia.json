@@ -1,0 +1,46 @@
+{
+  "id": "yt-investigacion-competencia",
+  "nombre": "Investigación de competencia en YouTube para Aion",
+  "version": 1,
+  "descripcion": "Antes de producir un vídeo del canal Aion (inglés): qué vídeos ganan sobre el tema, qué patrón comparten y qué hueco queda.",
+  "objetivo": "Encontrar los {{n_videos}} vídeos en inglés con más vistas sobre «{{tema}}» de los últimos {{periodo_meses}} meses, el patrón que comparten (título, miniatura, duración, primer minuto) y el hueco que el canal Aion puede cubrir con lo que la app Aion calcula de verdad.",
+  "agentes": { "responsable": "mercurio" },
+  "skill": "competitors",
+  "palabras_clave": ["competencia", "investiga la competencia", "investigacion de competencia", "competidores", "que funciona en youtube", "videos mas vistos", "top videos", "hueco", "patron ganador", "antes de producir"],
+  "entradas": {
+    "tema": { "tipo": "texto", "descripcion": "Tema del vídeo en inglés, tal como lo buscaría la audiencia (p. ej. planetary hours, full moon ritual)", "pregunta": "¿Sobre qué tema (en inglés) investigo la competencia?", "requerida": true, "max_caracteres": 120 },
+    "n_videos": { "tipo": "numero", "descripcion": "Cuántos vídeos analizar", "requerida": false, "defecto": 10, "min": 5, "max": 25 },
+    "periodo_meses": { "tipo": "numero", "descripcion": "Antigüedad máxima de los vídeos, en meses", "requerida": false, "defecto": 12, "min": 1, "max": 36 }
+  },
+  "herramientas": ["WebSearch", "WebFetch", "buscar_informes", "buscar_conocimiento"],
+  "pasos": [
+    { "n": 1, "titulo": "Informes previos", "instruccion": "Con buscar_informes (playbook yt-investigacion-competencia, consulta «{{tema}}») mira si ya hay una investigación reciente del mismo tema; si la hay, parte de ella y actualiza solo lo que cambió. Con buscar_conocimiento lee qué calcula la app Aion (pilares de contenido): el hueco debe caber ahí.", "herramienta": "buscar_informes" },
+    { "n": 2, "titulo": "Top 10", "instruccion": "Busca en la web y en YouTube (web_search y web_fetch) los {{n_videos}} vídeos en inglés con más vistas sobre «{{tema}}» publicados en los últimos {{periodo_meses}} meses. Sección «## Top videos» con una tabla Markdown de {{n_videos}} filas y columnas: título | canal | vistas | duración | fecha | URL (la URL completa de youtube.com). Solo vídeos reales que hayas visto en una página; nada estimado.", "herramienta": "WebSearch" },
+    { "n": 3, "titulo": "Patrón ganador", "instruccion": "Sección «## Patrón ganador»: qué comparten los que más vistas tienen (fórmula del título, promesa, duración, estilo de miniatura, qué pasa en el primer minuto, música/voz). Con cifras de la tabla." },
+    { "n": 4, "titulo": "Hueco", "instruccion": "Sección «## Hueco»: qué pide la audiencia en comentarios y títulos que nadie responde bien, y qué puede ofrecer Aion que los demás no (Luna real, horas planetarias, fases, correspondencias, sueños). Ningún tema fuera de lo que la app calcula: nada de tarot, runas, eclipses, velas ni Kybalion." },
+    { "n": 5, "titulo": "Ángulos para Aion", "instruccion": "Sección «## Ángulos para Aion»: una lista de al menos 3 ángulos concretos (título en inglés ≤ 60 caracteres, para quién, promesa, duración recomendada, por qué ganaría frente a la tabla). El primero es el recomendado." },
+    { "n": 6, "titulo": "Resumen y fuentes", "instruccion": "Sección «## Resumen» al principio del informe (5 líneas: tema, patrón, hueco, ángulo recomendado, riesgo) y sección «## Fuentes» al final con todas las URLs consultadas (vídeos y páginas) con su fecha. Si algo no se pudo comprobar, dilo en el resumen; nunca inventes vistas ni títulos." }
+  ],
+  "salidas": [
+    { "nombre": "informe", "tipo": "informe", "descripcion": "Resumen, Top videos (tabla), Patrón ganador, Hueco, Ángulos para Aion (≥ 3) y Fuentes sobre «{{tema}}»", "obligatoria": true }
+  ],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["tabla con {{n_videos}} vídeos reales y sus URL", "patrón con cifras, no opiniones", "hueco dentro de lo que Aion calcula", "3 ángulos con título en inglés listos para encargar un guion"],
+  "verificacion": [
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Resumen", "Top videos", "Patrón ganador", "Hueco", "Ángulos para Aion", "Fuentes"] },
+    { "nombre": "tabla de vídeos", "tipo": "tabla_filas", "minimo": "{{n_videos}}", "seccion": "Top videos" },
+    { "nombre": "URLs de YouTube", "tipo": "fuentes_citadas", "minimo": "{{n_videos}}", "dominio": "youtube.com" },
+    { "nombre": "fuentes", "tipo": "fuentes_citadas", "minimo": "{{n_videos}}+2" },
+    { "nombre": "tema reflejado", "tipo": "entradas_reflejadas", "entradas": ["tema"] },
+    { "nombre": "ángulos", "tipo": "numero_de_items", "minimo": 3, "seccion": "Ángulos para Aion" },
+    { "nombre": "longitud", "tipo": "longitud_minima", "caracteres": 2500 },
+    { "nombre": "temas fuera de la app", "tipo": "sin_frases", "frases": ["tarot", "runes", "runas", "kybalion"] },
+    { "nombre": "sin excusas", "tipo": "sin_frases", "frases": ["no pude acceder", "no tengo acceso", "datos de ejemplo", "cifras estimadas"] }
+  ],
+  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "fallar" },
+  "reintentos": { "max": 2 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 12, "usd_estimado": 0, "nota": "suscripción; ~10 búsquedas web" },
+  "tras_completar": { "accion": "instruccion_ceo", "instruccion": "Si el ángulo recomendado encaja con el calendario, encarga el guion con el playbook yt-guion-ritual-lunar (tema = título del ángulo recomendado, investigacion_tarea = esta tarea)." },
+  "idioma_entregable": "mixto"
+}
