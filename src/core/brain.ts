@@ -129,7 +129,7 @@ export const TOOLS: ToolDef[] = [
     run: async (db) => ({
       negocios: (await db.query(`SELECT b.id, b.name, b.is_demo, b.goals,
         (SELECT json_agg(json_build_object('id', p.id, 'nombre', p.name, 'plataformas', p.platforms, 'demo', p.is_demo)) FROM products p WHERE p.business_id = b.id) AS productos,
-        (SELECT count(*) FROM tasks t WHERE t.business_id = b.id AND t.status IN ('pendiente','en_ejecucion','esperando_ia','esperando_permiso')) AS tareas_abiertas
+        (SELECT count(*) FROM tasks t WHERE t.business_id = b.id AND t.status IN ('pendiente','en_ejecucion','verificando','esperando_ia','esperando_permiso')) AS tareas_abiertas
         FROM businesses b ORDER BY b.id`)).rows,
       aprobaciones_pendientes: (await db.query(`SELECT id, description FROM approvals WHERE status = 'pendiente'`)).rows,
       presupuesto: (await db.query(`SELECT label, limit_cents, reserved_cents, spent_cents FROM budget_accounts`)).rows,
@@ -137,7 +137,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'listar_tareas', description: 'Lista tareas, opcionalmente filtradas por estado.',
-    input_schema: obj({ estado: { type: 'string', description: 'pendiente, en_ejecucion, esperando_ia, completada, fallida, cancelada, requiere_revision o «todas»' } }, ['estado']),
+    input_schema: obj({ estado: { type: 'string', description: 'pendiente, en_ejecucion, verificando, esperando_ia, completada, fallida, cancelada, requiere_revision o «todas»' } }, ['estado']),
     run: async (db, i) => (await db.query(`SELECT id, title, status, owner_function, priority, run_at, last_error, (result->>'deliverable' IS NOT NULL) AS tiene_informe FROM tasks
       WHERE ($1 = 'todas' OR status = $1) ORDER BY updated_at DESC LIMIT 30`, [i.estado])).rows,
   },
@@ -321,9 +321,11 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => taskResult(db, Number(i.id)),
   },
   {
-    name: 'buscar_informes', description: 'Busca entre los informes de los agentes por tema y, opcionalmente, por agente (sol, luna, mercurio, venus, marte, jupiter, saturno). Devuelve número de tarea, título y un extracto.',
-    input_schema: obj({ consulta: { type: 'string', description: 'Tema; vacío para los más recientes' }, agente: { type: 'string' } }, ['consulta']),
-    run: async (db, i) => searchReports(db, String(i.consulta ?? ''), i.agente ? String(i.agente).toLowerCase() : undefined),
+    name: 'buscar_informes', description: 'Busca tareas e informes de los agentes por tema y, opcionalmente, por agente, negocio, playbook, tipo, estado o fechas. Devuelve número de tarea, título, extracto, si está verificada y cuántos artefactos tiene (léelos con ver_resultado_tarea).',
+    input_schema: obj({ consulta: { type: 'string', description: 'Tema; vacío para los más recientes' }, agente: { type: 'string' }, negocio_id: { type: 'integer' }, playbook: { type: 'string' },
+      tipo: { type: 'string', description: 'agente, produccion_video, claude_code…' }, estado: { type: 'string' }, desde: { type: 'string', description: 'fecha ISO' }, hasta: { type: 'string', description: 'fecha ISO' } }, ['consulta']),
+    run: async (db, i) => searchReports(db, String(i.consulta ?? ''), i.agente ? String(i.agente).toLowerCase() : undefined,
+      { businessId: i.negocio_id ? Number(i.negocio_id) : undefined, playbook: i.playbook, type: i.tipo, status: i.estado, from: i.desde, to: i.hasta }),
   },
   {
     name: 'agentes', description: 'Registro central de los agentes: función, entregables, límites, skills, tareas activas, completadas, fallos y tareas recientes. Sin id devuelve los siete.',

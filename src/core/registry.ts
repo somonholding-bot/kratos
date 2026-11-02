@@ -28,24 +28,30 @@ export function saveReport(task: { id: number; title: string; owner_function: st
 }
 
 export async function taskResult(db: Db, id: number) {
-  const t = (await db.query(`SELECT t.id, t.title, t.objective, t.owner_function AS agente, t.status, t.created_at, t.updated_at, t.last_error,
-      t.result->>'deliverable' AS informe, t.result->>'report' AS archivo, t.result->>'model' AS motor
+  const t = (await db.query(`SELECT t.id, t.type AS tipo, t.title, t.objective, t.owner_function AS agente, t.status, t.created_at, t.started_at, t.completed_at, t.updated_at, t.last_error,
+      t.playbook_id, t.artifacts AS artefactos, t.verification_result AS verificacion, t.checkpoints,
+      t.result->>'deliverable' AS informe, t.result->>'report' AS archivo, t.result->>'model' AS motor,
+      CASE WHEN t.type <> 'agente' THEN t.result END AS resultado
     FROM tasks t WHERE t.id = $1`, [id])).rows[0];
   if (!t) return { error: `No existe la tarea ${id}` };
-  if (t.status !== 'completada') return { ...t, informe: null, nota: t.status === 'fallida' ? `Falló: ${t.last_error}` : `Aún no está terminada (estado: ${t.status})` };
-  if (!t.informe) return { ...t, error: 'La tarea figura completada pero no tiene informe guardado. Se puede reintentar.' };
-  return { ...t, informe: t.informe.slice(0, 12_000), recortado: t.informe.length > 12_000 };
+  if (t.status !== 'completada') return { ...t, informe: null, resultado: null, nota: t.status === 'fallida' ? `Falló: ${t.last_error}` : `Aún no está terminada (estado: ${t.status}${t.checkpoints?.length ? `, último paso: ${t.checkpoints.at(-1).paso}` : ''})` };
+  if (t.tipo === 'agente' && !t.informe) return { ...t, error: 'La tarea figura completada pero no tiene informe guardado. Se puede reintentar.' };
+  return { ...t, informe: t.informe ? t.informe.slice(0, 12_000) : null, recortado: !!t.informe && t.informe.length > 12_000 };
 }
 
 // Busca entre los informes (título, objetivo y contenido), opcionalmente de un agente
-export async function searchReports(db: Db, query: string, agent?: string) {
+// Filtros: agente, negocio, playbook, tipo de tarea, estado y rango de fechas (ISO); la consulta busca en título, objetivo e informe
+export type ReportFilter = { agent?: string; businessId?: number; playbook?: string; type?: string; status?: string; from?: string; to?: string; limit?: number };
+export async function searchReports(db: Db, query: string, agent?: string, f: ReportFilter = {}) {
   const q = (query ?? '').trim();
-  const rows = (await db.query(`SELECT id, owner_function AS agente, title, status, updated_at,
-      left(result->>'deliverable', 300) AS extracto
-    FROM tasks WHERE type IN ('agente','claude_code') AND ($2::text IS NULL OR owner_function = $2)
+  const rows = (await db.query(`SELECT id, type AS tipo, owner_function AS agente, business_id AS negocio_id, playbook_id, title, status, completed_at, updated_at,
+      left(result->>'deliverable', 300) AS extracto, jsonb_array_length(artifacts) AS artefactos, (verification_result->>'ok')::boolean AS verificada
+    FROM tasks WHERE type <> 'ciclo_ceo' AND ($2::text IS NULL OR owner_function = $2) AND ($3::int IS NULL OR business_id = $3)
+      AND ($4::text IS NULL OR playbook_id = $4) AND ($5::text IS NULL OR type = $5) AND ($6::text IS NULL OR status = $6)
+      AND ($7::timestamptz IS NULL OR updated_at >= $7) AND ($8::timestamptz IS NULL OR updated_at <= $8)
       AND ($1 = '' OR to_tsvector('spanish', coalesce(title,'') || ' ' || coalesce(objective,'') || ' ' || coalesce(result->>'deliverable',''))
            @@ plainto_tsquery('spanish', $1) OR title ILIKE '%' || $1 || '%')
-    ORDER BY updated_at DESC LIMIT 10`, [q, agent || null])).rows;
+    ORDER BY updated_at DESC LIMIT $9`, [q, agent || f.agent || null, f.businessId ?? null, f.playbook ?? null, f.type ?? null, f.status ?? null, f.from ?? null, f.to ?? null, Math.min(50, f.limit ?? 10)])).rows;
   return { informes: rows, total: rows.length };
 }
 
@@ -53,7 +59,7 @@ export async function searchReports(db: Db, query: string, agent?: string) {
 
 export async function agentsRegistry(db: Db, id?: string) {
   const agents = (await db.query(`SELECT f.id, f.name, f.purpose, f.deliverables, f.prohibited, f.escalation,
-      (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion','esperando_ia','esperando_permiso')) AS activas,
+      (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion','verificando','esperando_ia','esperando_permiso')) AS activas,
       (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status = 'completada') AS completadas,
       (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status = 'fallida' AND t.updated_at > now() - interval '7 days') AS fallos_7d,
       (SELECT json_agg(x) FROM (SELECT t.id, t.title, t.status, t.updated_at FROM tasks t WHERE t.owner_function = f.id ORDER BY t.updated_at DESC LIMIT 5) x) AS recientes
@@ -69,7 +75,7 @@ export async function agentsRegistry(db: Db, id?: string) {
 // Línea compacta para el contexto de cada conversación (no carga la base de datos entera)
 export async function agentsContext(db: Db): Promise<string> {
   const rows = (await db.query(`SELECT f.id, f.name, f.purpose,
-      (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion')) AS activas
+      (SELECT count(*)::int FROM tasks t WHERE t.owner_function = f.id AND t.status IN ('pendiente','en_ejecucion','verificando')) AS activas
     FROM agent_functions f WHERE f.id <> 'kratos' ORDER BY f.id`)).rows;
   const recent = (await db.query(`SELECT id, owner_function, title, status FROM tasks WHERE type = 'agente' ORDER BY updated_at DESC LIMIT 6`)).rows;
   return `\n\nTus agentes: ${rows.map((r) => `${r.name} (${r.id}): ${String(r.purpose).slice(0, 90)}${r.activas ? ` · ${r.activas} en curso` : ''}`).join(' | ')}.` +

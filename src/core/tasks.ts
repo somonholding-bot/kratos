@@ -49,7 +49,7 @@ export async function createTask(db: Db, t: NewTask) {
 export async function claimNext(db: Db, workerId: string, types: string[]) {
   const { rows } = await db.query(
     `UPDATE tasks SET status = 'en_ejecucion', locked_by = $1, locked_until = now() + make_interval(mins => $3),
-       attempts = attempts + 1, updated_at = now()
+       attempts = attempts + 1, started_at = coalesce(started_at, now()), updated_at = now()
      WHERE id = (
        SELECT t.id FROM tasks t
        WHERE t.status = 'pendiente' AND t.run_at <= now() AND t.type = ANY($2)
@@ -61,11 +61,16 @@ export async function claimNext(db: Db, workerId: string, types: string[]) {
   return rows[0] ?? null;
 }
 
-export async function completeTask(db: Db, task: any, workerId: string, result: Record<string, unknown>) {
+// Completa una tarea. Si se pasa la verificación (fase B), guarda sus comprobaciones y artefactos; solo se completa
+// desde «en_ejecucion» o «verificando» y con el bloqueo del mismo trabajador.
+export async function completeTask(db: Db, task: any, workerId: string, result: Record<string, unknown>, verification?: { ok: boolean; comprobaciones: unknown[]; artefactos: unknown[] }) {
   return withTx(db, async (tx) => {
     const { rowCount } = await tx.query(
-      `UPDATE tasks SET status = 'completada', result = $3, locked_by = NULL, locked_until = NULL, last_error = NULL, updated_at = now()
-       WHERE id = $1 AND status = 'en_ejecucion' AND locked_by = $2`, [task.id, workerId, result]);
+      `UPDATE tasks SET status = 'completada', result = $3, artifacts = coalesce($4, artifacts), verification_result = $5,
+         verified_at = CASE WHEN $5::jsonb IS NULL THEN verified_at ELSE now() END, completed_at = now(),
+         locked_by = NULL, locked_until = NULL, last_error = NULL, updated_at = now()
+       WHERE id = $1 AND status IN ('en_ejecucion', 'verificando') AND locked_by = $2`,
+      [task.id, workerId, result, verification ? JSON.stringify(verification.artefactos) : null, verification ? JSON.stringify({ ok: verification.ok, comprobaciones: verification.comprobaciones }) : null]);
     if (!rowCount) return { completed: false }; // cancelada o recuperada mientras corría
     await audit(tx, workerId, 'tarea.completada', { id: task.id, title: task.title }, task.business_id);
     if (task.recurrence_minutes) {
@@ -98,7 +103,7 @@ export async function failTask(db: Db, task: any, workerId: string, error: strin
   const { rowCount } = await db.query(
     `UPDATE tasks SET status = $3, last_error = $4, locked_by = NULL, locked_until = NULL,
        run_at = CASE WHEN $3 = 'pendiente' THEN now() + make_interval(mins => $5) ELSE run_at END, updated_at = now()
-     WHERE id = $1 AND status = 'en_ejecucion' AND locked_by = $2`,
+     WHERE id = $1 AND status IN ('en_ejecucion', 'verificando') AND locked_by = $2`,
     [task.id, workerId, retry ? 'pendiente' : 'fallida', error.slice(0, 500), backoffMin]);
   if (rowCount) await audit(db, workerId, retry ? 'tarea.reintento' : 'tarea.fallida', { id: task.id, error: error.slice(0, 200), intento: task.attempts }, task.business_id);
 }
@@ -110,7 +115,7 @@ export async function recoverStale(db: Db, actor: string) {
     `UPDATE tasks SET
        status = CASE WHEN has_side_effects THEN 'requiere_revision' WHEN attempts < max_attempts THEN 'pendiente' ELSE 'fallida' END,
        last_error = 'Recuperada tras interrupción', locked_by = NULL, locked_until = NULL, updated_at = now()
-     WHERE status = 'en_ejecucion' AND locked_until < now() RETURNING id, status`);
+     WHERE status IN ('en_ejecucion', 'verificando') AND locked_until < now() RETURNING id, status`);
   if (rows.length) await audit(db, actor, 'tareas.recuperadas', { tareas: rows });
   return rows;
 }
@@ -121,4 +126,16 @@ export async function cancelTask(db: Db, id: number, actor: string) {
      WHERE id = $1 AND status NOT IN ('completada','cancelada') RETURNING id, business_id`, [id]);
   if (rows[0]) await audit(db, actor, 'tarea.cancelada', { id }, rows[0].business_id);
   return rows.length > 0;
+}
+
+// Marca que el resultado existe y se está comprobando (estado no terminal «verificando»)
+export async function markVerifying(db: Db, task: any, workerId: string) {
+  await db.query(`UPDATE tasks SET status = 'verificando', locked_until = now() + interval '5 minutes', updated_at = now()
+    WHERE id = $1 AND status = 'en_ejecucion' AND locked_by = $2`, [task.id, workerId]);
+}
+
+// Progreso recuperable: cada paso terminado queda anotado en la tarea (el productor de vídeo, p. ej., reanuda por archivos)
+export async function checkpoint(db: Db, taskId: number, paso: string, datos: Record<string, unknown> = {}) {
+  await db.query(`UPDATE tasks SET checkpoints = checkpoints || $2::jsonb, updated_at = now() WHERE id = $1`,
+    [taskId, JSON.stringify([{ at: new Date().toISOString(), paso: paso.slice(0, 120), datos }])]);
 }

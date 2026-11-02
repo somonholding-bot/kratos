@@ -4,7 +4,8 @@ import { createPool, type Db } from './db.ts';
 import { config } from './config.ts';
 import { migrate } from './migrate.ts';
 import { audit, getState, heartbeat, isHalted } from './core/state.ts';
-import { claimNext, completeTask, deferTask, failTask, recoverStale } from './core/tasks.ts';
+import { claimNext, completeTask, deferTask, failTask, markVerifying, recoverStale } from './core/tasks.ts';
+import { failedChecks, verifyTask } from './core/verify.ts';
 import { handlers } from './core/handlers.ts';
 import { aiStatus } from './core/brain.ts';
 
@@ -26,7 +27,15 @@ export async function tick(db: Db, workerId: string): Promise<'parado' | 'sin_tr
   if (!task) return 'sin_trabajo';
   try {
     const result = await handlers[task.type](db, task);
-    await completeTask(db, task, workerId, result);
+    // Fase B: el resultado se verifica con hechos antes de dar la tarea por completada
+    await markVerifying(db, task, workerId);
+    const v = await verifyTask(db, task, result);
+    if (!v.ok) {
+      await audit(db, workerId, 'tarea.verificacion_fallida', { id: task.id, fallos: failedChecks(v) }, task.business_id);
+      await failTask(db, task, workerId, `Verificación fallida: ${failedChecks(v)}`);
+      return 'fallida';
+    }
+    await completeTask(db, task, workerId, result, v);
     return 'ejecutada';
   } catch (err: any) {
     if (err && 'retryAt' in err) {   // suscripción agotada o no disponible: vuelve a la cola sin contar como fallo
