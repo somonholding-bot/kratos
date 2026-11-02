@@ -39,6 +39,7 @@ server.listen(0, '127.0.0.1', () => {
   for (const [k, v] of Object.entries({ client_id: id, redirect_uri: `http://127.0.0.1:${port}`, response_type: 'code', scope: SCOPES.join(' '),
     access_type: 'offline', prompt: 'consent', code_challenge: challenge, code_challenge_method: 'S256', state })) auth.searchParams.set(k, v);
   console.log('Abriendo Google en el navegador para autorizar a KRATOS en tu canal de YouTube…');
+  console.log('Si no se abre, copia este enlace en el navegador:', auth.toString());
   execFile('/usr/bin/open', [auth.toString()]);
 });
-setTimeout(() => { console.log('Tiempo agotado (10 min) sin respuesta de Google.'); process.exit(1); }, 600_000).unref();
+setTimeout(() => { console.log('Tiempo agotado (30 min) sin respuesta de Google.'); process.exit(1); }, 1_800_000).unref();
