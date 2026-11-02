@@ -41,7 +41,7 @@ Un vídeo vale si cumple una promesa concreta para una persona concreta, y la cu
 ## Producción local y gratuita (ya instalada en el Mac)
 - Voz: `~/.local/share/kratos-media/chatterbox/bin/python scripts/media/voz.py texto.txt voz.wav [referencia.wav]`
 - Música: `~/.local/share/kratos-media/acestep/.venv/bin/python scripts/media/musica.py "descripción" segundos musica.wav`
-- Imágenes: `~/.local/share/kratos-media/mflux/bin/mflux-generate-z-image-turbo --prompt "…" --width 1920 --height 1080 --steps 9 --quantize 4 --output img.png`
+- Imágenes: `~/.local/share/kratos-media/mflux/bin/mflux-generate-z-image-turbo --prompt "…" --width 1280 --height 720 --steps 9 --quantize 4 --output img.png` (no más de 1280×720: más grande supera la memoria del Mac; para banner o 4K, amplía después con `sips -z 1152 2048 img.png`). Tarda ~1–3 min por imagen.
 - Subtítulos: whisper-server local (127.0.0.1:7432). Montaje: ffmpeg (Ken Burns lento sobre imágenes, ducking de música).
 - Todo se sube como PRIVADO; publicar exige la aprobación del propietario.
 
