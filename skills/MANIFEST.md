@@ -81,3 +81,4 @@ Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado
 | saturno | conversion-tracking | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/conversion-tracking/SKILL.md) | MIT |
 | saturno | revops | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/revops/SKILL.md) | MIT |
 | saturno | verification-before-completion | [obra/superpowers@2ce8aa15d0](https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/verification-before-completion/SKILL.md) | MIT |
+| venus | cinematic-director | [wuwangzhang1216/DirectorSKILL@c65ae0d144](https://github.com/wuwangzhang1216/DirectorSKILL/tree/c65ae0d14457053efb1e354c7e7f7e120d97fad1) (SKILL.md + references + assets) | MIT |

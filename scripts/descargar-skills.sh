@@ -90,6 +90,7 @@ saturno|$MK|conversion-tracking
 saturno|$MK|revops
 saturno|$SP|verification-before-completion
 "
+# cinematic-director (venus) se instala aparte: repo completo con references/ y assets/, ver MANIFEST.md
 mkdir -p "$DEST"
 {
   echo "# Skills de los especialistas de KRATOS"

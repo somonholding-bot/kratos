@@ -82,6 +82,7 @@ const HINTS: Record<string, string[]> = {
   'earned-media-outreach': ['periodistas', 'podcast', 'entrevista', 'cobertura', 'menciones'],
   paywalls: ['paywall', 'pantalla de pago', 'suscripcion premium', 'convertir a pago', 'upgrade'],
   'marketing-psychology': ['psicologia', 'persuasion', 'sesgos', 'motivar', 'convencer'],
+  'cinematic-director': ['guion', 'plano', 'planos', 'storyboard', 'direccion', 'director', 'cinematografia', 'escena', 'encuadre', 'prompt de video', 'keyframe'],
   'youtube-crecimiento': ['youtube', 'canal', 'video', 'miniatura', 'shorts', 'meditacion', 'espiritualidad', 'suscriptores'],
   'churn-analysis': ['analisis de bajas', 'churn', 'cancelaciones', 'retencion'],
 };

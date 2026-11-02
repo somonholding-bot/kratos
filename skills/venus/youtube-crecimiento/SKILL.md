@@ -10,6 +10,9 @@ El canal es en INGLÉS: título, guion, voz, miniatura, descripción y etiquetas
 ## Principio
 Un vídeo vale si cumple una promesa concreta para una persona concreta, y la cumple mejor que lo que ya existe. Antes de producir, define: ¿para quién?, ¿qué siente o consigue al terminar?, ¿por qué haría clic en este y no en otro?
 
+## Dirección (antes de escribir el guion)
+Usa la skill «cinematic-director» (skills/venus/cinematic-director, con sus references/ y assets/): convierte el guion en beat map, blocking, lista de planos, prompts de imagen (keyframes) y plan de sonido. Para producir_video, los «imagenes» son los keyframe prompts de esa lista de planos (uno cada ~20 s) y el «guion» es la narración ya pulida.
+
 ## Antes de producir (investigación, 15 min)
 1. Busca en la web y en YouTube los 10 vídeos con más vistas del tema en los últimos 12 meses (en inglés). Anota títulos, miniaturas, duración y el primer minuto.
 2. Identifica el patrón ganador y el hueco: lo que la gente pide en los comentarios y nadie responde bien.
