@@ -268,6 +268,7 @@ final class WakeListener {
   // Se desactiva con «defaults write local.kratos.app echoCancel -bool false».
   private(set) var echoCancel = false
   private var echoFailed = false
+  private var startTries = 0
   var onOutput: ((Bool) -> Void)?   // el motor arrancó (true) o va a pararse (false): la música cambia de salida
   private let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
   private let q = DispatchQueue(label: "kratos.vad")
@@ -335,23 +336,35 @@ final class WakeListener {
     }
     _ = engine.mainMixerNode   // la salida del motor existe desde el arranque (ahí suena la música)
     let fmt = input.outputFormat(forBus: 0)
-    // Con la cancelación de eco el micrófono puede llegar con varios canales: se usa el primero (el ya procesado)
-    guard fmt.sampleRate > 0, let m = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: fmt.sampleRate, channels: 1, interleaved: false),
-          let conv = AVAudioConverter(from: fmt.channelCount > 1 ? m : fmt, to: target) else { set(.error, "No hay micrófono disponible"); return }
-    converter = conv; mono = m
+    guard fmt.sampleRate > 0, fmt.channelCount > 0 else { set(.error, "No hay micrófono disponible"); retryStart(); return }
+    converter = nil; mono = nil   // la conversión se ajusta al formato real de cada bloque de audio (ver ingest)
     input.removeTap(onBus: 0)
-    input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in self?.ingest(buf) }
+    // format: nil → el del propio micrófono; pasar uno que no coincide cerraba la app (excepción de AVAudioEngine)
+    input.installTap(onBus: 0, bufferSize: 2048, format: nil) { [weak self] buf, _ in self?.ingest(buf) }
     do {
-      try engine.start(); set(.listening)
+      try engine.start(); set(.listening); startTries = 0
       appLog("escucha: cancelación de eco \(echoCancel ? "activa" : "apagada")")
       DispatchQueue.main.async { self.onOutput?(true) }
     } catch {
       input.removeTap(onBus: 0)
-      if echoCancel {   // algunos micrófonos no la admiten: se escucha sin ella
+      engine.stop(); engine.reset()   // motor limpio antes de reintentar
+      if echoCancel {   // algunos micrófonos no la admiten: se escucha sin ella y se recuerda para no reintentarlo
         appLog("escucha: no arrancó con cancelación de eco (\(error.localizedDescription)), sigo sin ella")
-        echoFailed = true; try? input.setVoiceProcessingEnabled(false); echoCancel = false; start(); return
+        echoFailed = true; UserDefaults.standard.set(false, forKey: "echoCancel")
+        try? input.setVoiceProcessingEnabled(false); echoCancel = false
       }
       set(.error, error.localizedDescription)
+      retryStart()
+    }
+  }
+
+  // Reintentos espaciados (1, 3 y 8 s) en lugar de rendirse o cerrar la app
+  private func retryStart() {
+    guard startTries < 3 else { appLog("escucha: no se pudo abrir el micrófono tras 3 intentos"); return }
+    let delay = [1.0, 3.0, 8.0][startTries]; startTries += 1
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+      guard let self, self.enabled, !self.engine.isRunning else { return }
+      appLog("escucha: reintento \(self.startTries) de abrir el micrófono"); self.start()
     }
   }
 
@@ -375,9 +388,15 @@ final class WakeListener {
   private func resetSegment() { inSpeech = false; segment = []; preroll = []; loud = 0; quiet = 0 }
 
   private func ingest(_ input: AVAudioPCMBuffer) {
+    // Conversión ajustada al formato real del micrófono (puede cambiar al activar o quitar la cancelación de eco)
+    if mono?.sampleRate != input.format.sampleRate || converter == nil {
+      guard input.format.sampleRate > 0, let m = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: input.format.sampleRate, channels: 1, interleaved: false),
+            let c = AVAudioConverter(from: m, to: target) else { return }
+      mono = m; converter = c
+    }
     guard let conv = converter, let mono else { return }
     let buf: AVAudioPCMBuffer
-    if input.format.channelCount > 1 {
+    if input.format.channelCount > 1 || input.format != mono {
       guard let src = input.floatChannelData, let one = AVAudioPCMBuffer(pcmFormat: mono, frameCapacity: input.frameLength) else { return }
       one.frameLength = input.frameLength
       one.floatChannelData![0].initialize(from: src[0], count: Int(input.frameLength))
