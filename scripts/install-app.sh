@@ -1,6 +1,6 @@
 #!/bin/bash
 # Compila e instala la app nativa Kratos en ~/Applications, con acceso directo en el Escritorio
-# y arranque automático al iniciar sesión (oculta, en la barra de menú). Revertir: scripts/uninstall-app.sh
+# sin arranque automático: al abrirla enciende los servicios. Revertir: scripts/uninstall-app.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$HOME/Applications/Kratos.app"
@@ -52,21 +52,7 @@ codesign --force --sign - "$APP" >/dev/null 2>&1
 rm -rf "$HOME/Desktop/Kratos.app"
 ln -s "$APP" "$HOME/Desktop/Kratos"
 
-# Arranque al iniciar sesión, oculta; se relanza si se cierra por error (no si eliges «Salir»)
-cat > "$HOME/Library/LaunchAgents/com.jarvis.app.plist" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.jarvis.app</string>
-  <key>ProgramArguments</key><array><string>$APP/Contents/MacOS/Kratos</string><string>--hidden</string></array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
-  <key>ThrottleInterval</key><integer>15</integer>
-  <key>LimitLoadToSessionType</key><string>Aqua</string>
-  <key>StandardErrorPath</key><string>$ROOT/.jarvis/logs/app.log</string>
-</dict>
-</plist>
-EOF
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.jarvis.app.plist"
-echo "Instalada $APP (en marcha en la barra de menú)"
+# Sin arranque automático (decisión del propietario, 3-nov-2026): KRATOS y sus servicios se encienden cuando abres la app.
+# Los servicios viven en ~/Jarvis/launchd (no en ~/Library/LaunchAgents) para que no carguen solos al iniciar sesión.
+rm -f "$HOME/Library/LaunchAgents/com.jarvis.app.plist"
+echo "Instalada $APP (ábrela cuando quieras; ella enciende todo lo demás)"

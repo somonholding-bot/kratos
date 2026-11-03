@@ -992,17 +992,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   func ensureService(_ done: @escaping (Bool) -> Void) {
     API.healthy { ok in
       if ok { return done(true) }
-      for svc in ["server", "worker"] {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        p.arguments = ["kickstart", "gui/\(getuid())/com.jarvis.\(svc)"]
-        try? p.run()
+      // KRATOS no arranca con el Mac: al abrir la app se cargan y encienden todos sus servicios (base de datos, voz, servidor, worker)
+      let uid = getuid(), agents = NSHomeDirectory() + "/Jarvis/launchd"
+      func launchctl(_ args: [String]) {
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/bin/launchctl"); p.arguments = args
+        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+        try? p.run(); p.waitUntilExit()
       }
-      var tries = 0
-      Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { t in
-        API.healthy { ok in
-          tries += 1
-          if ok || tries > 20 { t.invalidate(); done(ok) }
+      DispatchQueue.global().async {
+        for label in ["sh.brew.postgresql@16", "com.jarvis.tts", "com.jarvis.whisper", "com.jarvis.server", "com.jarvis.worker"] {
+          launchctl(["enable", "gui/\(uid)/\(label)"])
+          launchctl(["bootstrap", "gui/\(uid)", "\(agents)/\(label).plist"])   // si ya estaba cargado, no hace nada
+          launchctl(["kickstart", "gui/\(uid)/\(label)"])
+        }
+        DispatchQueue.main.async {
+          var tries = 0
+          Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { t in
+            API.healthy { ok in
+              tries += 1
+              if ok || tries > 80 { t.invalidate(); done(ok) }
+            }
+          }
         }
       }
     }
