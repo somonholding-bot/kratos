@@ -17,7 +17,7 @@ def _look(im):
     h = h.point([(x + LOOK['hue']) % 256 for x in range(256)]); sa = sa.point([min(255, int(x * LOOK['sat'])) for x in range(256)]); v = v.point([min(255, int(x * LOOK['val'])) for x in range(256)])
     im.paste(Image.merge('HSV', (h, sa, v)).convert('RGB'))
 FPS = 30
-OW, OH = 2560, 1440
+OW, OH = 3840, 2160   # salida 4K nativa (el lienzo ya es 3840x2160): sin reducir, YouTube sirve mejor códec y bitrate
 APPLE = '/System/Library/Fonts/Apple Symbols.ttf'
 _gf = {}
 def gfont(sz):
@@ -419,7 +419,7 @@ def main():
            if musica != '-' else "[v]loudnorm=I=-14:TP=-1.5:LRA=7[a]"))
     if n0 > 0: af = af[:af.rindex('[a]')] + f'[a0];[a0]atrim=start={n0 / FPS:.3f},asetpts=PTS-STARTPTS[a]'   # tramo parcial: el audio se recorta al mismo punto
     cmd = ['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{OW}x{OH}', '-r', str(FPS), '-i', '-', '-i', voz, *mus,
-           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{(n1 - n0) / FPS:.2f}', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-r', str(FPS), '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
+           '-filter_complex', af, '-map', '0:v', '-map', '[a]', '-t', f'{(n1 - n0) / FPS:.2f}', '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-r', str(FPS), '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]
     pr = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for n in range(n0, n1):
         pr.stdin.write(render(n / FPS).tobytes())

@@ -100,8 +100,16 @@ if (cmd === 'estado') {
     const tl = JSON.parse(fs.readFileSync(f('timeline.json'), 'utf8')); const total = Math.ceil(0.5 + tl.duration + 3);
     if (!fs.existsSync(f('musica.wav'))) {
       await paso(`música (${total} s)`);
-      const base = Math.min(600, total);   // ACE-Step genera hasta 600 s; más largo se repite
-      run(path.join(MEDIA, 'acestep/.venv/bin/python'), [path.join(EPISODIO_DIR, '../musica.py'), info.musica ?? 'mysterious ambient score, soft synth pads, gentle piano, warm, cinematic, slow', String(base), f('musica-base.wav')]);
+      // La memoria de ACE-Step crece con la duración (600 s se quedó sin memoria de vídeo en este Mac): se genera un tramo corto y se repite;
+      // si aun así falta memoria, se prueba con tramos más cortos.
+      let hecho = false, ultimo = '';
+      for (const base of [Math.min(240, total), Math.min(150, total), Math.min(90, total)]) {
+        try {
+          run(path.join(MEDIA, 'acestep/.venv/bin/python'), [path.join(EPISODIO_DIR, '../musica.py'), info.musica ?? 'mysterious ambient score, soft synth pads, gentle piano, warm, cinematic, slow', String(base), f('musica-base.wav')]);
+          hecho = true; break;
+        } catch (e: any) { ultimo = String(e.message); if (!/out of memory/i.test(ultimo)) throw e; log(`música: sin memoria con ${base} s, pruebo un tramo más corto`); }
+      }
+      if (!hecho) throw new Error(ultimo);
       run('ffmpeg', ['-y', '-v', 'error', '-stream_loop', '-1', '-i', f('musica-base.wav'), '-t', String(total), '-af', `afade=t=out:st=${total - 3}:d=3`, f('musica.wav')]);
     }
     await paso('subtítulos');
