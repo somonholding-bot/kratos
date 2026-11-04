@@ -79,6 +79,10 @@ async function pedirAprobacion(db: Db, q: any, actor: string) {
 // Un paso por elemento y vuelta; los fallos se cuentan en la auditoría y, al tercero, se avisa a la propietaria.
 export async function advanceChain(db: Db, actor = 'cadena') {
   const vivo = productionRunning();
+  // Un largo renderizado que solo falló la QA por no tener miniatura (p. ej. la lanzó otro flujo antes) vuelve a la cadena para que se la hagan
+  await db.query(`UPDATE content_queue SET estado = 'PRODUCTION', updated_at = now()
+    WHERE tipo = 'largo' AND estado = 'BLOQUEADO' AND video_ruta IS NOT NULL AND youtube_id IS NULL AND miniatura_ruta IS NULL AND qa ? 'miniatura'
+      AND NOT EXISTS (SELECT 1 FROM jsonb_each(qa) e WHERE e.key <> 'miniatura' AND (e.value->>'ok') <> 'true')`);
   const items = (await db.query(`SELECT * FROM content_queue WHERE tipo = 'largo' AND video_ruta IS NOT NULL AND estado IN ('PRODUCTION','QA') ORDER BY sale_el NULLS LAST, id`)).rows
     .filter((q: any) => q.id !== vivo?.id);
   const hechos: string[] = [];
