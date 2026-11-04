@@ -140,7 +140,9 @@ export async function startProduction(db: Db, id: number, actor: string) {
   await db.query(`UPDATE content_queue SET estado = 'PRODUCTION', notas = $2, updated_at = now() WHERE id = $1`, [id, `Producción lanzada ${new Date().toISOString()} (${ep})`]);
   const logs = path.join(DATA_DIR, 'logs'); fs.mkdirSync(logs, { recursive: true });
   const out = fs.openSync(path.join(logs, `fabrica-${id}.log`), 'a');
-  const child = spawn(process.execPath, [path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
+  // caffeinate -i: el Mac no se duerme por inactividad mientras dura el render (y deja de hacerlo solo al terminar); cerrar la tapa sí lo duerme
+  const cafe = fs.existsSync('/usr/bin/caffeinate');
+  const child = spawn(cafe ? '/usr/bin/caffeinate' : process.execPath, [...(cafe ? ['-i', process.execPath] : []), path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
   child.unref();
   await audit(db, actor, 'fabrica.produccion_lanzada', { id, episodio: ep, voz: 'local', pid: child.pid });
   return { id, episodio: ep, beats: info.beats, escenarios: info.escenarios, voz: 'local (Kokoro bm_george), sin créditos', carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,

@@ -63,6 +63,22 @@ export async function claimNext(db: Db, workerId: string, types: string[]) {
   return rows[0] ?? null;
 }
 
+// Programa la siguiente repetición de una tarea recurrente (idempotente). Se llama al completarla y también al fallar del todo:
+// una repetición fallida no debe cortar la cadena (el sondeo de Apple se paró seis días por un «fetch failed»).
+async function scheduleNext(q: { query: Db['query'] }, task: any) {
+  if (!task.recurrence_minutes) return;
+  const next = new Date(Math.max(Date.now(), new Date(task.run_at).getTime()) + task.recurrence_minutes * 60_000);
+  next.setSeconds(0, 0);
+  await q.query(
+    `INSERT INTO tasks (business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
+       has_side_effects, run_at, recurrence_minutes, expected_result, verification, max_attempts, idempotency_key, is_demo, created_by, playbook_id, playbook_version)
+     SELECT business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
+       has_side_effects, $2, recurrence_minutes, expected_result, verification, max_attempts, $3, is_demo, 'planificador', playbook_id, playbook_version
+     FROM tasks WHERE id = $1
+     ON CONFLICT (idempotency_key) DO NOTHING`,
+    [task.id, next, `${task.type}:${task.business_id}:${next.toISOString()}`]);
+}
+
 // Completa una tarea. Si se pasa la verificación (fase B), guarda sus comprobaciones y artefactos; solo se completa
 // desde «en_ejecucion» o «verificando» y con el bloqueo del mismo trabajador.
 export async function completeTask(db: Db, task: any, workerId: string, result: Record<string, unknown>, verification?: { ok: boolean; comprobaciones: unknown[]; artefactos: unknown[] }) {
@@ -75,18 +91,7 @@ export async function completeTask(db: Db, task: any, workerId: string, result: 
       [task.id, workerId, result, verification ? JSON.stringify(verification.artefactos) : null, verification ? JSON.stringify({ ok: verification.ok, comprobaciones: verification.comprobaciones }) : null]);
     if (!rowCount) return { completed: false }; // cancelada o recuperada mientras corría
     await audit(tx, workerId, 'tarea.completada', { id: task.id, title: task.title }, task.business_id);
-    if (task.recurrence_minutes) {
-      const next = new Date(Math.max(Date.now(), new Date(task.run_at).getTime()) + task.recurrence_minutes * 60_000);
-      next.setSeconds(0, 0);
-      await tx.query(
-        `INSERT INTO tasks (business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
-           has_side_effects, run_at, recurrence_minutes, expected_result, verification, max_attempts, idempotency_key, is_demo, created_by, playbook_id, playbook_version)
-         SELECT business_id, product_id, owner_function, type, title, objective, priority, inputs, allowed_actions, quota,
-           has_side_effects, $2, recurrence_minutes, expected_result, verification, max_attempts, $3, is_demo, 'planificador', playbook_id, playbook_version
-         FROM tasks WHERE id = $1
-         ON CONFLICT (idempotency_key) DO NOTHING`,
-        [task.id, next, `${task.type}:${task.business_id}:${next.toISOString()}`]);
-    }
+    await scheduleNext(tx, task);
     return { completed: true };
   });
 }
@@ -108,6 +113,7 @@ export async function failTask(db: Db, task: any, workerId: string, error: strin
      WHERE id = $1 AND status IN ('en_ejecucion', 'verificando') AND locked_by = $2`,
     [task.id, workerId, retry ? 'pendiente' : 'fallida', error.slice(0, 500), backoffMin]);
   if (rowCount) await audit(db, workerId, retry ? 'tarea.reintento' : 'tarea.fallida', { id: task.id, error: error.slice(0, 200), intento: task.attempts }, task.business_id);
+  if (rowCount && !retry) await scheduleNext(db, task);
 }
 
 // Tras un reinicio o caída: las tareas con bloqueo vencido se recuperan.

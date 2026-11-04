@@ -122,6 +122,15 @@ test('reintentos limitados: al agotar intentos la tarea queda fallida', async ()
   assert.deepEqual([row.status, row.attempts], ['fallida', 2]);
 });
 
+test('tareas recurrentes: si una repetición falla del todo, la cadena sigue con la siguiente', async () => {
+  const { task } = await createTask(db, base(bizA, { type: 't_rec_falla', idempotencyKey: 'rec-fail-1', maxAttempts: 1, recurrenceMinutes: 15 }));
+  await db.query(`UPDATE tasks SET run_at = now() WHERE id = $1`, [task.id]);
+  const t = await claimNext(db, 'wf', ['t_rec_falla']);
+  await failTask(db, t, 'wf', 'fetch failed');
+  const rows = (await db.query(`SELECT status FROM tasks WHERE type = 't_rec_falla' ORDER BY id`)).rows.map((r) => r.status);
+  assert.deepEqual(rows, ['fallida', 'pendiente']);
+});
+
 test('tareas recurrentes: completar no genera ocurrencias duplicadas', async () => {
   const { task } = await createTask(db, base(bizA, { type: 't_rec', idempotencyKey: 'recur-1', recurrenceMinutes: 60 }));
   const t = await claimNext(db, 'wr', ['t_rec']);
