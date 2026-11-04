@@ -3,3 +3,9 @@ node_modules/
 backups/
 build/
 graphify-out/
+
+# Episodios generados por compilar.py desde el paquete de Venus (se regeneran; ep1 y ep2 son manuales y siguen versionados)
+scripts/media/episodio/ep[3-9].py
+scripts/media/episodio/ep[1-9][0-9]*.py
+__pycache__/
+*.pyc

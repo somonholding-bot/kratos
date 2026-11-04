@@ -68,6 +68,34 @@ export function productionRunning(): { id: number; pid: number } | null {
 export const writeLock = (id: number) => { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(LOCK, JSON.stringify({ id, pid: process.pid, desde: new Date().toISOString() })); };
 export const clearLock = () => { try { fs.unlinkSync(LOCK); } catch { /* ya no estaba */ } };
 
+// Vigilante determinista (sin IA): un elemento en PRODUCTION sin vídeo y sin render vivo es un render caído.
+// Se marca BLOQUEADO («Render caído…») y, cuando la línea está libre, se relanza solo (máx. MAX_CAIDAS veces); al agotarlas avisa a la propietaria.
+export const MAX_CAIDAS = 3;
+export async function reconcileProduction(db: Db, actor = 'vigilante', opts: { vivo?: { id: number } | null; launch?: (db: Db, id: number, actor: string) => Promise<{ id: number }> } = {}) {
+  const vivo = opts.vivo === undefined ? productionRunning() : opts.vivo;   // opts: solo para pruebas
+  const caidos = (await db.query(`SELECT id FROM content_queue WHERE estado = 'PRODUCTION' AND video_ruta IS NULL AND updated_at < now() - interval '3 minutes'`)).rows
+    .filter((q: { id: number }) => q.id !== vivo?.id);
+  for (const q of caidos) {
+    await db.query(`UPDATE content_queue SET estado = 'BLOQUEADO', notas = $2, updated_at = now() WHERE id = $1`, [q.id, `Render caído: en PRODUCTION sin proceso vivo (${new Date().toISOString()})`]);
+    await audit(db, actor, 'fabrica.render_caido', { id: q.id });
+  }
+  if (vivo) return { caidos: caidos.map((q: { id: number }) => q.id), relanzado: null };
+  const pend = (await db.query(`SELECT q.id, (SELECT count(*) FROM audit_log a WHERE a.action = 'fabrica.render_caido' AND (a.details->>'id')::int = q.id)::int AS caidas
+    FROM content_queue q WHERE q.estado = 'BLOQUEADO' AND q.notas LIKE 'Render caído%' ORDER BY q.sale_el NULLS LAST, q.id`)).rows;
+  let relanzado: number | null = null;
+  for (const q of pend) {
+    if (q.caidas >= MAX_CAIDAS) {
+      await db.query(`UPDATE content_queue SET notas = $2 WHERE id = $1`, [q.id, `Render abandonado tras ${q.caidas} caídas: hace falta revisar a mano`]);
+      await db.query(`INSERT INTO agenda (at, kind, text, created_by) VALUES (now(), 'aviso', $1, $2)`, [`El vídeo ${q.id} se cayó ${q.caidas} veces al renderizar y lo dejé parado. Hay que revisarlo.`, actor]);
+      await audit(db, actor, 'fabrica.render_abandonado', { id: q.id, caidas: q.caidas });
+    } else if (relanzado === null) {
+      try { relanzado = (await (opts.launch ?? startProduction)(db, q.id, actor)).id; }
+      catch (e: any) { await audit(db, actor, 'fabrica.relanzar_fallo', { id: q.id, error: String(e?.message ?? e).slice(0, 200) }); }
+    }
+  }
+  return { caidos: caidos.map((q: { id: number }) => q.id), relanzado };
+}
+
 async function queueItem(db: Db, id: number) {
   const q = (await db.query(`SELECT * FROM content_queue WHERE id = $1`, [id])).rows[0];
   if (!q) throw new Error(`No existe el elemento #${id} de la cola`);
