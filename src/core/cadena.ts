@@ -9,7 +9,8 @@ import { carpeta, EPISODIO_DIR, mediaPython, productionRunning, publicTextProble
 // Cadena final de la fábrica, en código y sin IA: vídeo renderizado → miniatura → puerta de calidad → subida PRIVADA → petición de aprobación.
 // El CEO solo la supervisa. Publicar en abierto sigue exigiendo la aprobación de la propietaria en el panel.
 const LEAD = 0.5;
-const MAX_ERRORES = 3;
+const MAX_ERRORES = 4;
+const ESPERA_ERROR_MIN = 10;   // tras un fallo no se reintenta hasta pasados 10 min
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 // Título ≤ 60 caracteres: el primero de los candidatos que cabe; si ninguno cabe, el primero cortado en límite de palabra.
@@ -87,8 +88,10 @@ export async function advanceChain(db: Db, actor = 'cadena') {
     .filter((q: any) => q.id !== vivo?.id);
   const hechos: string[] = [];
   for (const q of items) {
-    const errores = (await db.query(`SELECT count(*)::int AS n FROM audit_log WHERE action = 'cadena.error' AND (details->>'cola')::int = $1`, [q.id])).rows[0].n;
-    if (errores >= MAX_ERRORES) continue;
+    const e = (await db.query(`SELECT count(*)::int AS n, max(at) AS ultimo FROM audit_log WHERE action = 'cadena.error' AND (details->>'cola')::int = $1
+      AND at > coalesce((SELECT max(at) FROM audit_log WHERE action = 'cadena.reiniciada' AND (details->>'cola')::int = $1), 'epoch')`, [q.id])).rows[0];
+    const errores: number = e.n;
+    if (errores >= MAX_ERRORES || (e.ultimo && Date.now() - new Date(e.ultimo).getTime() < ESPERA_ERROR_MIN * 60_000)) continue;
     try {
       const p = await paqueteDe(db, q);
       if (q.estado === 'PRODUCTION') {

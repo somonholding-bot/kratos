@@ -81,9 +81,27 @@ export async function uploadVideo(file: string, meta: { titulo: string; descripc
     body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
   const loc = init.headers.get('location');
   if (!init.ok || !loc) throw new Error(`YouTube no aceptó la subida (${init.status})`);
-  const up = await fetch(loc, { method: 'PUT', headers: { 'content-type': 'video/*', 'content-length': String(size) }, body: fs.readFileSync(file), signal: AbortSignal.timeout(30 * 60_000) });
-  const v: any = await up.json();
-  if (!up.ok) throw new Error(`La subida falló (${up.status}): ${v.error?.message ?? ''}`.slice(0, 200));
+  // Subida reanudable por trozos de 64 MB (múltiplo de 256 KiB): un vídeo 4K pesa cientos de MB y un único PUT se cortaba con «fetch failed».
+  const TROZO = 64 * 1024 * 1024, fd = fs.openSync(file, 'r');
+  let off = 0, v: any = null, fallos = 0;
+  try {
+    while (!v) {
+      const len = Math.min(TROZO, size - off), buf = Buffer.alloc(len); fs.readSync(fd, buf, 0, len, off);
+      try {
+        const r = await fetch(loc, { method: 'PUT', headers: { 'content-length': String(len), 'content-range': `bytes ${off}-${off + len - 1}/${size}` }, body: buf, signal: AbortSignal.timeout(10 * 60_000) });
+        if (r.status === 308) { const rg = r.headers.get('range'); off = rg ? Number(rg.split('-')[1]) + 1 : off; fallos = 0; continue; }
+        const j: any = await r.json().catch(() => ({}));
+        if (!r.ok) { if (r.status >= 500 && ++fallos < 6) continue; throw new Error(`La subida falló (${r.status}): ${j.error?.message ?? ''}`.slice(0, 200)); }
+        v = j;
+      } catch (e: any) {
+        if (/^La subida falló/.test(e?.message) || ++fallos >= 6) throw e;
+        await new Promise((res) => setTimeout(res, 5000 * fallos));   // corte de red: se pregunta a YouTube hasta dónde llegó y se sigue desde ahí
+        const q = await fetch(loc, { method: 'PUT', headers: { 'content-length': '0', 'content-range': `bytes */${size}` }, signal: AbortSignal.timeout(30_000) }).catch(() => null);
+        if (q?.status === 308) { const rg = q.headers.get('range'); off = rg ? Number(rg.split('-')[1]) + 1 : 0; }
+        else if (q && (q.status === 200 || q.status === 201)) v = await q.json();
+      }
+    }
+  } finally { fs.closeSync(fd); }
   return { id: v.id, url: `https://youtu.be/${v.id}`, estado: 'privado (publicarlo requiere tu aprobación)' };
 }
 
