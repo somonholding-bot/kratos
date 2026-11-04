@@ -10,6 +10,7 @@ import { syncToolRegistry } from './core/toolregistry.ts';
 import { handlers } from './core/handlers.ts';
 import { aiStatus } from './core/brain.ts';
 import { reconcileProduction } from './core/fabrica.ts';
+import { advanceChain } from './core/cadena.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
 // Ciclo: observar → (parada/pausa?) → reclamar → ejecutar → comprobar → registrar → esperar.
@@ -81,6 +82,7 @@ if (import.meta.main) {
   while (!stopping) {
     try {
       await reconcileProduction(db, workerId).catch((e) => console.error('[worker] vigilante de renders:', e.message));
+      await advanceChain(db).catch((e) => console.error('[worker] cadena final:', e.message));
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);
     } catch (err: any) {

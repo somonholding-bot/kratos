@@ -209,7 +209,11 @@ export async function deleteVideo(videoId: string) {
 export async function onYoutubeApproval(db: Db, approval: any, approved: boolean) {
   const tipo = approval?.scope?.tipo;
   if (!approved || (tipo !== 'youtube_publicar' && tipo !== 'youtube_canal' && tipo !== 'youtube_borrar')) return;
-  if (tipo === 'youtube_publicar') await setPrivacy(String(approval.scope.video_id), approval.scope.visibilidad === 'unlisted' ? 'unlisted' : 'public');
+
+  if (tipo === 'youtube_publicar') {
+    await setPrivacy(String(approval.scope.video_id), approval.scope.visibilidad === 'unlisted' ? 'unlisted' : 'public');
+    if (approval.scope.visibilidad !== 'unlisted') await db.query(`UPDATE content_queue SET estado = 'PUBLISHED', sale_el = coalesce(sale_el, now()), updated_at = now() WHERE youtube_id = $1`, [String(approval.scope.video_id)]);
+  }
   else if (tipo === 'youtube_borrar') {
     await deleteVideo(String(approval.scope.video_id));
     await audit(db, 'propietario', 'youtube.borrado', { aprobacion: approval.id, id: approval.scope.video_id, titulo: approval.scope.titulo ?? null });
