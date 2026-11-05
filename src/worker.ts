@@ -15,6 +15,9 @@ import { advanceCurriculum, advanceExams } from './core/curriculo.ts';
 import { advanceAcd } from './core/acd.ts';
 import { refreshRequisitos, exportRequisitos } from './core/requisitos.ts';
 import { seedSolDef } from './core/sol-def.ts';
+import { sincronizarCapacidades } from './core/automodelo.ts';
+import { importarHistoria } from './core/autobiografia.ts';
+import { sembrarTeorias } from './core/conciencia.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
 // Ciclo: observar → (parada/pausa?) → reclamar → ejecutar → comprobar → registrar → esperar.
@@ -82,6 +85,7 @@ if (import.meta.main) {
   await migrate(db);
   await syncToolRegistry(db).catch((e) => console.error('[worker] registro de herramientas:', e.message));
   await seedSolDef(db).catch((e) => console.error('[worker] semillas SOL:', e.message));
+  await sembrarTeorias(db).catch((e) => console.error('[worker] teorías C06:', e.message));
   await syncPlaybooksFromFiles(db).then((r) => { if (r.invalidos.length) console.error('[worker] playbooks inválidos:', r.invalidos.map((i) => `${i.archivo}: ${i.errores.join('; ')}`).join(' | ')); }).catch((e) => console.error('[worker] playbooks:', e.message));
   await audit(db, workerId, 'proceso.iniciado', {});
   console.log(`[worker] activo (${workerId})`);
@@ -93,7 +97,10 @@ if (import.meta.main) {
       await advanceExams(db).catch((e) => console.error('[worker] exámenes de Sol:', e.message));
       await advanceAcd(db).catch((e) => console.error('[worker] motor ACD:', e.message));
       // Rastreador de requisitos de SOL/ACD: se recalcula con evidencia cada 10 minutos y se exporta a docs/
-      if (Date.now() - ultimoRastreo > 10 * 60_000) { ultimoRastreo = Date.now(); await refreshRequisitos(db).then(() => exportRequisitos(db)).catch((e) => console.error('[worker] rastreador SOL:', e.message)); }
+      if (Date.now() - ultimoRastreo > 10 * 60_000) { ultimoRastreo = Date.now(); await refreshRequisitos(db).then(() => exportRequisitos(db)).catch((e) => console.error('[worker] rastreador SOL:', e.message));
+        await sincronizarCapacidades(db).catch((e) => console.error('[worker] automodelo C01:', e.message));
+        await importarHistoria(db, 200).catch((e) => console.error('[worker] memoria C03:', e.message));
+      }
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);
     } catch (err: any) {

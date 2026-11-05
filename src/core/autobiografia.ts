@@ -37,7 +37,9 @@ export async function recordar(db: Db, entrada: any, actor: string) {
   if (e.resultado === 'fallo' && !e.clasificacion_error) e.clasificacion_error = clasificarError(e.detalle_resultado ?? e.evidencia ?? '');
   e.procedencia = e.procedencia ?? actor;
   const h = huella(e);
-  const ya = (await db.query(`UPDATE cog_experiencias SET repeticiones = repeticiones + 1 WHERE huella = $1 RETURNING id`, [h])).rows[0];
+  // Duplicado: no se crea otro registro; se cuenta la repetición y se añaden los enlaces nuevos (p. ej. el ciclo que lo repitió)
+  const ya = (await db.query(`UPDATE cog_experiencias SET repeticiones = repeticiones + 1,
+      enlaces = (SELECT coalesce(jsonb_agg(DISTINCT x), '[]'::jsonb) FROM jsonb_array_elements(enlaces || $2::jsonb) x) WHERE huella = $1 RETURNING id`, [h, JSON.stringify(e.enlaces ?? [])])).rows[0];
   if (ya) return { id: ya.id, duplicado: true };
   // Una afirmación de «verificado» que no se puede comprobar se guarda como inferida (no se fía de quien la escribe)
   const certeza = await certezaReal(db, e);

@@ -107,17 +107,19 @@ export async function capacidad(db: Db, nombre: string) {
 // ¿Qué agente hace esta tarea? Puntuación por solapamiento de términos con su función, estatuto y herramientas; si nadie encaja, lo dice.
 const VACIAS = new Set('de la el los las un una y o en para por con que del al se su sus lo es como más sin sobre este esta tarea hacer quiero'.split(' '));
 const terminos = (s: string) => new Set(String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 3 && !VACIAS.has(w)));
-export async function quienHace(db: Db, descripcion: string) {
+export async function quienHace(db: Db, descripcion: string, opts: { excluir?: string[] } = {}) {
   const q = terminos(descripcion);
   if (!q.size) return { agente: null, motivo: 'La descripción no tiene términos suficientes para decidir', candidatos: [] };
-  const ags = (await db.query(`SELECT id, name, purpose, charter, allowed_tools FROM agent_functions WHERE id <> 'kratos'`)).rows;
+  const ags = (await db.query(`SELECT id, name, purpose, charter, allowed_tools FROM agent_functions WHERE id <> 'kratos' AND NOT (id = ANY($1))`, [opts.excluir ?? []])).rows;
+  // La función principal (purpose) pesa el doble que el estatuto y las herramientas: un agente se elige por lo que ES, no por lo que puede tocar
+  const coincide = (t: Set<string>, w: string) => t.has(w) || (w.length >= 6 && [...t].some((x) => x.startsWith(w.slice(0, 6))));
   const cands = ags.map((a) => {
-    const t = terminos(`${a.purpose} ${a.charter ?? ''} ${(a.allowed_tools ?? []).join(' ')}`);
-    const comunes = [...q].filter((w) => t.has(w) || [...t].some((x) => x.startsWith(w.slice(0, 6)) && w.length >= 6));
-    return { agente: a.id, nombre: a.name, puntos: comunes.length / q.size, terminos: comunes.slice(0, 8) };
+    const prop = terminos(a.purpose), resto = terminos(`${a.charter ?? ''} ${(a.allowed_tools ?? []).join(' ')}`);
+    const enProp = [...q].filter((w) => coincide(prop, w)), enResto = [...q].filter((w) => !enProp.includes(w) && coincide(resto, w));
+    return { agente: a.id, nombre: a.name, puntos: Math.min(1, (2 * enProp.length + enResto.length) / (2 * q.size)), terminos: [...enProp, ...enResto].slice(0, 8) };
   }).sort((a, b) => b.puntos - a.puntos);
   const top = cands[0];
-  if (!top || top.puntos < 0.2) return { agente: null, motivo: 'Ningún agente registrado cubre esta tarea con claridad: no la asigno a ciegas; habría que crear la capacidad o pedir más detalle', candidatos: cands.slice(0, 3) };
+  if (!top || top.puntos < 0.15) return { agente: null, motivo: 'Ningún agente registrado cubre esta tarea con claridad: no la asigno a ciegas; habría que crear la capacidad o pedir más detalle', candidatos: cands.slice(0, 3) };
   const empate = cands[1] && cands[1].puntos >= top.puntos * 0.9;
   return { agente: top.agente, motivo: `Su función y herramientas coinciden en: ${top.terminos.join(', ')}${empate ? ` (casi empata con ${cands[1].nombre}: conviene que KRATOS lo decida o lo divida)` : ''}`, candidatos: cands.slice(0, 3) };
 }

@@ -53,8 +53,8 @@
   {
    "id": "08",
    "nombre": "Integración con KRATOS, SOL, ACD (Q-LAB ausente)",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/ciclo-cognitivo.ts + db/054; herramienta ciclo_cognitivo; test/ciclo-cognitivo.test.ts 3/3; npm test 223/223; ciclo en producción cog_ciclos #3: 10/10 etapas cumplidas, objetivo #3 COMPLETED (R²=0,9987), Q-LAB ausente informado"
   },
   {
    "id": "09",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 08: integración del ciclo operativo (src/core/ciclo-cognitivo.ts) con KRATOS, SOL y ACD; Q-LAB ausente"
+ "siguiente_accion": "TAREA 09: pruebas de integración, persistencia, recuperación y seguridad (test/cognicion-integracion.test.ts)"
 }
