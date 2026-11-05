@@ -11,8 +11,8 @@
   {
    "id": "01",
    "nombre": "Literatura obligatoria y catálogo de repositorios",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "cog_referencias 26 (20 verificadas: URL abierta por el código y por el investigador), cog_repositorios 19; references.md; sol_fuentes enlazadas. No verificadas: B1, C3, D3, F1 (+2 por discrepancia de verificación). Ninguna instalación (PyPhi incompatible: toy phi propio con numpy)."
   },
   {
    "id": "02",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 01: registro de referencias (tabla cog_referencias) y catálogo de repositorios"
+ "siguiente_accion": "TAREA 02: C01 automodelo (src/core/automodelo.ts, tabla cog_capacidades)"
 }
