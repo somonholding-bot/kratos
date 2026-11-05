@@ -67,12 +67,14 @@ export async function addClaim(db: Db, i: { texto: string; nivel: string; fuente
     [String(i.texto).slice(0, 1200), i.tema ?? null, nivel, f.id, i.tipo_evidencia ?? null, i.limitaciones ?? null, i.replicaciones ?? null, i.criticas ?? null, c, by])).rows[0];
 }
 
-export async function addConnection(db: Db, i: { desde: string; hacia: string; tipo: string; explicacion: string; fuente_ids?: number[] }, by: string) {
+const NATURALEZA: Record<string, string> = { experimental: 'evidencia', causal: 'evidencia', correlacional: 'evidencia', contradictoria: 'evidencia', historica: 'evidencia', conceptual: 'interpretacion', metaforica: 'interpretacion', hipotetica: 'especulacion' };
+export async function addConnection(db: Db, i: { desde: string; hacia: string; tipo: string; explicacion: string; fuente_ids?: number[]; tema_desde?: string; tema_hacia?: string }, by: string) {
   const tipo = String(i.tipo ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (!TIPOS_CONEXION.includes(tipo)) throw new Error(`Tipo de conexión no válido. Usa: ${TIPOS_CONEXION.join(', ')}`);
   if (!i.desde || !i.hacia || String(i.explicacion ?? '').length < 20) throw new Error('Faltan desde, hacia o una explicación de la conexión');
-  return (await db.query(`INSERT INTO sol_conexiones (desde, hacia, tipo, explicacion, fuente_ids, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, tipo`,
-    [String(i.desde).slice(0, 120), String(i.hacia).slice(0, 120), tipo, String(i.explicacion).slice(0, 1200), (i.fuente_ids ?? []).map(Number).filter(Boolean), by])).rows[0];
+  const codigo = (c?: string) => (c && /^(S|H|V|B|G)[0-9]{2}$/.test(String(c).toUpperCase()) ? String(c).toUpperCase() : null);
+  return (await db.query(`INSERT INTO sol_conexiones (desde, hacia, tipo, explicacion, fuente_ids, created_by, naturaleza, tema_desde, tema_hacia) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, tipo, naturaleza`,
+    [String(i.desde).slice(0, 120), String(i.hacia).slice(0, 120), tipo, String(i.explicacion).slice(0, 1200), (i.fuente_ids ?? []).map(Number).filter(Boolean), by, NATURALEZA[tipo], codigo(i.tema_desde), codigo(i.tema_hacia)])).rows[0];
 }
 
 // Recuperación selectiva: nunca devuelve la biblioteca entera
@@ -105,6 +107,12 @@ export const COMPONENTES: Record<string, string[]> = {
   campana: ['investigacion', 'fuentes', 'publico', 'objetivo', 'concepto', 'mensajes', 'riesgos', 'metricas'],
   investigacion: ['pregunta', 'hallazgos', 'evidencia', 'fuentes', 'limitaciones', 'conexiones'],
   modulo: ['objetivos', 'conceptos', 'bibliografia', 'fuentes_primarias', 'estudios', 'evidencia', 'conexiones', 'aplicaciones', 'evaluacion', 'limitaciones'],
+  // PROJECT SOL / ACD (docs/SOL-DIRECTIVA-ACD.md): expediente de una materia S/H/V (puntos 1-8 de la etapa 1; la evaluación la hace el examinador independiente)
+  materia: ['temario', 'objetivos', 'fuentes', 'conceptos', 'teorias', 'preguntas_abiertas', 'conexiones', 'registro', 'preguntas_acd', 'limitaciones'],
+  // Puente hermético-científico B01–B12 (método de 9 pasos de la etapa 2)
+  puente: ['proposicion_original', 'fuente_historica', 'significado_historico', 'conceptos_cientificos', 'similitudes', 'diferencias', 'mecanismos', 'variables', 'criterios_apoyo', 'criterios_contra', 'preguntas_abiertas', 'candidato_acd', 'fuentes', 'conclusion'],
+  // Informe de una etapa de la campaña ACD o de una investigación generativa G01–G12
+  acd: ['objetivo', 'metodo', 'resultados', 'fuentes', 'limitaciones', 'siguiente'],
 };
 const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'proyecto';
 const urls = (s: string) => (String(s).match(/https?:\/\/[^\s)>\]"']+/g) ?? []).length;
@@ -116,6 +124,7 @@ export function missingComponents(tipo: string, c: Record<string, unknown>): str
     if (v.length < min) out.push(`${k} (falta o tiene menos de ${min} caracteres)`);
     else if (k === 'fuentes' && urls(v) < 3) out.push('fuentes (hacen falta al menos 3 URLs reales)');
     else if (k === 'bibliografia' && urls(v) < 8) out.push('bibliografia (hacen falta al menos 8 URLs de fuentes abiertas)');
+    else if (k === 'fuentes' && (tipo === 'materia' || tipo === 'puente') && urls(v) < 6) out.push('fuentes (hacen falta al menos 6 URLs reales)');
     else if (k === 'evaluacion' && (v.match(/\?/g) ?? []).length < 5) out.push('evaluacion (al menos 5 preguntas de examen con su respuesta)');
     else if (k === 'variantes_titulo' && v.split('\n').filter((l) => l.trim()).length < 3) out.push('variantes_titulo (al menos 3, una por línea)');
   }

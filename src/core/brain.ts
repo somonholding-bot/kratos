@@ -217,7 +217,7 @@ export const TOOLS: ToolDef[] = [
       acceso: { type: 'string', enum: ['texto_completo', 'resumen', 'pagina', 'metadatos'] }, condiciones_uso: { type: 'string' }, notas: { type: 'string' },
       texto: { type: 'string' }, nivel: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E', 'H'] }, fuente_id: { type: 'integer' }, tema: { type: 'string' }, tipo_evidencia: { type: 'string' },
       limitaciones: { type: 'string' }, replicaciones: { type: 'string' }, criticas: { type: 'string' }, confianza: { type: 'number' },
-      desde: { type: 'string' }, hacia: { type: 'string' }, explicacion: { type: 'string' }, fuente_ids: { type: 'array', items: { type: 'integer' } } }, ['accion']),
+      desde: { type: 'string' }, hacia: { type: 'string' }, explicacion: { type: 'string' }, fuente_ids: { type: 'array', items: { type: 'integer' } }, tema_desde: { type: 'string', description: 'código de materia o puente (S01…V12, B01…B12) del lado «desde»' }, tema_hacia: { type: 'string', description: 'código del lado «hacia»' } }, ['accion']),
     run: async (db, i) => {
       try {
         if (i.accion === 'buscar') return await searchLibrary(db, String(i.consulta ?? ''));
