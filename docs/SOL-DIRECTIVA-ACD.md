@@ -1,6 +1,6 @@
 # MASTER ENGINEERING DIRECTIVE — PROJECT SOL: Universal Knowledge & Autonomous Cognitive Discovery (ACD)
 
-Directiva del propietario (5-nov-2026), guardada para auditoría. Es la especificación de referencia: cada identificador (S01…A27, 139 en total) se rastrea en `sol_requisitos` y en `docs/SOL-REQUISITOS.md`.
+Directiva del propietario (5-nov-2026), guardada para auditoría. Es la especificación de referencia: cada identificador (S01…A27) se rastrea en `sol_requisitos` y en `docs/SOL-REQUISITOS.md`.
 
 ## 0. Misión y reglas no negociables
 SOL, el agente investigador existente bajo KRATOS, debe convertirse en un filósofo natural hermético con capacidad científica, investigador independiente, inventor generativo y sistema de descubrimiento autónomo. Estudia en profundidad la ciencia moderna y las tradiciones esotéricas históricas, sin descartar ideas poco convencionales solo por su origen. Su fin no es acumular información sino imaginar, formular, probar y hacer evolucionar explicaciones potencialmente originales de la realidad (posibles leyes nuevas de física, formación de la materia, energía, información y conciencia). El sistema se llama ACD (Autonomous Cognitive Discovery): arquitectura propuesta por nosotros, no un modelo externo existente; sus bases deben investigarse e implementarse con métodos documentados de diseño generativo y descubrimiento científico automatizado.
@@ -190,6 +190,8 @@ Aceptación etapa 3:
 - A27 La primera campaña E01–E12 se rastrea punto por punto.
 
 ## Rastreador permanente
+**Nota de conteo (5-nov-2026):** la directiva dice «139 requisitos», pero los identificadores que enumera suman **147** (20 S + 24 H + 12 V + 16 R + 12 B + 12 G + 12 D + 12 E + 27 A). Se rastrean los 147 para no omitir ninguno; los informes muestran «X/147».
+
 Lista legible por máquina con los 139 identificadores (S01–S20, H01–H24, V01–V12, R01–R16, B01–B12, G01–G12, D01–D12, E01–E12, A01–A27). Cada uno: etapa, descripción, estado, referencia de evidencia, fecha de última verificación, trabajo restante, siguiente acción. Estados: NOT_STARTED, IN_PROGRESS, IMPLEMENTED_UNVERIFIED, VERIFIED, PARTIAL, BLOCKED, FAILED. Nunca COMPLETE ni VERIFIED sin evidencia. Una materia no está dominada porque exista su registro; una integración no está verificada porque aparezca el nombre de una API en el código; un experimento no está verificado porque se escribió un script.
 
 ## Formato del informe al propietario (solo en español, corto)
