@@ -29,8 +29,8 @@
   {
    "id": "04",
    "nombre": "C03 memoria autobiográfica",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/autobiografia.ts + db/050; herramienta memoria_autobiografica; test/autobiografia.test.ts 6/6; npm test 209/209; historia real importada: 559 experiencias (334 verificadas: 332 éxitos y 2 fallos de tareas; 225 inferidas de lecciones)"
   },
   {
    "id": "05",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 04: C03 memoria autobiográfica (src/core/autobiografia.ts, tabla cog_experiencias)"
+ "siguiente_accion": "TAREA 05: C04 espacio global (src/core/espacio.ts, tablas cog_objetivos y cog_mensajes)"
 }

@@ -1,5 +1,6 @@
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
+import { buscarMemoria } from './autobiografia.ts';
 
 // Expansión cognitiva C02 — monitorización metacognitiva (Nelson & Narens 1990: monitorización y control; Fleming & Lau 2014:
 // la confianza útil es la que discrimina aciertos de errores). Distingue «he producido una respuesta» de «tengo evidencia fiable
@@ -70,12 +71,17 @@ export async function registrarDecision(db: Db, i: any, actor: string) {
   else if (decl - cc.valor > 0.2) alertas.push({ tipo: 'sobreconfianza', texto: `Declara ${decl} pero en «${i.categoria}» el acierto medido es ${cc.valor} (${cc.base} casos)` });
   const previos = await fallosPrevios(db, String(i.categoria), d.elegida);
   if (previos.length) alertas.push({ tipo: 'estrategia_ya_fallida', texto: `La estrategia «${d.elegida}» ya falló ${previos.length} vez/veces en esta categoría (decisión ${previos.map((p) => p.id).join(', ')}): ${previos[0].errores ?? ''}${previos[0].estrategia_revisada ? ` — se propuso: ${previos[0].estrategia_revisada}` : ''}` });
+  // Memoria autobiográfica (C03): errores documentados de esta estrategia para este objetivo
+  const mem = (await buscarMemoria(db, { texto: `${i.objetivo} ${d.elegida}`, resultado: 'fallo', limite: 10 }).catch(() => [] as any[]))
+    .filter((x: any) => norm(`${x.objetivo} ${x.detalle ?? ''} ${x.leccion ?? ''}`).includes(norm(d.elegida)));
+  if (mem.length) alertas.push({ tipo: 'error_documentado', texto: `La memoria tiene ${mem.length} error(es) documentado(s) con «${d.elegida}»: ${mem.slice(0, 2).map((x: any) => `${x.id} (${x.certeza}) ${String(x.leccion ?? x.detalle ?? '').slice(0, 140)}`).join(' | ')}` });
   const efectiva = cc.valor ?? Math.min(decl, 1 - incert);
   const motivos = [] as string[];
   if (efectiva < UMBRAL_ESCALADO) motivos.push(`confianza calibrada ${Math.round(efectiva * 100) / 100} < ${UMBRAL_ESCALADO}`);
   if (incert > UMBRAL_INCERTIDUMBRE) motivos.push(`incertidumbre ${incert} > ${UMBRAL_INCERTIDUMBRE}`);
   if (alertas.some((a) => a.tipo === 'contradiccion')) motivos.push('contradicciones en la decisión');
   if (previos.length >= 2) motivos.push('estrategia fallida repetida');
+  if (mem.some((x: any) => x.certeza === 'verificado')) motivos.push('error verificado en la memoria autobiográfica');
   const estado = motivos.length ? 'escalada' : 'abierta';
   const r = (await db.query(`INSERT INTO cog_decisiones (actor, tarea_id, categoria, objetivo, estrategias, elegida, evidencia, supuestos, incertidumbre, confianza_declarada, confianza_calibrada, calibracion, resultado_esperado, critica, alertas, estado, escalado_motivo)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
