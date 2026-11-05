@@ -29,6 +29,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT } from '../config.ts';
 import type { MusicCmd, MusicEffect } from './music.ts';
+import { ACD_TOOL, herramientaAcd } from './acd.ts';
+import { INVESTIGAR_TOOL, herramientaInvestigar } from './conectores.ts';
+import { EXAMEN_TOOL, herramientaExamen } from './examen.ts';
+import { GRAFO_TOOL, herramientaGrafo } from './grafo.ts';
+import { REQUISITOS_TOOL, herramientaRequisitos } from './requisitos.ts';
 import { readOpenText, searchPapers, addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
 const omegaActor = () => { const t = process.env.KRATOS_TOOLSET ?? ''; return t.startsWith('agente:') ? `agente:${t.slice(7)}` : 'kratos'; };
 
@@ -232,9 +237,9 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'proyecto_sol', description: 'Contrato de entregables KRATOS–Sol (operación Omega). entregar (titulo, tipo: video|libro|campana|investigacion|modulo, tarea_id, audiencia, plataforma, componentes: objeto {nombre: texto}; para reentregar pasa proyecto_id y solo los componentes nuevos): escribe el paquete en la bóveda, lo lee de vuelta y lo deja completed solo si están todos los componentes obligatorios; si falta algo queda blocked y dice qué falta. Componentes de un vídeo: investigacion, fuentes (≥3 URLs), publico, objetivo, concepto, titulo, variantes_titulo (≥3 líneas), miniatura, guion, escaleta, direccion_audiovisual, voz, edicion, subtitulos, descripcion, metadatos, riesgos, metricas. estado (proyecto_id o tarea_id): estado REAL contrastado con los archivos en disco. leer (proyecto_id, componente): texto de un componente. listar: últimos proyectos. predecir (proyecto_id, hipotesis, metrica, rango_min, rango_max, confianza 0-1, base): predicción con rango y confianza, nunca un número suelto. resolver_prediccion (prediccion_id, resultado, leccion): la compara con el dato real y actualiza la calibración.',
+    name: 'proyecto_sol', description: 'Contrato de entregables KRATOS–Sol (operación Omega). entregar (titulo, tipo: video|libro|campana|investigacion|modulo|materia|puente|acd, tarea_id, audiencia, plataforma, componentes: objeto {nombre: texto}; para reentregar pasa proyecto_id y solo los componentes nuevos): escribe el paquete en la bóveda, lo lee de vuelta y lo deja completed solo si están todos los componentes obligatorios; si falta algo queda blocked y dice qué falta. Componentes de un vídeo: investigacion, fuentes (≥3 URLs), publico, objetivo, concepto, titulo, variantes_titulo (≥3 líneas), miniatura, guion, escaleta, direccion_audiovisual, voz, edicion, subtitulos, descripcion, metadatos, riesgos, metricas. estado (proyecto_id o tarea_id): estado REAL contrastado con los archivos en disco. leer (proyecto_id, componente): texto de un componente. listar: últimos proyectos. predecir (proyecto_id, hipotesis, metrica, rango_min, rango_max, confianza 0-1, base): predicción con rango y confianza, nunca un número suelto. resolver_prediccion (prediccion_id, resultado, leccion): la compara con el dato real y actualiza la calibración.',
     input_schema: obj({ accion: { type: 'string', enum: ['entregar', 'estado', 'leer', 'listar', 'predecir', 'resolver_prediccion'] }, proyecto_id: { type: 'integer' }, tarea_id: { type: 'integer' },
-      titulo: { type: 'string' }, tipo: { type: 'string', enum: ['video', 'libro', 'campana', 'investigacion', 'modulo'] }, audiencia: { type: 'string' }, plataforma: { type: 'string' },
+      titulo: { type: 'string' }, tipo: { type: 'string', enum: ['video', 'libro', 'campana', 'investigacion', 'modulo', 'materia', 'puente', 'acd'] }, audiencia: { type: 'string' }, plataforma: { type: 'string' },
       componentes: { type: 'object', additionalProperties: true }, componente: { type: 'string' },
       hipotesis: { type: 'string' }, metrica: { type: 'string' }, rango_min: { type: 'number' }, rango_max: { type: 'number' }, confianza: { type: 'number' }, base: { type: 'string' },
       prediccion_id: { type: 'integer' }, resultado: { type: 'number' }, leccion: { type: 'string' } }, ['accion']),
@@ -250,6 +255,17 @@ export const TOOLS: ToolDef[] = [
       } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; }
     },
   },
+  // PROJECT SOL / ACD (docs/SOL-DIRECTIVA-ACD.md): investigación con conectores legales, motor de descubrimiento, exámenes, grafo y rastreador de requisitos
+  { name: 'investigar_sol', description: INVESTIGAR_TOOL.description, input_schema: INVESTIGAR_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaInvestigar(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'acd', description: ACD_TOOL.description, input_schema: ACD_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaAcd(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'examen', description: EXAMEN_TOOL.description, input_schema: EXAMEN_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaExamen(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'grafo_sol', description: GRAFO_TOOL.description, input_schema: GRAFO_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaGrafo(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'requisitos_sol', description: REQUISITOS_TOOL.description, input_schema: REQUISITOS_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaRequisitos(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   {
     name: 'registrar_leccion', description: 'Guarda un aprendizaje: qué funcionó, qué no funcionó o una lección, con su evidencia. Es la memoria acumulada de KRATOS.',
     input_schema: obj({
@@ -671,7 +687,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['biblioteca_sol', 'proyecto_sol', 'fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['investigar_sol', 'acd', 'examen', 'grafo_sol', 'requisitos_sol', 'biblioteca_sol', 'proyecto_sol', 'fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -686,6 +702,8 @@ export function withoutLeadingName(text: string, name: string): string {
 export async function readOnlyQuery(db: Db, sql: string) {
   const q = sql.trim().replace(/;\s*$/, '');
   if (!/^(select|with)\b/i.test(q) || q.includes(';')) return { error: 'Solo se permite una sentencia SELECT o WITH' };
+  // La rúbrica de los exámenes de Sol nunca sale por consultas libres (independencia del examinador, PROJECT SOL)
+  if (/rubrica/i.test(q)) return { error: 'Las rúbricas de los exámenes de Sol no se consultan: las ve solo el examinador con la herramienta examen' };
   const c = await db.connect();
   try {
     await c.query('BEGIN TRANSACTION READ ONLY');
@@ -1015,7 +1033,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol', 'acd', 'grafo_sol', 'requisitos_sol', 'investigar_sol'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
@@ -1072,6 +1090,7 @@ Eres el CEO de esta empresa, no un asistente: nadie te va a decir qué hacer. Di
 3. ${strategic ? 'Revisión estratégica: lee y ajusta el plan maestro (ver_plan / actualizar_plan) con datos reales (resumen_negocios, estado_apple, estado_youtube). Investiga en la web (tendencias, competidores, qué hacen las apps y canales que más crecen en tus nichos, dónde está tu audiencia) y genera 3 ideas nuevas puntuadas (impacto × confianza × facilidad). Las mejores entran al plan y, si hay agentes libres, se asignan.' : 'No hace falta replantear el plan: céntrate en revisar y en asignar lo siguiente a los agentes libres según el plan (ver_plan).'}
 4. Cada tarea nueva lleva resultado esperado y verificación medibles, y va al agente adecuado (agentes, ver_skills). Antes de crear una tarea a mano, mira ver_playbooks: si hay un playbook para ese encargo, ejecútalo con ejecutar_playbook (sus comprobaciones se verifican en código); si una tarea terminada trae «siguiente_paso», cúmplelo. Un playbook que falla no se reescribe por un solo fallo: revisa entradas y resultado; con dos fallos seguidos propón una versión (editar_playbook) y pásala a producción solo tras éxitos verificados.
 5. ESTO ES UNA EMPRESA, NO UN CANAL (decisión del propietario, 4-nov): el negocio son las apps, los productos y los ingresos (meta: 250.000 USD/mes y 200.000 usuarios). El canal es solo marketing gratuito para construir audiencia al principio. En ESTE ciclo, además de lo que toque de vídeo, avanza de forma concreta esta línea de empresa: ${lineaEmpresa}. Encarga a Sol la estrategia cuando haga falta (playbook sol-paquete-estrategia para campañas, lanzamientos, libros o investigaciones; sol-paquete-video para vídeos) y mide con datos reales (estado_apple, resumen_negocios). Si en la línea de hoy no hay nada útil que hacer, dilo con el motivo en el resumen; no lo rellenes con otro vídeo.
+5a. INVESTIGACIÓN DE SOL (PROJECT SOL / ACD): los planificadores de código lanzan solos el currículo de 56 materias, los exámenes, los puentes, la investigación generativa y la campaña de descubrimiento; tú no los repites. En cada ciclo consulta requisitos_sol accion=resumen y acd accion=estado: conoce qué investiga Sol, sus resultados, límites y tareas pendientes, y corrige lo que esté bloqueado o fallido (relanza, reasigna o registra la lección). Nunca presentes una hipótesis como descubrimiento: como mucho «apoyada provisionalmente» y solo si el código lo permitió.
 5b. FÁBRICA DEL CANAL AION MIND (el canal de YouTube se llama «Aion Mind»; una línea de marketing, no el negocio: al menos una tarea de producción cada día; 2 largos y 4 Shorts por semana). Tú dirijes la cadena completa con la herramienta fabrica_aion, sin esperar al propietario:
    a) Si hay un guion de Venus completado (tarea con paquete) que aún no está en la cola, o un elemento de content_queue en IDEA/SCRIPT, trabaja el siguiente largo (o Short): PRIMERO encarga a Sol (directora creativa) el playbook yt-direccion-creativa con ese tema (mentalismo honesto, símbolos auténticos de Jung, movimiento y color, gancho en 5 s, bucles abiertos; los Shorts son suspenso de principio a fin); cuando Sol termine, ejecuta el playbook yt-episodio-orin para el elemento de más puntuación pasándole el informe de Sol en el parámetro direccion_creativa; y cuando Venus termine, usa fabrica_aion accion=preparar_episodio (tarea_id de Venus) para traducir el paquete al motor.
    b) Con el elemento en SCRIPT, lanza fabrica_aion accion=producir_episodio (corre en segundo plano varias horas: voz local Kokoro bm_george, escenarios propios del episodio, música, animación; sin créditos ni topes de voz; solo uno a la vez). Si el estado es PRODUCTION, no lances otro: espera.
@@ -1105,7 +1124,7 @@ Termina con un resumen de 3 líneas: qué funcionó y qué no, qué encargaste, 
     try {
       resp = await client.beta.messages.create({ model, max_tokens: 12000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', output_config: { effort: 'low' },
         system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral', ttl: '1h' } }],   // instrucciones y herramientas en caché 1 h: sin arranque en frío tras unos minutos sin hablar
-        tools: [...tools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: true })), ...webTools(3)], messages } as any);
+        tools: [...tools.map(({ name, description, input_schema }) => ({ name, description, input_schema, strict: isStrict(name, input_schema) })), ...webTools(3)], messages } as any);
     } catch (err: any) { await settle(db, resKey, 0, 'kratos (ciclo CEO)'); throw new Error(`Ciclo CEO: ${err?.status ?? 'sin conexión'}`); }
     const micro = costMicroUsd(resp.model ?? model, resp.usage ?? {}); cost += micro / 1e6;
     const cents = Math.ceil(micro / 10_000);

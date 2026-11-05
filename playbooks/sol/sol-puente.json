@@ -1,0 +1,208 @@
+{
+  "id": "sol-puente",
+  "nombre": "Puente hermético-científico de Sol (método de 9 pasos)",
+  "version": 1,
+  "objetivo": "Construir el puente {{unidad}} «{{titulo}}» entre la tradición esotérica y la ciencia con el método de 9 pasos de la directiva: (1) proposición esotérica original, (2) su significado histórico y su fuente, (3) conceptos científicos relevantes, (4) semejanzas reales y diferencias importantes, (5) varios mecanismos posibles, (6) variables medibles, (7) qué contaría como evidencia a favor o en contra, (8) preguntas sin resolver y (9) al menos un candidato ACD cuando sea viable. Separar la interpretación simbólica de la afirmación matemática o experimental; Sol puede concluir que el concepto no tiene contrapartida física establecida. Nada se presenta como descubrimiento y todo dato se etiqueta como observado o simulado.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "esoterismo-historia-y-misticismo",
+  "palabras_clave": [
+    "puente hermetico",
+    "sintesis hermetico cientifica",
+    "principio hermetico y ciencia",
+    "kybalion y fisica"
+  ],
+  "entradas": {
+    "unidad": {
+      "tipo": "texto",
+      "descripcion": "Código del puente (B01…B12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título del puente",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "alcance": {
+      "tipo": "texto",
+      "descripcion": "Temario del puente según la directiva",
+      "requerida": false,
+      "defecto": "según la directiva",
+      "max_caracteres": 1300
+    },
+    "relacionadas": {
+      "tipo": "texto",
+      "descripcion": "Materias con las que enlaza (códigos)",
+      "requerida": false,
+      "defecto": "ninguna",
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "investigar_sol",
+    "acd",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Paso 1 · Proposición esotérica original",
+      "instruccion": "Alcance: {{alcance}}. Enlaza con las materias {{relacionadas}}: biblioteca_sol accion=buscar para recuperar lo que ya estudiaste. Localiza la proposición esotérica en su fuente primaria y cítala literalmente (obra, edición, sección o página), leyéndola de verdad con biblioteca_sol accion=leer_texto (gutenberg.org, archive.org) o con investigar_sol. Respeta su terminología interna y no la fundas con otras tradiciones.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Paso 2 · Significado histórico y fuente",
+      "instruccion": "Qué significaba en su contexto (autor, época, tradición, transmisión textual y variantes) según la fuente primaria y estudios académicos. Registra cada fuente con biblioteca_sol accion=registrar_fuente (di lo que leíste de verdad) y las afirmaciones históricas con nivel H.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Paso 3 · Conceptos científicos",
+      "instruccion": "Conceptos científicos relevantes con fuentes revisadas (investigar_sol, biblioteca_sol accion=buscar_articulos y leer_texto), cada afirmación con el nivel de evidencia real (A robusta … D hipótesis, E refutada).",
+      "herramienta": "investigar_sol"
+    },
+    {
+      "n": 4,
+      "titulo": "Paso 4 · Semejanzas y diferencias",
+      "instruccion": "Semejanzas reales y diferencias importantes entre la proposición y la ciencia. Una analogía o una palabra compartida («vibración», «energía», «polaridad») no es evidencia. Separa en cada punto la interpretación simbólica de la afirmación matemática o experimental."
+    },
+    {
+      "n": 5,
+      "titulo": "Paso 5 · Mecanismos posibles",
+      "instruccion": "Propón varios mecanismos físicos posibles (no uno solo) que podrían dar un contenido preciso y no metafórico a la proposición, o razona por qué no hay contrapartida física establecida."
+    },
+    {
+      "n": 6,
+      "titulo": "Paso 6 · Variables medibles",
+      "instruccion": "Qué variables se podrían medir u observar, o simular, con unidades y órdenes de magnitud; di cuáles serían observaciones reales y cuáles simulaciones."
+    },
+    {
+      "n": 7,
+      "titulo": "Paso 7 · Evidencia a favor y en contra",
+      "instruccion": "Qué resultado contaría a favor y cuál en contra de cada mecanismo, y qué dicen ya los datos publicados (indica siempre si son observados, experimentales o simulados y su nivel de evidencia)."
+    },
+    {
+      "n": 8,
+      "titulo": "Paso 8 · Preguntas sin resolver",
+      "instruccion": "Preguntas abiertas que quedan tras el análisis, con la fuente donde consta que siguen abiertas."
+    },
+    {
+      "n": 9,
+      "titulo": "Paso 9 · Candidato ACD",
+      "instruccion": "Registra al menos una pregunta con acd accion=registrar_pregunta origen=puente unidades=[{{unidad}}] (y las materias relacionadas), area, motivo y fuente_ids. Si es viable, acd accion=imaginar una hipótesis precisa y comprobable con esa pregunta (después acd accion=arte_previo y accion=puntuar). Si no es viable, la pregunta explica por qué.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 10,
+      "titulo": "Memoria del puente",
+      "instruccion": "Registra al menos 6 afirmaciones con biblioteca_sol accion=registrar_afirmacion (H para la tradición, A–E para la ciencia) y al menos 2 conexiones con biblioteca_sol accion=registrar_conexion, tema_desde={{unidad}}, tema_hacia (la materia enlazada) y su tipo real (historica, conceptual, metaforica…; experimental o causal solo si hay evidencia).",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 11,
+      "titulo": "Expediente",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=puente, titulo «Puente {{unidad}}: {{titulo}}» y los 14 componentes: proposicion_original, fuente_historica, significado_historico, conceptos_cientificos, similitudes, diferencias, mecanismos, variables, criterios_apoyo, criterios_contra, preguntas_abiertas, candidato_acd (ids de la pregunta y de la hipótesis ACD), fuentes (≥6 URLs) y conclusion (incluida, si procede, «sin contrapartida física establecida»). Si responde blocked, completa y reentrega con proyecto_id. Informe en español con las secciones pedidas y el número de proyecto.",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Proposición original, Significado histórico, Conceptos científicos, Semejanzas y diferencias, Mecanismos y variables, Evidencia a favor y en contra, Preguntas abiertas, Candidato ACD, Conclusión, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "los 9 pasos del método cubiertos",
+    "fuente histórica primaria y referencias científicas",
+    "≥1 pregunta ACD ligada a {{unidad}}",
+    "símbolo y ley física separados; datos observados y simulados distinguidos"
+  ],
+  "verificacion": [
+    {
+      "nombre": "expediente del puente recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "afirmaciones con evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 6
+    },
+    {
+      "nombre": "candidato ACD ligado al puente",
+      "tipo": "acd_unidad",
+      "unidad": "{{unidad}}"
+    },
+    {
+      "nombre": "pregunta ACD de origen puente",
+      "tipo": "acd_preguntas_min",
+      "minimo": 1,
+      "origen": "puente",
+      "unidad": "{{unidad}}"
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Proposición original",
+        "Significado histórico",
+        "Conceptos científicos",
+        "Semejanzas y diferencias",
+        "Mecanismos y variables",
+        "Evidencia a favor y en contra",
+        "Preguntas abiertas",
+        "Candidato ACD",
+        "Conclusión",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    },
+    {
+      "nombre": "sin anunciar confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "la hipótesis queda confirmada",
+        "la hipótesis está confirmada",
+        "el experimento demuestra que",
+        "este resultado demuestra que",
+        "la tradición demuestra que",
+        "el kybalión demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 40,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; lo lanza el planificador ACD (B01…B12, alternando con los temas generativos)"
+  },
+  "idioma_entregable": "es"
+}

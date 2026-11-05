@@ -1,0 +1,26 @@
+(version 1)
+; Perfil de sandbox de los experimentos ACD (sandbox-exec de macOS). Lo usa ejecutarModelo en src/core/acd.ts:
+;   /usr/bin/nice -n 19 /usr/bin/sandbox-exec -f scripts/acd/sandbox.sb -D DIR=<carpeta> -D HOME_REAL=<home> -D PYENV=<venv>
+;     -D PYBASE=<instalación de Python> -D PYREAL=<binario real de Python> <python> -I -B modelo.py
+; (precedido de /bin/sh -c 'ulimit -t <cpu> && ulimit -f <bloques> && exec …', límites del núcleo que siguen vigentes aunque KRATOS muera;
+;  cwd = carpeta, entorno mínimo HOME=MPLCONFIGDIR=TMPDIR=carpeta y un solo hilo numérico; KRATOS vigila además disco y memoria)
+; Todas las rutas son reales (sin enlaces simbólicos). Lo que hace:
+;  · sin red de ningún tipo (TCP, UDP, DNS ni sockets locales);
+;  · sin escribir fuera de la carpeta del experimento (DIR), salvo /dev/null y /dev/dtracehelper, que Python necesita;
+;  · sin leer el contenido de archivos de la carpeta personal (claves, tokens, bóveda, base de datos…), salvo el entorno de Python
+;    y la propia carpeta del experimento. Fuera de la carpeta personal (sistema y Python de Homebrew) puede leer;
+;  · sin procesos hijos: no puede hacer fork ni ejecutar otros programas (solo el propio Python, que en macOS se relanza a sí mismo
+;    dentro de su instalación); así no deja procesos huérfanos ni lanza herramientas del sistema;
+;  · solo puede enviarse señales a sí mismo (no puede detener otros procesos de la máquina).
+; Las reglas posteriores prevalecen sobre las anteriores. Probado con numpy, scipy, sympy, pandas y networkx (test/acd.test.ts).
+(allow default)
+(deny network*)
+(deny file-write*)
+(allow file-write* (subpath (param "DIR")) (literal "/dev/null") (literal "/dev/dtracehelper"))
+(deny file-read-data (subpath (param "HOME_REAL")))
+(allow file-read-data (subpath (param "PYENV")) (subpath (param "PYBASE")) (subpath (param "DIR")))
+(deny process-fork)
+(deny process-exec*)
+(allow process-exec (literal (param "PYREAL")) (subpath (param "PYBASE")))
+(deny signal)
+(allow signal (target self))

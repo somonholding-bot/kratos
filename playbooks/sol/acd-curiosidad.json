@@ -1,0 +1,148 @@
+{
+  "id": "acd-curiosidad",
+  "nombre": "Curiosidad autónoma de Sol: contradicciones, huecos y fallos (D05)",
+  "version": 1,
+  "objetivo": "Sin esperar instrucciones, encontrar en la biblioteca y en la memoria ACD fenómenos sin explicar, contradicciones, predicciones fallidas, mecanismos ausentes y direcciones inexploradas; convertirlos en preguntas de investigación con su motivo y en al menos dos hipótesis con arte previo y prioridad. Son especulaciones para probar, nunca descubrimientos; toda evidencia citada dice si es observada o simulada.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "curiosidad autonoma",
+    "contradicciones de la biblioteca",
+    "fenomenos sin explicar",
+    "predicciones fallidas"
+  ],
+  "entradas": {
+    "foco": {
+      "tipo": "texto",
+      "descripcion": "Señales detectadas por el código (ids de afirmaciones refutadas, conexiones contradictorias, predicciones fallidas, experimentos en contra, preguntas abiertas)",
+      "requerida": false,
+      "defecto": "contradicciones y huecos de la biblioteca",
+      "max_caracteres": 700
+    }
+  },
+  "herramientas": [
+    "acd",
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Señales",
+      "instruccion": "Señales que detectó el código: {{foco}}. Revísalas una a una: biblioteca_sol accion=buscar (afirmaciones de nivel E, conexiones contradictorias), proyecto_sol (predicciones que fallaron), acd accion=estado y acd accion=ver objeto=experimento|pregunta con los ids (experimentos en contra, preguntas abiertas de materias y puentes).",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Huecos de verdad",
+      "instruccion": "Busca además, por tu cuenta, fenómenos sin explicar, mecanismos ausentes y direcciones inexploradas en las materias que ya estudiaste. Comprueba con investigar_sol o biblioteca_sol accion=buscar_articulos que siguen abiertos en la literatura y registra las fuentes con biblioteca_sol accion=registrar_fuente (di lo que leíste de verdad).",
+      "herramienta": "investigar_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Preguntas (D05)",
+      "instruccion": "Registra al menos 2 preguntas con acd accion=registrar_pregunta origen=curiosidad, area, unidades, fuente_ids y un motivo concreto: qué contradicción, hueco o fallo (con ids de la biblioteca, del experimento o de la fuente) la motiva.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 4,
+      "titulo": "Hipótesis (D01, D08)",
+      "instruccion": "Al menos 2 hipótesis con mecanismo causal (acd accion=imaginar), arte previo con fuentes reales (acd accion=arte_previo) y puntuación (acd accion=puntuar). Para cada una di qué experimento computacional o qué dato observado la pondría a prueba y qué resultado la refutaría.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 5,
+      "titulo": "Entrega",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=acd, titulo «Curiosidad: …» y componentes: objetivo; metodo; resultados (tabla señal · pregunta · hipótesis · prioridad, con ids); fuentes (URLs); limitaciones (qué no se leyó entero, qué es especulación); siguiente (qué probar primero). Si responde blocked, completa y reentrega con proyecto_id. Informe en español con las secciones pedidas; evita frases como «este resultado demuestra que» (el verificador las rechaza).",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Señales detectadas, Preguntas nuevas, Hipótesis, Limitaciones, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥2 preguntas de curiosidad con motivo concreto",
+    "≥2 hipótesis con arte previo y prioridad",
+    "nada presentado como descubrimiento"
+  ],
+  "verificacion": [
+    {
+      "nombre": "preguntas de curiosidad con motivo",
+      "tipo": "acd_preguntas_min",
+      "minimo": 2,
+      "origen": "curiosidad"
+    },
+    {
+      "nombre": "hipótesis con arte previo y puntuación",
+      "tipo": "acd_hipotesis_min",
+      "minimo": 2,
+      "con_arte_previo": true,
+      "con_puntos": true
+    },
+    {
+      "nombre": "informe recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "usó el motor ACD",
+      "tipo": "herramienta_usada",
+      "herramienta": "acd"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Señales detectadas",
+        "Preguntas nuevas",
+        "Hipótesis",
+        "Limitaciones",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 3
+    },
+    {
+      "nombre": "sin anunciar confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "la hipótesis queda confirmada",
+        "la hipótesis está confirmada",
+        "la hipótesis ha sido confirmada",
+        "el experimento demuestra que",
+        "la simulación demuestra que",
+        "este resultado demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 25,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; lo lanza el planificador ACD como «acd (curiosidad)», como mucho una vez al día"
+  },
+  "idioma_entregable": "es"
+}

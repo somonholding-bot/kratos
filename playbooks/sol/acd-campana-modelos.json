@@ -1,0 +1,161 @@
+{
+  "id": "acd-campana-modelos",
+  "nombre": "Campaña ACD: modelos formales y experimentos reales (E05–E08)",
+  "version": 1,
+  "objetivo": "Etapa 2 de la campaña ACD {{campana}} (E05–E08): formalizar en modelos matemáticos o computacionales las hipótesis seleccionadas que sean viables, con variables, supuestos, predicciones falsables y un baseline adecuado; implementar y EJECUTAR al menos un experimento computacional real en el sandbox y dejar que el código lo compare con el baseline. Di siempre qué datos son simulados y cuáles observados; un resultado a favor no confirma ninguna ley física y nada de esto es un descubrimiento.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "formalizar hipotesis",
+    "modelo computacional",
+    "experimento acd",
+    "comparar con baseline",
+    "predicciones falsables"
+  ],
+  "entradas": {
+    "campana": {
+      "tipo": "texto",
+      "descripcion": "Código de la campaña (C1, C2…)",
+      "requerida": false,
+      "defecto": "C1",
+      "max_caracteres": 5
+    }
+  },
+  "herramientas": [
+    "acd",
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Seleccionadas",
+      "instruccion": "acd accion=campana codigo={{campana}} (el punto E04 da los ids de las seleccionadas) y, para cada una, acd accion=ver objeto=hipotesis: enunciado, mecanismo, arte previo, fuentes y críticas.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 2,
+      "titulo": "Viabilidad (E05)",
+      "instruccion": "Decide cuáles se pueden formalizar y probar con honestidad mediante un experimento computacional. Las que no (porque exigen datos, instrumentos o escalas que no tienes), acd accion=decidir estado=archivada con el motivo concreto: es un resultado válido, no un fracaso. Formaliza al menos una. Cada seleccionada debe acabar con un modelo o archivada con su motivo (el punto E05 lo comprueba).",
+      "herramienta": "acd"
+    },
+    {
+      "n": 3,
+      "titulo": "Modelo formal (E05, E06, D02 MODELAR)",
+      "instruccion": "acd accion=registrar_modelo por cada viable: tipo (ecuaciones, simulacion, algoritmo, causal o estadistico), descripcion, variables (con unidades y rangos), supuestos, predicciones falsables (números, rangos o signo del efecto), falsacion (qué resultado concreto la contradiría) y baseline adecuado (la teoría establecida o un modelo nulo razonable, nunca un hombre de paja), con el código Python completo. El código guarda su sha256.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 4,
+      "titulo": "Código y contrato de salida",
+      "instruccion": "El script solo usa numpy, scipy, sympy, pandas o networkx; no usa la red, no lee archivos externos, no lanza subprocesos y no reserva memoria sin límite (el sandbox y el código lo impiden); fija las semillas; calcula el modelo Y el baseline sobre los mismos datos y, si ajusta parámetros, evalúa en datos reservados. Escribe en su carpeta salida.json con «datos» (sintetico si los generó la simulación; observado solo si son mediciones reales copiadas en el código con su fuente citada en un comentario; mixto si combina), «descripcion», «metricas» {nombre: {modelo, baseline, mejor: menor|mayor}} y, si las hay, «predicciones»."
+    },
+    {
+      "n": 5,
+      "titulo": "Ejecución real (E07, E08, D03 EXPERIMENTAR)",
+      "instruccion": "acd accion=ejecutar modelo_id (timeout_s como mucho 600): el código lo corre DE VERDAD en el sandbox, guarda modelo.py, salida.json, stdout, stderr y meta.json con sha256 y calcula él la comparación con el baseline (a_favor, en_contra, no_concluyente o invalido). Si sale error, timeout o contrato_invalido, corrige el código y registra otra versión del modelo (todas las ejecuciones quedan guardadas); nunca inventes, retoques ni resumas a tu favor un resultado. Hace falta al menos un experimento ok.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 6,
+      "titulo": "Lectura honesta",
+      "instruccion": "Interpreta el veredicto que calculó el código: con datos sintéticos solo se comprueba la coherencia interna del modelo frente a su baseline, no el mundo real; a_favor no confirma ninguna ley física; en_contra y no_concluyente se informan con el mismo detalle que a_favor. En todo el informe etiqueta cada dato como simulado u observado."
+    },
+    {
+      "n": 7,
+      "titulo": "Entrega",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=acd, titulo «Campaña {{campana}} · modelos y experimentos (E05–E08)» y componentes: objetivo; metodo (modelos, baseline y por qué es justo); resultados (tabla experimento · modelo · veredicto del código · datos simulados u observados · métricas · carpeta); fuentes (URLs); limitaciones (datos sintéticos, supuestos, lo que no se pudo probar); siguiente (qué debe revisar el crítico independiente). Si responde blocked, completa y reentrega con proyecto_id. Informe en español con las secciones pedidas. Evita frases como «la simulación demuestra que» o «el experimento demuestra que» (el verificador las rechaza): escribe «el código calculó a_favor frente al baseline con datos sintéticos».",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Modelos, Experimentos, Comparación con el baseline, Datos simulados y observados, Limitaciones, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥1 modelo formal con predicciones falsables, criterio de falsación y baseline",
+    "≥1 experimento ejecutado de verdad con salidas y sha256 conservados",
+    "datos simulados y observados distinguidos",
+    "ningún resultado presentado como confirmación ni descubrimiento"
+  ],
+  "verificacion": [
+    {
+      "nombre": "modelos formales (E05, E06)",
+      "tipo": "acd_modelos_min",
+      "minimo": 1,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "experimento real con baseline (E07, E08)",
+      "tipo": "acd_experimentos_ok_min",
+      "minimo": 1,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "informe de la etapa recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "usó el motor ACD",
+      "tipo": "herramienta_usada",
+      "herramienta": "acd"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Modelos",
+        "Experimentos",
+        "Comparación con el baseline",
+        "Datos simulados y observados",
+        "Limitaciones",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 3
+    },
+    {
+      "nombre": "sin anunciar confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "la hipótesis queda confirmada",
+        "la hipótesis está confirmada",
+        "la hipótesis ha sido confirmada",
+        "el experimento demuestra que",
+        "la simulación demuestra que",
+        "la simulación prueba que",
+        "este resultado demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 50,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; los experimentos corren en local (nice 19, sandbox sin red, un hilo, máximo 600 s cada uno)"
+  },
+  "idioma_entregable": "es"
+}

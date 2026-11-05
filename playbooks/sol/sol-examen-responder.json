@@ -1,0 +1,116 @@
+{
+  "id": "sol-examen-responder",
+  "nombre": "Examen de dominio de Sol: responder el examen de una materia",
+  "version": 1,
+  "descripcion": "PROJECT SOL, A03: Sol responde el examen que creó Saturno, sin ver la rúbrica. Examen a libro abierto: puede consultar su biblioteca y sus fuentes, pero debe explicar con sus palabras. Lo lanza el planificador de exámenes (advanceExams).",
+  "objetivo": "Responder el examen #{{examen}} de la materia {{unidad}} «{{titulo}}» demostrando comprensión propia: puedes consultar tu biblioteca y tus fuentes, pero cada respuesta explica con tus palabras, con razonamiento y ejemplos, y dice con honestidad lo que no sabes.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "palabras_clave": [
+    "responder examen",
+    "examen de sol",
+    "examen de la materia"
+  ],
+  "entradas": {
+    "unidad": {
+      "tipo": "texto",
+      "descripcion": "Código de la materia (S01–S20, H01–H24, V01–V12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título de la materia",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "examen": {
+      "tipo": "numero",
+      "descripcion": "Número del examen",
+      "requerida": true,
+      "min": 1
+    }
+  },
+  "herramientas": [
+    "examen",
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Preguntas",
+      "instruccion": "examen accion=ver unidad={{unidad}}: verás solo las preguntas del examen #{{examen}} (la rúbrica es del examinador).",
+      "herramienta": "examen"
+    },
+    {
+      "n": 2,
+      "titulo": "Consulta a libro abierto",
+      "instruccion": "Consulta tu biblioteca (biblioteca_sol accion=buscar), tus fuentes (investigar_sol, leer_texto) y tu expediente de la materia. No copies párrafos de las fuentes: entiende y explica.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Respuestas",
+      "instruccion": "Responde TODAS con examen accion=responder (examen_id={{examen}}, respuestas [{n, respuesta}]), cada una de al menos 80 caracteres, con razonamiento, un ejemplo y, cuando proceda, el nivel de evidencia y la fuente (id o URL). Separa lo establecido de lo interpretativo o especulativo y, en esoterismo, la enseñanza de la tradición de lo que dice la ciencia. Si no sabes algo, dilo y explica hasta dónde llegas: no inventes.",
+      "herramienta": "examen"
+    },
+    {
+      "n": 4,
+      "titulo": "Informe",
+      "instruccion": "Secciones: Examen respondido (número y resumen de cada respuesta), Fuentes consultadas y Lo que no sé con seguridad."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Examen respondido, Fuentes consultadas y Lo que no sé con seguridad (examen #{{examen}} de {{unidad}})",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "todas las preguntas respondidas con la herramienta examen",
+    "respuestas propias, razonadas y con fuentes cuando proceda",
+    "incertidumbre declarada con honestidad"
+  ],
+  "verificacion": [
+    {
+      "nombre": "examen respondido",
+      "tipo": "examen_respondido"
+    },
+    {
+      "nombre": "usó la herramienta de exámenes",
+      "tipo": "herramienta_usada",
+      "herramienta": "examen"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Examen respondido",
+        "Fuentes consultadas",
+        "Lo que no sé con seguridad"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 20,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; tope diario de exámenes en system_state.sol_examenes_dia"
+  },
+  "idioma_entregable": "es"
+}

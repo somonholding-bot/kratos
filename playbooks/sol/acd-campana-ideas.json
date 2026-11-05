@@ -1,0 +1,178 @@
+{
+  "id": "acd-campana-ideas",
+  "nombre": "Campaña ACD: preguntas, hipótesis, arte previo y selección (E01–E04)",
+  "version": 1,
+  "objetivo": "Etapa 1 de la campaña ACD {{campana}} (E01–E04): registrar al menos 10 preguntas sin resolver sobre materia, energía, física cuántica, información, tiempo o conciencia; imaginar al menos 20 hipótesis sustancialmente distintas; compararlas con la literatura real (arte previo y posible novedad); puntuarlas y seleccionar 5 con criterios explícitos. Todo es especulación hasta que se pruebe: ninguna hipótesis se presenta como descubrimiento, y toda evidencia que cites dice si es observada, experimental o simulada.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "campana acd",
+    "primera campana",
+    "generar hipotesis",
+    "preguntas sin resolver",
+    "arte previo",
+    "seleccionar hipotesis"
+  ],
+  "entradas": {
+    "campana": {
+      "tipo": "texto",
+      "descripcion": "Código de la campaña (C1, C2…)",
+      "requerida": false,
+      "defecto": "C1",
+      "max_caracteres": 5
+    }
+  },
+  "herramientas": [
+    "acd",
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Punto de partida",
+      "instruccion": "acd accion=campana codigo={{campana}} y acd accion=estado: mira qué preguntas e hipótesis existen ya (el código rechaza las casi duplicadas, así que no repitas nada). Si un intento anterior dejó hipótesis de la campaña sin arte previo o sin puntuar, complétalas ahora: el punto E03 exige arte previo en TODAS las hipótesis originales de la campaña. Con biblioteca_sol accion=buscar recupera lo que ya estudiaste en las materias y puentes que sirvan de punto de partida (S03–S05, S08, S09, S12, S15, S16, V01–V12, B01–B12).",
+      "herramienta": "acd"
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes reales",
+      "instruccion": "Localiza literatura real con investigar_sol (OpenAlex, arXiv, Semantic Scholar, Crossref, Europe PMC, INSPIRE-HEP, NASA ADS…) y biblioteca_sol accion=buscar_articulos. Registra cada fuente con biblioteca_sol accion=registrar_fuente (el código abre la URL y solo entonces la marca verificada) diciendo en «acceso» lo que leíste de verdad. Un resumen no es un artículo leído entero: lee enteros con biblioteca_sol accion=leer_texto los que más pesen. Nunca cites una fuente que no abriste.",
+      "herramienta": "investigar_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Preguntas sin resolver (E01)",
+      "instruccion": "Registra al menos 10 preguntas abiertas DE VERDAD en la literatura actual con acd accion=registrar_pregunta: texto, campana={{campana}}, origen=campana, area (materia, energia, cuantica, informacion, tiempo o conciencia; cubre al menos 4 de las 6), motivo (por qué sigue abierta: resultados contradictorios, mecanismo ausente, predicción fallida, teorías rivales), unidades (códigos S/H/V/B/G relacionados) y fuente_ids de las fuentes donde consta que está abierta. Si no encuentras ninguna fuente que diga que algo sigue sin resolver, no lo registres como pregunta abierta.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 4,
+      "titulo": "Hipótesis (E02, D01 IMAGINAR)",
+      "instruccion": "Imagina al menos 20 hipótesis sustancialmente distintas con acd accion=imaginar (pregunta_id, titulo, enunciado preciso y comprobable, mecanismo causal, supuestos, campana={{campana}}). Usa divergencia controlada (varios mecanismos rivales por pregunta), analogía entre disciplinas (un puente o una materia convertidos en un mecanismo físico preciso, no en una metáfora), búsqueda de novedad (lo que la literatura NO ha explorado) y supuestos alternativos (niega un supuesto estándar y sigue sus consecuencias). El código rechaza las casi duplicadas: una idea conocida con otro nombre no es una hipótesis nueva.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 5,
+      "titulo": "Arte previo y novedad (E03)",
+      "instruccion": "Para cada hipótesis busca qué existe ya y llama a acd accion=arte_previo con fuente_ids de lo consultado y un texto que diga qué está publicado y en qué se diferencia: novedad=conocida (ya está publicada), variante (cambia un elemento de algo publicado) o posiblemente_nueva (el código exige ≥2 fuentes verificadas consultadas; significa «no encontrada en lo consultado», nunca «nueva con certeza»).",
+      "herramienta": "acd"
+    },
+    {
+      "n": 6,
+      "titulo": "Puntuación (D08)",
+      "instruccion": "acd accion=puntuar cada hipótesis con importancia, novedad_puntos, coherencia, testabilidad, coste (1 = carísimo de probar) y evidencia, todos entre 0 y 1 y justificados en el informe. La prioridad la calcula el código con su fórmula fija y el arte previo pone techo a la novedad: no la calcules tú ni infles los puntos.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 7,
+      "titulo": "Selección (E04)",
+      "instruccion": "acd accion=ranking campana={{campana}} y después acd accion=seleccionar con 5 hipotesis_ids y criterios explícitos: por qué esas y no otras (prioridad, testabilidad con un experimento computacional real en el sandbox —Python con numpy, scipy, sympy, pandas o networkx, sin red, como mucho 600 s—, coste, novedad respaldada por el arte previo y variedad de áreas). Si te apartas del ranking, explica por qué.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 8,
+      "titulo": "Entrega",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=acd, titulo «Campaña {{campana}} · ideas (E01–E04)» y componentes: objetivo; metodo (técnicas de imaginación, búsquedas de arte previo y fórmula de prioridad); resultados (tabla pregunta · hipótesis · novedad · prioridad · seleccionada, con ids); fuentes (URLs); limitaciones (qué no leíste entero, que la novedad no es una búsqueda exhaustiva, que todo es especulación sin probar); siguiente (formalizar las 5 seleccionadas). Si responde blocked, completa y reentrega con proyecto_id. Termina tu informe en español con las secciones pedidas y el número de proyecto. Evita frases que anuncien confirmaciones («la hipótesis queda confirmada», «este resultado demuestra que»): el verificador las rechaza.",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Preguntas, Hipótesis, Arte previo y novedad, Selección y criterios, Limitaciones, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥10 preguntas abiertas de la campaña {{campana}} con motivo y fuente",
+    "≥20 hipótesis sustancialmente distintas con arte previo y puntuación",
+    "5 seleccionadas con criterios explícitos",
+    "ninguna hipótesis presentada como descubrimiento; evidencia observada y simulada distinguidas"
+  ],
+  "verificacion": [
+    {
+      "nombre": "preguntas de la campaña (E01)",
+      "tipo": "acd_preguntas_min",
+      "minimo": 10,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "hipótesis con arte previo y puntuación (E02, E03)",
+      "tipo": "acd_hipotesis_min",
+      "minimo": 20,
+      "campana": "{{campana}}",
+      "con_arte_previo": true,
+      "con_puntos": true
+    },
+    {
+      "nombre": "selección con criterios (E04)",
+      "tipo": "acd_seleccionadas_min",
+      "minimo": 5,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "informe de la etapa recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "usó el motor ACD",
+      "tipo": "herramienta_usada",
+      "herramienta": "acd"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Preguntas",
+        "Hipótesis",
+        "Arte previo y novedad",
+        "Selección y criterios",
+        "Limitaciones",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    },
+    {
+      "nombre": "sin anunciar confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "la hipótesis queda confirmada",
+        "la hipótesis está confirmada",
+        "la hipótesis ha sido confirmada",
+        "el experimento demuestra que",
+        "la simulación demuestra que",
+        "la simulación prueba que",
+        "este resultado demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 45,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto. Lo lanza el planificador ACD (cupo system_state.acd_tareas_dia)"
+  },
+  "idioma_entregable": "es"
+}

@@ -1,0 +1,176 @@
+{
+  "id": "sol-generativa",
+  "nombre": "Ingeniería generativa y descubrimiento automatizado: un tema G y su aplicación a ACD",
+  "version": 1,
+  "objetivo": "Investigar el tema {{unidad}} «{{titulo}}» con referencias técnicas reales (artículos revisados, informes técnicos, repositorios y documentación oficial), extraer sus principios computacionales documentados, distinguir lo público de lo propietario o desconocido y decir con precisión qué es aplicable al motor ACD de Sol, cómo y qué no. No afirmar reproducir algoritmos propietarios (NASA, LEAP 71 Noyron) sin evidencia; nada de lo que se proponga es un descubrimiento, y todo resultado citado se etiqueta como simulado u observado (en laboratorio o en pruebas físicas reales).",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "ingenieria generativa",
+    "descubrimiento cientifico automatizado",
+    "regresion simbolica",
+    "busqueda de novedad",
+    "computacion evolutiva"
+  ],
+  "entradas": {
+    "unidad": {
+      "tipo": "texto",
+      "descripcion": "Código del tema (G01…G12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título del tema",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "alcance": {
+      "tipo": "texto",
+      "descripcion": "Temario según la directiva",
+      "requerida": false,
+      "defecto": "según la directiva",
+      "max_caracteres": 1300
+    },
+    "relacionadas": {
+      "tipo": "texto",
+      "descripcion": "Unidades con las que enlaza (códigos)",
+      "requerida": false,
+      "defecto": "S17",
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "investigar_sol",
+    "acd",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Lo que ya se sabe",
+      "instruccion": "Alcance de {{unidad}}: {{alcance}}. Enlaza con {{relacionadas}}. biblioteca_sol accion=buscar (lo que ya tienes) y acd accion=estado (qué hace hoy el motor ACD: imaginar, modelar, experimentar en sandbox, evolucionar con linaje, crítica independiente y prioridad por fórmula).",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Referencias técnicas",
+      "instruccion": "Localiza y ABRE referencias técnicas reales con investigar_sol (NASA NTRS y NASA ADS, arXiv, OpenAlex, Semantic Scholar, Crossref), biblioteca_sol accion=buscar_articulos y leer_texto, y WebFetch para documentación oficial y repositorios. Regístralas con biblioteca_sol accion=registrar_fuente diciendo en «acceso» lo leído de verdad (un resumen no es una lectura completa). Mínimo 6 fuentes, al menos 3 primarias (artículo, informe técnico, repositorio o documentación del autor).",
+      "herramienta": "investigar_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Puntos de partida (compruébalos)",
+      "instruccion": "Pistas para empezar; ábrelas y verifícalas, y si no encuentras una, dilo en vez de citarla: G01 informes y presentaciones de Ryan McClelland (NASA Goddard) sobre «evolved structures» y diseño generativo en NASA NTRS; G02 lo que LEAP 71 publica sobre Noyron (web, artículos, charlas, ensayos de motores) frente a lo que no publica; G03 el repositorio y la documentación de PicoGK (qué hace realmente, su licencia y su relación con Noyron); G04 Holland (algoritmos genéticos), Koza (programación genética), Rechenberg y Schwefel (estrategias evolutivas), Deb y colaboradores (NSGA-II); G05 Lehman y Stanley (búsqueda de novedad), Mouret y Clune (MAP-Elites, quality-diversity); G06 Langley y colaboradores (BACON), King y colaboradores (el robot científico Adam) y agentes de investigación recientes; G07 Schmidt y Lipson (2009), AI Feynman (Udrescu y Tegmark), SINDy (Brunton y colaboradores), PySR (Cranmer); G08 comparación bayesiana de modelos, factores de Bayes y diseño experimental bayesiano; G09 redes neuronales informadas por la física (Raissi, Perdikaris y Karniadakis) y comprobaciones de consistencia numérica; G10 laboratorios autónomos, aprendizaje activo y optimización bayesiana en bucle cerrado; G11 Popper (falsabilidad), Platt (inferencia fuerte), Lakatos, reproducibilidad y explicaciones rivales; G12 síntesis de G01–G11 en el diseño ACD propio de Sol."
+    },
+    {
+      "n": 4,
+      "titulo": "Público, propietario o desconocido",
+      "instruccion": "Separa lo publicado y comprobable (con su fuente) de lo propietario, de lo anunciado sin detalles y de lo desconocido (p. ej. Noyron frente a PicoGK; el flujo documentado de la NASA frente a herramientas comerciales). Escribe «no documentado públicamente» cuando sea así; nunca rellenes huecos con suposiciones presentadas como hechos."
+    },
+    {
+      "n": 5,
+      "titulo": "Principios computacionales",
+      "instruccion": "Extrae los principios documentados (representación, generación, evaluación, selección, retroalimentación, validación física o experimental) y registra al menos 6 afirmaciones con biblioteca_sol accion=registrar_afirmacion (nivel y fuente) y al menos 1 conexión con accion=registrar_conexion tema_desde={{unidad}}. Al citar resultados di si son simulados u observados (laboratorio o pruebas físicas reales).",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 6,
+      "titulo": "Aplicabilidad a ACD",
+      "instruccion": "Di con precisión qué capacidad ACD mejoraría (D01 imaginar, D02 modelar, D03 experimentar, D04 evolucionar, D06 criticar, D08 priorizar), cómo se implementaría con lo que hay (sandbox Python sin red con numpy, scipy, sympy, pandas y networkx), qué no es aplicable y por qué. Registra al menos una pregunta con acd accion=registrar_pregunta origen=materia unidades=[{{unidad}}] y motivo (p. ej. probar el método en un experimento ACD). En G12 describe el diseño ACD completo de Sol a partir de lo documentado, sin atribuirle capacidades que no tiene.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 7,
+      "titulo": "Entrega",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=acd, titulo «{{unidad}}: {{titulo}}» y componentes: objetivo; metodo (búsquedas y lecturas); resultados (principios, público/propietario/desconocido y aplicabilidad a ACD); fuentes (URLs); limitaciones (lo propietario, lo no verificado, lo leído solo en resumen); siguiente. Si responde blocked, completa y reentrega con proyecto_id. Informe en español con las secciones pedidas y el número de proyecto.",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Qué está documentado, Público, propietario o desconocido, Principios computacionales, Aplicabilidad a ACD, Limitaciones, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "referencias técnicas reales abiertas y registradas",
+    "lo público separado de lo propietario o desconocido",
+    "aplicabilidad a ACD explícita, con lo que no aplica",
+    "≥1 pregunta ACD ligada a {{unidad}}"
+  ],
+  "verificacion": [
+    {
+      "nombre": "informe del tema recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "afirmaciones con evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 6
+    },
+    {
+      "nombre": "pregunta ACD ligada al tema",
+      "tipo": "acd_unidad",
+      "unidad": "{{unidad}}"
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Qué está documentado",
+        "Público, propietario o desconocido",
+        "Principios computacionales",
+        "Aplicabilidad a ACD",
+        "Limitaciones",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    },
+    {
+      "nombre": "sin atribuirse algoritmos propietarios ni confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "acd reproduce noyron",
+        "sol reproduce noyron",
+        "el motor acd reproduce el algoritmo",
+        "la simulación demuestra que",
+        "este resultado demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 35,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; lo lanza el planificador ACD (G01…G12, alternando con los puentes)"
+  },
+  "idioma_entregable": "es"
+}

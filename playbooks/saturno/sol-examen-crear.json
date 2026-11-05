@@ -1,0 +1,133 @@
+{
+  "id": "sol-examen-crear",
+  "nombre": "Examen de dominio de Sol: crear el examen de una materia",
+  "version": 1,
+  "descripcion": "PROJECT SOL, A03: Saturno, examinador independiente, crea el examen de una materia estudiada. Sol nunca ve la rúbrica. Lo lanza el planificador de exámenes (src/core/curriculo.ts, advanceExams) con su propio tope diario (sol_examenes_dia).",
+  "objetivo": "Como examinador independiente, crear un examen de 6 a 10 preguntas que demuestre si Sol comprende de verdad la materia {{unidad}} «{{titulo}}» (alcance: {{alcance}}), con una rúbrica privada que Sol nunca verá. Comprensión, no memoria: explicar, comparar, aplicar, criticar y distinguir evidencia de interpretación y especulación.",
+  "agentes": {
+    "responsable": "saturno"
+  },
+  "palabras_clave": [
+    "crear examen",
+    "examen de sol",
+    "evaluar materia",
+    "examinador independiente"
+  ],
+  "entradas": {
+    "unidad": {
+      "tipo": "texto",
+      "descripcion": "Código de la materia (S01–S20, H01–H24, V01–V12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título de la materia",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "alcance": {
+      "tipo": "texto",
+      "descripcion": "Temario de la materia según la directiva",
+      "requerida": true,
+      "max_caracteres": 600
+    },
+    "expediente": {
+      "tipo": "texto",
+      "descripcion": "Expediente de Sol que sirve solo para calibrar el alcance",
+      "requerida": false,
+      "defecto": "sin expediente registrado",
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "examen",
+    "proyecto_sol",
+    "investigar_sol",
+    "WebSearch",
+    "WebFetch"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Alcance evaluado",
+      "instruccion": "Alcance de {{unidad}} y la directiva. Del expediente de Sol (entrada expediente) lee SOLO temario y objetivos (proyecto_sol leer componente=temario / objetivos); leer otra parte o entregar anula el examen."
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes de referencia",
+      "instruccion": "Respuestas correctas con fuentes independientes (investigar_sol, WebSearch, WebFetch: manuales, revisiones, ediciones críticas, textos primarios), no con la biblioteca ni las conclusiones de Sol; ≥3 URLs."
+    },
+    {
+      "n": 3,
+      "titulo": "Preguntas de comprensión",
+      "instruccion": "6-10: explicar con palabras propias, comparar, aplicar a un caso nuevo, detectar un error, separar evidencia, interpretación y especulación; ≥1 sobre preguntas abiertas. Esoterismo: terminología, historia textual, diferencias entre tradiciones, por qué no es física establecida. Si hubo examen anterior, nuevas."
+    },
+    {
+      "n": 4,
+      "titulo": "Rúbrica privada",
+      "instruccion": "examen crear (unidad={{unidad}}, preguntas [{n, pregunta}], rubrica [{n, criterios}]): qué debe contener cada respuesta, qué la invalida y cómo puntuar de 0 a 1. NUNCA copies la rúbrica en el informe: Sol lo lee y el código anula el examen.",
+      "herramienta": "examen"
+    },
+    {
+      "n": 5,
+      "titulo": "Informe",
+      "instruccion": "Secciones: Alcance evaluado, Diseño del examen (qué mide cada pregunta, sin los criterios de la rúbrica) y Fuentes de referencia."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Alcance evaluado, Diseño del examen (sin la rúbrica) y Fuentes de referencia del examen de {{unidad}}",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "6-10 preguntas de comprensión con rúbrica privada",
+    "la rúbrica no aparece en el informe",
+    "≥3 fuentes de referencia independientes"
+  ],
+  "verificacion": [
+    {
+      "nombre": "examen creado sin filtrar la rúbrica, por un examinador independiente del expediente de Sol",
+      "tipo": "examen_creado"
+    },
+    {
+      "nombre": "usó la herramienta de exámenes",
+      "tipo": "herramienta_usada",
+      "herramienta": "examen"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Alcance evaluado",
+        "Diseño del examen",
+        "Fuentes de referencia"
+      ]
+    },
+    {
+      "nombre": "fuentes de referencia",
+      "tipo": "fuentes_citadas",
+      "minimo": 3
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 15,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; tope diario de exámenes en system_state.sol_examenes_dia"
+  },
+  "idioma_entregable": "es"
+}

@@ -1,0 +1,178 @@
+{
+  "id": "sol-materia",
+  "nombre": "Currículo de Sol: estudiar una materia de PROJECT SOL",
+  "version": 1,
+  "descripcion": "Etapa 1 de la directiva PROJECT SOL (docs/SOL-DIRECTIVA-ACD.md): una de las 56 materias S01–S20, H01–H24, V01–V12. Lo lanza el planificador del currículo (src/core/curriculo.ts) con el mismo tope diario que los módulos (omega_modulos_dia). La evaluación la hace después un examinador independiente (Saturno) con los playbooks sol-examen-*.",
+  "objetivo": "Estudiar a fondo la materia {{codigo}} «{{titulo}}» de PROJECT SOL y dejar su expediente con los 8 puntos de la directiva: temario y objetivos; fuentes primarias y secundarias; mapa de conceptos y terminología; teorías y preguntas abiertas; conexiones con otras materias; registro persistente; preguntas para ACD; conocimiento con nivel de evidencia. Reglas: solo cuenta como leído lo que el código anota con leer_texto (un resumen no es un texto leído); nada de muros de pago ni copias sin permiso; nunca inventes fuentes, lecturas ni resultados. Ciencias (S, V): separa los resultados establecidos, con su evidencia, de los modelos en competencia y las preguntas abiertas. Esoterismo (H, S19, S20): estúdialo en serio, con su terminología interna, su historia, sus métodos y sus fuentes primarias, sin fundir tradiciones distintas en una sola doctrina y sin presentarlo como física establecida; las lecturas científicas posibles van aparte, marcadas como interpretación o especulación. El expediente no prueba dominio: lo demuestra después el examen del examinador independiente (Saturno).",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "palabras_clave": [
+    "materia del curriculo",
+    "estudiar materia",
+    "project sol",
+    "etapa 1",
+    "conocimiento universal"
+  ],
+  "entradas": {
+    "codigo": {
+      "tipo": "texto",
+      "descripcion": "Código de la materia (S01–S20, H01–H24, V01–V12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título de la materia",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "alcance": {
+      "tipo": "texto",
+      "descripcion": "Temario de la directiva y módulos anteriores que reutiliza o absorbe",
+      "requerida": true,
+      "max_caracteres": 600
+    },
+    "correcciones": {
+      "tipo": "texto",
+      "descripcion": "Comentarios del examinador si el examen anterior se suspendió (vacío en el primer estudio)",
+      "requerida": false,
+      "max_caracteres": 500
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol",
+    "acd",
+    "WebSearch",
+    "WebFetch"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Partida",
+      "instruccion": "Con correcciones: corrige esas lagunas y reentrega el expediente anterior (proyecto_id). Mira lo que ya tienes (biblioteca_sol buscar). Temario y 5-8 objetivos."
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes",
+      "instruccion": "Lee ≥2 en esta tarea (investigar_sol leer o biblioteca_sol leer_texto); registra ≥10 primarias y secundarias con DOI o identificador."
+    },
+    {
+      "n": 3,
+      "titulo": "Conceptos",
+      "instruccion": "15-30 con definición, relaciones y fuente; en esoterismo, terminología con obra y época."
+    },
+    {
+      "n": 4,
+      "titulo": "Teorías",
+      "instruccion": "Lo establecido con su evidencia, aparte de modelos rivales y preguntas abiertas; cada tradición como tal."
+    },
+    {
+      "n": 5,
+      "titulo": "Afirmaciones",
+      "instruccion": "≥10 con biblioteca_sol registrar_afirmacion (nivel A-E o H, fuente_id, limitaciones), refutadas (E) incluidas."
+    },
+    {
+      "n": 6,
+      "titulo": "Conexiones",
+      "instruccion": "≥3 con biblioteca_sol registrar_conexion tema_desde={{codigo}}, tema_hacia=otra unidad, tipo real (experimental, causal, correlacional, historica, contradictoria: evidencia; conceptual, metaforica: interpretación; hipotetica: especulación)."
+    },
+    {
+      "n": 7,
+      "titulo": "ACD",
+      "instruccion": "acd registrar_pregunta unidades=[\"{{codigo}}\"] origen=materia: ≥3 sin resolver, con motivo y fuente_ids."
+    },
+    {
+      "n": 8,
+      "titulo": "Expediente",
+      "instruccion": "proyecto_sol entregar tipo=materia, tarea_id, titulo «Materia {{codigo}}: {{titulo}}», componentes temario, objetivos, fuentes (≥6 URLs), conceptos, teorias, preguntas_abiertas, conexiones, registro (qué leíste entero o en parte), preguntas_acd, limitaciones; si queda blocked, completa (proyecto_id)."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Informe en español con las secciones Temario y objetivos, Fuentes, Mapa de conceptos, Teorías y preguntas abiertas, Conexiones, Preguntas para ACD, Lagunas y Expediente entregado (número de proyecto)",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "expediente tipo materia con los 8 puntos",
+    "lecturas reales en esta tarea",
+    "esoterismo como tradición; ciencia con lo establecido aparte"
+  ],
+  "verificacion": [
+    {
+      "nombre": "expediente recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "expediente de la materia",
+      "tipo": "materia_expediente"
+    },
+    {
+      "nombre": "afirmaciones con evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 10
+    },
+    {
+      "nombre": "fuentes y lecturas reales",
+      "tipo": "materia_fuentes",
+      "minimo": 8,
+      "leidas": 2
+    },
+    {
+      "nombre": "conexiones con otras materias",
+      "tipo": "materia_conexiones",
+      "minimo": 3
+    },
+    {
+      "nombre": "preguntas para ACD",
+      "tipo": "materia_preguntas_acd",
+      "minimo": 3
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Temario y objetivos",
+        "Fuentes",
+        "Mapa de conceptos",
+        "Teorías y preguntas abiertas",
+        "Conexiones",
+        "Preguntas para ACD",
+        "Lagunas",
+        "Expediente entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 8
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 40,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto. Tope diario compartido con los módulos: system_state.omega_modulos_dia"
+  },
+  "idioma_entregable": "es"
+}

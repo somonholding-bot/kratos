@@ -1,0 +1,118 @@
+{
+  "id": "sol-examen-calificar",
+  "nombre": "Examen de dominio de Sol: calificar el examen de una materia",
+  "version": 1,
+  "descripcion": "PROJECT SOL, A03: Saturno, examinador independiente, califica cada respuesta de Sol de 0 a 1 con un comentario. El código calcula la nota y decide: aprueba con media ≥ 0,7 y ninguna respuesta por debajo de 0,3; solo entonces la materia queda «evaluada». Si suspende, Sol recibe los comentarios para reestudiar.",
+  "objetivo": "Calificar con independencia y rigor el examen #{{examen}} de Sol sobre {{unidad}} «{{titulo}}»: cada respuesta de 0 a 1 según la rúbrica privada y las fuentes, con un comentario concreto sobre lo que estuvo bien y lo que faltó o estaba mal. No regales nota: este examen es la única prueba de dominio de la materia.",
+  "agentes": {
+    "responsable": "saturno"
+  },
+  "palabras_clave": [
+    "calificar examen",
+    "corregir examen de sol",
+    "examinador independiente"
+  ],
+  "entradas": {
+    "unidad": {
+      "tipo": "texto",
+      "descripcion": "Código de la materia (S01–S20, H01–H24, V01–V12)",
+      "requerida": true,
+      "max_caracteres": 3
+    },
+    "titulo": {
+      "tipo": "texto",
+      "descripcion": "Título de la materia",
+      "requerida": true,
+      "max_caracteres": 120
+    },
+    "examen": {
+      "tipo": "numero",
+      "descripcion": "Número del examen",
+      "requerida": true,
+      "min": 1
+    }
+  },
+  "herramientas": [
+    "examen",
+    "biblioteca_sol",
+    "investigar_sol",
+    "WebSearch",
+    "WebFetch"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Examen completo",
+      "instruccion": "examen accion=ver examen_id={{examen}}: preguntas, rúbrica privada y respuestas de Sol.",
+      "herramienta": "examen"
+    },
+    {
+      "n": 2,
+      "titulo": "Contraste",
+      "instruccion": "Compara cada respuesta con la rúbrica y, si hace falta, con las fuentes (investigar_sol, biblioteca_sol, WebFetch). Penaliza errores de hecho, fuentes inventadas, confundir evidencia con interpretación o especulación, presentar una tradición esotérica como física establecida, fundir tradiciones distintas y respuestas que repiten sin explicar.",
+      "herramienta": "investigar_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Calificación",
+      "instruccion": "examen accion=calificar (examen_id={{examen}}, notas [{n, nota de 0 a 1, comentario}] para todas las preguntas). El comentario dice en concreto qué faltó o qué estaba mal: si Sol suspende, lo recibirá para reestudiar. La nota final la calcula el código.",
+      "herramienta": "examen"
+    },
+    {
+      "n": 4,
+      "titulo": "Informe",
+      "instruccion": "Secciones: Calificación (nota de cada pregunta, media y resultado que devolvió la herramienta), Puntos fuertes, Errores y lagunas, Recomendaciones para el reestudio."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Calificación, Puntos fuertes, Errores y lagunas y Recomendaciones para el reestudio del examen #{{examen}} de {{unidad}}",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "todas las respuestas calificadas de 0 a 1 con un comentario concreto",
+    "calificación contrastada con la rúbrica y las fuentes",
+    "el resultado (aprobado o suspenso) es el que calcula el código"
+  ],
+  "verificacion": [
+    {
+      "nombre": "examen calificado",
+      "tipo": "examen_calificado"
+    },
+    {
+      "nombre": "usó la herramienta de exámenes",
+      "tipo": "herramienta_usada",
+      "herramienta": "examen"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Calificación",
+        "Puntos fuertes",
+        "Errores y lagunas",
+        "Recomendaciones para el reestudio"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 15,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; tope diario de exámenes en system_state.sol_examenes_dia"
+  },
+  "idioma_entregable": "es"
+}

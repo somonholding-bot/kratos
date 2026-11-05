@@ -1,0 +1,163 @@
+{
+  "id": "acd-campana-evolucion",
+  "nombre": "Campaña ACD: revisar, rechazar y evolucionar con los resultados (E10–E12)",
+  "version": 1,
+  "objetivo": "Etapa final de la campaña ACD {{campana}} (E10–E12): con los resultados de los experimentos y las críticas independientes, revisar, rechazar, refutar o hacer evolucionar las hipótesis conservando todo el linaje y las salidas, y proponer de forma autónoma la siguiente pregunta de investigación (campaña {{siguiente_campana}}). No existe el estado «confirmado»: lo máximo es apoyada_provisional, y nada se presenta como descubrimiento. Etiqueta siempre los datos como simulados u observados.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "evolucionar hipotesis",
+    "revisar hipotesis",
+    "linaje de hipotesis",
+    "siguiente pregunta de investigacion"
+  ],
+  "entradas": {
+    "campana": {
+      "tipo": "texto",
+      "descripcion": "Código de la campaña (C1, C2…)",
+      "requerida": false,
+      "defecto": "C1",
+      "max_caracteres": 5
+    },
+    "siguiente_campana": {
+      "tipo": "texto",
+      "descripcion": "Código de la campaña siguiente",
+      "requerida": false,
+      "defecto": "C2",
+      "max_caracteres": 5
+    }
+  },
+  "herramientas": [
+    "acd",
+    "biblioteca_sol",
+    "investigar_sol",
+    "proyecto_sol",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Resultados y críticas",
+      "instruccion": "acd accion=campana codigo={{campana}}; para cada hipótesis probada, formalizada o criticada, acd accion=ver objeto=hipotesis y acd accion=linaje: veredictos que calculó el código, si los datos eran simulados u observados, integridad de los archivos y objeciones del crítico independiente (Saturno).",
+      "herramienta": "acd"
+    },
+    {
+      "n": 2,
+      "titulo": "Decisiones (E10, D12)",
+      "instruccion": "acd accion=decidir con un motivo que cite el experimento o la crítica (#id): refutada si un experimento salió en_contra; rechazada si la crítica o el arte previo la tumban; archivada si no se puede avanzar con honestidad; apoyada_provisional solo si el código lo admite (experimento ok a favor con archivos intactos, sin otro posterior en contra, y crítica «aceptar» independiente posterior que nadie independiente haya rechazado después). apoyada_provisional sigue siendo provisional: no es una confirmación.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 3,
+      "titulo": "Evolución (E10, E11, D04 EVOLUCIONAR)",
+      "instruccion": "acd accion=evolucionar al menos una hipótesis (modificar, combinar o refinar) para responder a una objeción o a un resultado, con un motivo que cite los ids del experimento o la crítica. El código guarda el linaje y deja a los padres «revisada». Si cambias el modelo, regístralo como versión nueva y ejecútalo (acd accion=registrar_modelo y accion=ejecutar): las salidas antiguas se conservan tal cual. Un experimento nuevo necesita su propia crítica independiente (E09) antes de que la campaña se dé por cerrada.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 4,
+      "titulo": "Siguiente pregunta (E12, D05)",
+      "instruccion": "Propón tú, sin esperar instrucciones, la siguiente pregunta de investigación: acd accion=registrar_pregunta campana={{siguiente_campana}} origen=curiosidad, area, unidades y un motivo concreto (qué resultado, fallo, objeción o hueco de esta campaña la motiva, con ids).",
+      "herramienta": "acd"
+    },
+    {
+      "n": 5,
+      "titulo": "Entrega",
+      "instruccion": "proyecto_sol accion=entregar con tarea_id, tipo=acd, titulo «Campaña {{campana}} · evolución (E10–E12)» y componentes: objetivo; metodo; resultados (cada decisión con su evidencia, el árbol de linaje y qué salidas se conservaron); fuentes (URLs); limitaciones (datos simulados frente a observados, novedad no exhaustiva, lo que no se pudo probar); siguiente (la nueva pregunta y por qué). Si responde blocked, completa y reentrega con proyecto_id. Informe en español con las secciones pedidas; evita frases como «la hipótesis queda confirmada» (el verificador las rechaza).",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Resultados y críticas, Decisiones, Linaje, Siguiente pregunta, Limitaciones, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥1 decisión basada en un resultado o una crítica, con su id",
+    "≥1 hipótesis evolucionada con su linaje",
+    "siguiente pregunta registrada para {{siguiente_campana}}",
+    "nada presentado como confirmado; datos simulados y observados distinguidos"
+  ],
+  "verificacion": [
+    {
+      "nombre": "decisiones según resultados (E10)",
+      "tipo": "acd_decisiones_min",
+      "minimo": 1,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "hipótesis evolucionada (D04)",
+      "tipo": "acd_hipotesis_min",
+      "minimo": 1,
+      "campana": "{{campana}}"
+    },
+    {
+      "nombre": "siguiente pregunta autónoma (E12)",
+      "tipo": "acd_preguntas_min",
+      "minimo": 1,
+      "campana": "{{siguiente_campana}}"
+    },
+    {
+      "nombre": "informe de la etapa recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "usó el motor ACD",
+      "tipo": "herramienta_usada",
+      "herramienta": "acd"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Resultados y críticas",
+        "Decisiones",
+        "Linaje",
+        "Siguiente pregunta",
+        "Limitaciones",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 3
+    },
+    {
+      "nombre": "sin anunciar confirmaciones",
+      "tipo": "sin_frases",
+      "frases": [
+        "la hipótesis queda confirmada",
+        "la hipótesis está confirmada",
+        "la hipótesis ha sido confirmada",
+        "el experimento demuestra que",
+        "la simulación demuestra que",
+        "la simulación prueba que",
+        "este resultado demuestra que"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 35,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto"
+  },
+  "idioma_entregable": "es"
+}

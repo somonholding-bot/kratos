@@ -38,6 +38,30 @@ export const CHECK_TYPES: Record<string, string[]> = {
   herramienta_usada: ['herramienta'],
   archivo_existe: ['campo', 'ruta'],
 };
+// Comprobaciones del motor ACD (src/core/acd.ts) y del currículo de Sol (src/core/examen.ts): aquí sus claves y su descripción,
+// para validar playbooks sin importar esos módulos; la lógica se carga al usarlas (import dinámico, sin ciclos de módulos)
+export const EXTERNAS: Record<string, { modulo: 'acd' | 'examen'; claves: string[]; texto: string }> = {
+  acd_preguntas_min: { modulo: 'acd', claves: ['minimo', 'campana', 'origen', 'unidad'], texto: 'preguntas registradas con la herramienta acd durante la tarea' },
+  acd_hipotesis_min: { modulo: 'acd', claves: ['minimo', 'campana', 'con_arte_previo', 'con_puntos'], texto: 'hipótesis registradas con la herramienta acd durante la tarea' },
+  acd_seleccionadas_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'hipótesis seleccionadas con criterios explícitos' },
+  acd_modelos_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'modelos ejecutables registrados (acd accion=registrar_modelo)' },
+  acd_experimentos_ok_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'experimentos ejecutados de verdad, con salidas en disco y comparados con su baseline' },
+  acd_criticas_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'críticas de un evaluador distinto del generador' },
+  acd_decisiones_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'hipótesis revisadas, rechazadas o evolucionadas según los resultados' },
+  acd_unidad: { modulo: 'acd', claves: ['unidad'], texto: 'al menos una pregunta o hipótesis ACD ligada a la unidad de la tarea' },
+  materia_preguntas_acd: { modulo: 'examen', claves: ['minimo'], texto: 'preguntas ACD registradas para la materia de la tarea' },
+  materia_conexiones: { modulo: 'examen', claves: ['minimo'], texto: 'conexiones del grafo con el código de la materia' },
+  materia_fuentes: { modulo: 'examen', claves: ['minimo', 'leidas'], texto: 'fuentes registradas para la materia, con lectura real anotada' },
+  materia_expediente: { modulo: 'examen', claves: [], texto: 'expediente de la materia entregado con sus 10 componentes' },
+  examen_creado: { modulo: 'examen', claves: [], texto: 'examen creado por el examinador independiente' },
+  examen_respondido: { modulo: 'examen', claves: [], texto: 'examen respondido por Sol sin ver la rúbrica' },
+  examen_calificado: { modulo: 'examen', claves: [], texto: 'examen calificado por el examinador independiente' },
+};
+for (const [k, v] of Object.entries(EXTERNAS)) CHECK_TYPES[k] = v.claves;
+async function comprobacionExterna(tipo: string): Promise<{ comprobar: (c: any, ctx: any) => Promise<{ ok: boolean; detalle: string }> } | undefined> {
+  const e = EXTERNAS[tipo]; if (!e) return undefined;
+  return e.modulo === 'acd' ? (await import('./acd.ts')).ACD_CHECKS[tipo] : (await import('./examen.ts')).CURRICULO_CHECKS[tipo];
+}
 export const NUMERIC_KEYS = new Set(['caracteres', 'minimo', 'maximo', 'duracion', 'ppm_min', 'ppm_max']);
 
 export const norm = (s: string) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -259,8 +283,11 @@ export async function runCheck(c: PlaybookCheck, ctx: CheckCtx): Promise<Check> 
         const ok = !!ruta && fs.existsSync(ruta);
         return out(ok, ok ? ruta : `no existe: ${ruta}`);
       }
-      default:
+      default: {
+        const ext = await comprobacionExterna(c.tipo);
+        if (ext) { const r = await ext.comprobar(c, ctx); return out(!!r.ok, r.detalle); }
         return out(false, `tipo de comprobación desconocido «${c.tipo}»`);
+      }
     }
   } catch (e: any) { return out(false, `error al comprobar: ${String(e?.message ?? e).slice(0, 160)}`); }
 }
@@ -298,7 +325,7 @@ export function describeChecks(checks: PlaybookCheck[], params: Record<string, u
       case 'sin_promesas_medicas': return `${c.campo ?? 'informe'} sin promesas médicas (curar, sustituir al médico)`;
       case 'herramienta_usada': return `usar de verdad la herramienta ${c.herramienta}`;
       case 'archivo_existe': return `el archivo ${c.ruta ?? c.campo} debe existir`;
-      default: return `${c.tipo}`;
+      default: return EXTERNAS[c.tipo] ? `${EXTERNAS[c.tipo].texto}${c.minimo !== undefined ? ` (mínimo ${c.minimo})` : ''}` : `${c.tipo}`;
     }
   }).map((s, i) => `${i + 1}) ${s}`).join('; ');
 }
