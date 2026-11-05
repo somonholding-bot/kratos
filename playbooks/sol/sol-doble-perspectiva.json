@@ -1,0 +1,156 @@
+{
+  "id": "sol-doble-perspectiva",
+  "nombre": "Investigación de doble perspectiva: Hermes Trismegisto y Albert Einstein",
+  "version": 1,
+  "objetivo": "Investigar «{{pregunta}}» desde dos marcos independientes —la tradición hermética y la física de Einstein con la ciencia posterior claramente separada— con fuentes reales, afirmaciones con nivel de evidencia y una pregunta comprobable para ACD. La respuesta visible es breve y natural; todo lo demás queda guardado.",
+  "agentes": {
+    "responsable": "sol"
+  },
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "doble perspectiva",
+    "hermes",
+    "einstein",
+    "hermetica y cientifica",
+    "perspectiva hermetica"
+  ],
+  "entradas": {
+    "pregunta": {
+      "tipo": "texto",
+      "descripcion": "Pregunta del propietario sobre la naturaleza, la materia, la conciencia, el tiempo o las leyes del universo",
+      "requerida": true,
+      "max_caracteres": 600
+    },
+    "linea": {
+      "tipo": "texto",
+      "descripcion": "Línea de la Misión A (A1–A8) a la que pertenece",
+      "requerida": false,
+      "defecto": "A8",
+      "max_caracteres": 3
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "acd",
+    "proyecto_sol",
+    "memoria_autobiografica",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Lo que ya sabemos",
+      "instruccion": "Busca en tu biblioteca (biblioteca_sol accion=buscar) y en tu memoria (memoria_autobiografica accion=buscar) lo que ya investigaste sobre «{{pregunta}}». No repitas trabajo hecho.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes herméticas",
+      "instruccion": "Abre fuentes herméticas reales (sacred-texts.com, hermetic.com, esotericarchives.com, archive.org, gutenberg.org): Corpus Hermeticum, Asclepio, Tabla Esmeralda, textos alquímicos, cábala hermética, Franz Bardon y El Kybalión (1908, obra moderna: distínguelo del hermetismo antiguo). Registra al menos 3 con biblioteca_sol accion=registrar_fuente y al menos 3 afirmaciones de nivel H (tradición) que digan QUÉ enseña cada texto, no que sea cierto.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Fuentes científicas",
+      "instruccion": "Abre escritos de Einstein (Einstein Papers Project, sus artículos y libros de divulgación como «Relatividad: teoría especial y general») y la física posterior relevante (artículos, revisiones). Registra al menos 3 fuentes y al menos 3 afirmaciones de nivel A–D. Separa lo que Einstein defendió de lo que se descubrió después: nunca le atribuyas ideas o descubrimientos posteriores.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 4,
+      "titulo": "Pregunta e hipótesis para ACD",
+      "instruccion": "Registra con acd accion=registrar_pregunta (origen=propietario, area de la línea {{linea}}: materia-fisica, leyes-fundamentales, vibracion-informacion, conciencia, intencion-fisica, hermetismo, modelos-originales o preguntas-abiertas) una pregunta concreta y comprobable que surja de comparar las dos perspectivas, y al menos una hipótesis con acd accion=imaginar. No fuerces coincidencias ni inventes equivalencias.",
+      "herramienta": "acd"
+    },
+    {
+      "n": 5,
+      "titulo": "Entrega",
+      "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=investigacion, titulo «Doble perspectiva: …», componentes: pregunta, hallazgos, evidencia, fuentes, limitaciones, conexiones). Después escribe tu informe EN ESPAÑOL NATURAL, como un maestro que conversa, sin códigos, fórmulas ni porcentajes, con estas secciones en este orden: «Hermes Trismegisto — Perspectiva hermética» (una interpretación profunda de sus enseñanzas, nunca palabras históricas de Hermes; si usas el Kybalión, dilo), «Albert Einstein — Perspectiva científica» (cómo razonaría desde sus teorías documentadas; lo posterior, marcado como posterior), «Lo que podemos investigar» (dónde coinciden de verdad, dónde difieren y la pregunta concreta registrada en ACD), «Lo comprobado, lo hipotético y lo desconocido», «Fuentes» (URLs). Las tres primeras secciones, breves: lo que se lee en dos o tres minutos.",
+      "herramienta": "proyecto_sol"
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Hermes Trismegisto — Perspectiva hermética, Albert Einstein — Perspectiva científica, Lo que podemos investigar, Lo comprobado, lo hipotético y lo desconocido, Fuentes",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥6 fuentes abiertas (herméticas y científicas)",
+    "≥6 afirmaciones con nivel (H y A–D)",
+    "pregunta e hipótesis en ACD",
+    "respuesta natural en tres partes"
+  ],
+  "verificacion": [
+    {
+      "nombre": "informe recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "afirmaciones con nivel de evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 6
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "pregunta registrada en ACD",
+      "tipo": "acd_preguntas_min",
+      "minimo": 1
+    },
+    {
+      "nombre": "hipótesis registrada en ACD",
+      "tipo": "acd_hipotesis_min",
+      "minimo": 1
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Hermes Trismegisto — Perspectiva hermética",
+        "Albert Einstein — Perspectiva científica",
+        "Lo que podemos investigar",
+        "Lo comprobado, lo hipotético y lo desconocido",
+        "Fuentes"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    },
+    {
+      "nombre": "sin atribuciones literales",
+      "tipo": "sin_frases",
+      "frases": [
+        "Hermes dijo literalmente",
+        "Einstein dijo que la conciencia",
+        "Einstein descubrió la mecánica cuántica moderna",
+        "esto demuestra que el principio hermético"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 30,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto"
+  },
+  "idioma_entregable": "es"
+}

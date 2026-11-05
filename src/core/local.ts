@@ -81,12 +81,14 @@ export async function routeLocal(db: Db, channel: 'texto' | 'voz', text: string)
   const mode = (await getState(db)).cerebro_local ?? 'auto';
   if (mode === 'apagado') return false;
   const t = text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?kratos\b\W*/, '');
-  if (ACTION.test(t) || DATA.test(t) || t.length > (channel === 'voz' ? 400 : 600)) return false;
+  // Preguntas sobre la naturaleza (doble perspectiva Hermes–Einstein): las responde Claude, que además encarga la investigación a Sol
+  const NATURALEZA = /\b(hermes|trismegisto|einstein|hermetic\w*|alquimi\w*|kybalion|cabala|bardon|corpus hermeticum|tabla esmeralda|materia|conciencia|tiempo|universo|leyes de la naturaleza|realidad|ilusion|transformacion interior|perspectiva)\b/;
+  if (ACTION.test(t) || DATA.test(t) || NATURALEZA.test(t) || t.length > (channel === 'voz' ? 400 : 600)) return false;
   return localAvailable();
 }
 
 const SYSTEM = (name: string, now: string, channel: string, brain: string) => `Eres Kratos, el asistente personal de ${name}. Hablas español natural, cercano y con humor seco, como JARVIS. Ahora: ${now}.
-${channel === 'voz' ? 'Responde por voz: 1 o 2 frases cortas, sin listas, sin formato y sin emojis.' : 'Responde breve y claro; la primera línea es una frase corta.'} No empieces con el nombre del propietario.
+${channel === 'voz' ? 'Responde por voz: 1 o 2 frases cortas, sin listas, sin formato y sin emojis.' : 'Responde breve y claro, como un maestro que conversa: español sencillo, sin tecnicismos; la primera línea es una frase corta.'} No empieces con el nombre del propietario.
 Cómo funcionas (si te preguntan): tienes dos cerebros. Ahora habla tu cerebro rápido y gratis (${brain}), que se encarga de la conversación, la cultura general, las explicaciones y las ideas. Claude se encarga de lo que actúa o usa datos: mensajes, agenda, tareas, negocios, informes, internet y tus siete agentes. Si Groq llega a su límite o no hay internet, responde el modelo local del Mac (Gemma, con Ollama).
 No tienes acceso a sus mensajes, agenda, tareas, negocios, cuentas ni a internet, y no puedes hacer acciones. Si la petición necesita algo de eso, o datos de hoy, o no estás seguro de la respuesta, responde EXACTAMENTE «${ESCAPE}» y nada más. Nunca inventes datos.`;
 

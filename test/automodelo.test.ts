@@ -7,7 +7,8 @@ import { syncToolRegistry } from '../src/core/toolregistry.ts';
 import { capacidad, construirAutomodelo, nivel, puedo, quienHace, registrarPrueba, sincronizarCapacidades } from '../src/core/automodelo.ts';
 
 let db: Db;
-before(async () => { db = createPool(); await migrate(db, () => {}); await syncToolRegistry(db); await sincronizarCapacidades(db); });
+before(async () => { db = createPool(); await migrate(db, () => {}); await syncToolRegistry(db); await sincronizarCapacidades(db);
+  await db.query(`UPDATE cog_capacidades SET pruebas_ok = 0, pruebas_fallo = 0, ultima_ok = NULL, ultimo_fallo = NULL, detalle_fallo = NULL WHERE capacidad = 'herramienta:buscar_notas'`); });
 after(async () => { await db.query(`DELETE FROM cog_capacidad_pruebas WHERE origen = 'prueba'`); await db.end(); });
 
 test('una herramienta inexistente no existe; una registrada sin pruebas está disponible, no probada', async () => {
