@@ -93,7 +93,8 @@ export async function libraryStats(db: Db) {
   const a = (await db.query(`SELECT nivel, count(*)::int AS n FROM sol_afirmaciones GROUP BY nivel ORDER BY nivel`)).rows;
   const c = (await db.query(`SELECT count(*)::int AS n FROM sol_conexiones`)).rows[0].n;
   const p = (await db.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE resuelta_en IS NOT NULL)::int AS resueltas, count(*) FILTER (WHERE acierto)::int AS aciertos FROM sol_predicciones`)).rows[0];
-  return { fuentes: f, por_tema: porTema, afirmaciones_por_nivel: a, conexiones: c, predicciones: p,
+  const m = (await db.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE estado = 'completado')::int AS completados, (SELECT n || '. ' || titulo FROM sol_modulos WHERE estado = 'en_curso' ORDER BY n LIMIT 1) AS en_curso FROM sol_modulos`)).rows[0];
+  return { fuentes: f, por_tema: porTema, afirmaciones_por_nivel: a, conexiones: c, predicciones: p, curriculo: m,
     aviso: 'Solo cuentan como conocidas las fuentes verificadas; «texto_completo» indica las leídas enteras (las demás, página, resumen o metadatos).' };
 }
 
@@ -103,6 +104,7 @@ export const COMPONENTES: Record<string, string[]> = {
   libro: ['investigacion', 'fuentes', 'publico', 'tesis', 'arquitectura', 'indice', 'capitulos', 'riesgos', 'metricas'],
   campana: ['investigacion', 'fuentes', 'publico', 'objetivo', 'concepto', 'mensajes', 'riesgos', 'metricas'],
   investigacion: ['pregunta', 'hallazgos', 'evidencia', 'fuentes', 'limitaciones', 'conexiones'],
+  modulo: ['objetivos', 'conceptos', 'bibliografia', 'fuentes_primarias', 'estudios', 'evidencia', 'conexiones', 'aplicaciones', 'evaluacion', 'limitaciones'],
 };
 const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'proyecto';
 const urls = (s: string) => (String(s).match(/https?:\/\/[^\s)>\]"']+/g) ?? []).length;
@@ -113,6 +115,8 @@ export function missingComponents(tipo: string, c: Record<string, unknown>): str
     const v = String(c?.[k] ?? '').trim(), min = ['titulo', 'objetivo', 'publico', 'pregunta', 'tesis'].includes(k) ? 10 : 40;
     if (v.length < min) out.push(`${k} (falta o tiene menos de ${min} caracteres)`);
     else if (k === 'fuentes' && urls(v) < 3) out.push('fuentes (hacen falta al menos 3 URLs reales)');
+    else if (k === 'bibliografia' && urls(v) < 8) out.push('bibliografia (hacen falta al menos 8 URLs de fuentes abiertas)');
+    else if (k === 'evaluacion' && (v.match(/\?/g) ?? []).length < 5) out.push('evaluacion (al menos 5 preguntas de examen con su respuesta)');
     else if (k === 'variantes_titulo' && v.split('\n').filter((l) => l.trim()).length < 3) out.push('variantes_titulo (al menos 3, una por línea)');
   }
   return out;

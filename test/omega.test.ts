@@ -59,3 +59,27 @@ test('una predicción exige rango, confianza y base; al resolverla se sabe si ac
   const r: any = await resolvePrediction(db, p.id, 620, 'Quedó por encima del rango', 'prueba');
   assert.equal(r.acierto, false); assert.match(r.calibracion.nota, /Menos de 10/);
 });
+
+test('currículo: un módulo cada vez, con tope diario, y solo se completa si su tarea terminó bien', async () => {
+  const { advanceCurriculum } = await import('../src/core/curriculo.ts');
+  await db.query(`UPDATE sol_modulos SET estado = 'pendiente', tarea_id = NULL, proyecto_id = NULL, intentos = 0, lanzado_en = NULL, completado_en = NULL`);
+  await db.query(`INSERT INTO system_state (key, value) VALUES ('omega_modulos_dia', '2') ON CONFLICT (key) DO UPDATE SET value = '2'`);
+  const biz = (await db.query(`SELECT id FROM businesses ORDER BY id LIMIT 1`)).rows[0].id;
+  const tarea = async (status: string) => (await db.query(`INSERT INTO tasks (business_id, owner_function, type, title, objective, expected_result, verification, status, created_by) VALUES ($1,'sol','agente','Prueba módulo','x','x','x',$2,'prueba') RETURNING id`, [biz, status])).rows[0].id;
+  const lanzados: number[] = []; let siguiente = await tarea('pendiente');
+  const launch = async (_d: Db, m: { n: number }) => { lanzados.push(m.n); return { tarea: siguiente }; };
+  assert.equal((await advanceCurriculum(db, 'prueba', launch)).lanzado, 1);
+  assert.match(String((await advanceCurriculum(db, 'prueba', launch)).motivo), /en curso/);          // uno cada vez
+  await db.query(`UPDATE tasks SET status = 'completada' WHERE id = $1`, [siguiente]); siguiente = await tarea('pendiente');
+  assert.equal((await advanceCurriculum(db, 'prueba', launch)).lanzado, 2);                          // cierra el 1 y lanza el 2
+  assert.equal((await db.query(`SELECT estado FROM sol_modulos WHERE n = 1`)).rows[0].estado, 'completado');
+  await db.query(`UPDATE tasks SET status = 'fallida' WHERE id = $1`, [siguiente]);
+  assert.match(String((await advanceCurriculum(db, 'prueba', launch)).motivo), /cupo diario/);       // el 2 vuelve a pendiente, pero hoy ya no hay cupo
+  assert.equal((await db.query(`SELECT estado FROM sol_modulos WHERE n = 2`)).rows[0].estado, 'pendiente');
+  await db.query(`UPDATE system_state SET value = '0' WHERE key = 'omega_modulos_dia'`);
+  assert.match(String((await advanceCurriculum(db, 'prueba', launch)).motivo), /pausa/);
+  assert.deepEqual(lanzados, [1, 2]);
+  await db.query(`DELETE FROM tasks WHERE created_by = 'prueba' AND title = 'Prueba módulo'`);
+  await db.query(`UPDATE sol_modulos SET estado = 'pendiente', tarea_id = NULL, intentos = 0, lanzado_en = NULL, completado_en = NULL`);
+  await db.query(`UPDATE system_state SET value = '4' WHERE key = 'omega_modulos_dia'`);
+});
