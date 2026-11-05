@@ -22,6 +22,16 @@
 - `scripts/sol/ingesta-fuentes.ts`: abrió las 150 URLs citadas en las 5 bibliotecas de conocimiento de Sol y las guías; **140 verificadas** (página abierta), 10 no verificadas (bloqueadas o caídas).
 - **Honestidad:** acceso = «pagina». No se ha leído ningún libro entero; enciclopedias 81, web 21, artículos 16, documentación oficial 12, documento oficial 1. Faltan fuentes primarias (PubMed, CIA Reading Room, textos clásicos de dominio público).
 
+## Etapa 5 · Inteligencia científica (pruebas superadas, 4-nov-2026)
+- Playbook `sol-investigacion` y comprobación en código `afirmaciones_sol` (≥ 6 afirmaciones con nivel y fuente; A y B exigen fuente verificada).
+- **Las 4 pruebas del documento, completadas al primer intento y verificadas en código** (tareas 620–623, proyectos P2–P5 en `~/Documents/Kratos/Proyectos/`):
+  - Científica (autohipnosis, atención y dolor): sólida en laboratorio (g ≈ 0,54–0,76, 85 estudios), moderada e insegura en dolor agudo, no clara en dolor crónico.
+  - Biohacking (cetosis, autofagia, cognición): evidencia humana débil; la autofagia cerebral por ayuno en humanos es hipótesis (nivel D).
+  - Documental (Gateway Process): memorando del Ejército de 1983 (McDonnell), sin experimentos ni datos; demuestra interés institucional, no que el método funcione.
+  - Esotérica (Akasha de Bardon): relación histórica y de analogía con los modelos de conciencia, no científica.
+- Biblioteca tras las pruebas: 175 fuentes verificadas de 186 (6 leídas a texto completo); de las registradas por Sol: 7 metaanálisis, 6 ensayos, 5 revisiones, 2 documentos oficiales. 43 afirmaciones (A 4, B 14, C 14, D 7, E 2, H 2) y 13 conexiones tipificadas.
+- **Límites que Sol declaró:** PubMed/PMC, Cochrane y cia.gov bloquearon la lectura automática (resúmenes vía Europe PMC, OCR de Internet Archive); varios textos solo en resumen; Bardon leído solo en su parte teórica.
+
 ## Etapa 7 · Integración KRATOS–Sol (demostración superada, 4-nov-2026)
 - Playbooks `sol-paquete-video` y `sol-paquete-estrategia` (campañas, lanzamientos, libros, investigación: toda la empresa, no solo vídeos).
 - **Prueba de coordinación y prueba creativa:** se pidió a KRATOS por chat un Short de 60 s sobre sueños lúcidos → KRATOS creó la tarea 617 para Sol → Sol investigó (8 llamadas a la biblioteca, 3 fuentes nuevas, 4 afirmaciones con nivel B/C) → entregó el proyecto P1 (`completed`, 18 archivos en `~/Documents/Kratos/Proyectos/P1-…/v1/`) → verificación en código superada → predicción registrada (60–900 vistas a 7 días, confianza 0,6, con su base) → **KRATOS recuperó el paquete** en una conversación nueva y citó el guion.
