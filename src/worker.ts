@@ -19,6 +19,8 @@ import { sincronizarCapacidades } from './core/automodelo.ts';
 import { importarHistoria } from './core/autobiografia.ts';
 import { sembrarTeorias } from './core/conciencia.ts';
 import { recuperarCiclos } from './core/ciclo-cognitivo.ts';
+import { sembrarPreguntas } from './core/ksie.ts';
+import { sincronizarRegistro } from './core/ksie-herramientas.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
 // Ciclo: observar → (parada/pausa?) → reclamar → ejecutar → comprobar → registrar → esperar.
@@ -87,6 +89,7 @@ if (import.meta.main) {
   await syncToolRegistry(db).catch((e) => console.error('[worker] registro de herramientas:', e.message));
   await seedSolDef(db).catch((e) => console.error('[worker] semillas SOL:', e.message));
   await sembrarTeorias(db).catch((e) => console.error('[worker] teorías C06:', e.message));
+  await sembrarPreguntas(db).catch((e) => console.error('[worker] preguntas KSIE:', e.message));
   await syncPlaybooksFromFiles(db).then((r) => { if (r.invalidos.length) console.error('[worker] playbooks inválidos:', r.invalidos.map((i) => `${i.archivo}: ${i.errores.join('; ')}`).join(' | ')); }).catch((e) => console.error('[worker] playbooks:', e.message));
   await audit(db, workerId, 'proceso.iniciado', {});
   console.log(`[worker] activo (${workerId})`);
@@ -99,7 +102,7 @@ if (import.meta.main) {
       await advanceAcd(db).catch((e) => console.error('[worker] motor ACD:', e.message));
       // Rastreador de requisitos de SOL/ACD: se recalcula con evidencia cada 10 minutos y se exporta a docs/
       if (Date.now() - ultimoRastreo > 10 * 60_000) { ultimoRastreo = Date.now(); await refreshRequisitos(db).then(() => exportRequisitos(db)).catch((e) => console.error('[worker] rastreador SOL:', e.message));
-        await sincronizarCapacidades(db).catch((e) => console.error('[worker] automodelo C01:', e.message));
+        await sincronizarRegistro(db).catch((e) => console.error('[worker] registro KSIE y automodelo C01:', e.message));
         await importarHistoria(db, 200).catch((e) => console.error('[worker] memoria C03:', e.message));
         // un ciclo dura minutos: si lleva más de 30 «en curso», el proceso que lo ejecutaba se interrumpió
         await recuperarCiclos(db, 30).catch((e) => console.error('[worker] recuperación de ciclos:', e.message));

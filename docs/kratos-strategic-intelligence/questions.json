@@ -1,0 +1,2339 @@
+{
+ "marco": "KSIE 100 preguntas estratégicas (10 categorías × 10)",
+ "bases": [
+  "Jobs to Be Done",
+  "Design Thinking",
+  "Lean Startup",
+  "Customer Development",
+  "Cinco Fuerzas de Porter",
+  "Value Proposition Canvas",
+  "Business Model Canvas",
+  "economía conductual",
+  "pre-mortem",
+  "red team"
+ ],
+ "aviso": "Marcos de referencia, no garantías. Las respuestas se guardan por oportunidad en ksie_respuestas con evidencia y procedencia; nunca se inventan.",
+ "preguntas": [
+  {
+   "id": "Q001",
+   "numero": 1,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué problema concreto resuelve?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "descripción del problema en palabras de quien lo sufre",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q002",
+   "numero": 2,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Quién tiene exactamente ese problema (segmento definido)?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "perfil del segmento y tamaño aproximado",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q003",
+   "numero": 3,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Con qué frecuencia ocurre el problema?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "datos de frecuencia (encuestas, foros, estudios)",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q004",
+   "numero": 4,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué intensidad tiene (cuánto duele)?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "testimonios o datos de coste del dolor",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q005",
+   "numero": 5,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Cuánto le cuesta el problema hoy al cliente (dinero, tiempo, riesgo)?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "estimación del coste con fuente",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "calcular"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "calcular"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q006",
+   "numero": 6,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué alternativas usa hoy?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "lista de alternativas observadas",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q007",
+   "numero": 7,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Por qué esas alternativas no bastan?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "quejas o carencias documentadas de las alternativas",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q008",
+   "numero": 8,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué motiva al cliente a actuar ahora?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "disparadores observados (eventos, plazos, pérdidas)",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q009",
+   "numero": 9,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué le impide actuar?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "barreras documentadas (precio, confianza, esfuerzo)",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q010",
+   "numero": 10,
+   "categoria": "A",
+   "categoria_nombre": "Necesidades humanas",
+   "texto": "¿Qué evidencia confirma la necesidad (no opiniones)?",
+   "relevancia": "Sin un problema real, frecuente e intenso no hay negocio",
+   "evidencia_necesaria": "conductas observadas: búsquedas, gasto, quejas, listas de espera",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q011",
+   "numero": 11,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Cuánto gasta ya el cliente en resolverlo?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "gasto actual observado con fuente",
+   "operaciones_investigacion": [
+    "buscar_precios",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_precios",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q012",
+   "numero": 12,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Con qué frecuencia compra?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "frecuencia de compra observada",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q013",
+   "numero": 13,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Qué presupuestos manejan para esto?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "rangos de presupuesto documentados",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q014",
+   "numero": 14,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Qué sensibilidad al precio tiene?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "respuesta a precios de alternativas o pruebas de precio",
+   "operaciones_investigacion": [
+    "buscar_precios",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_precios",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q015",
+   "numero": 15,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Hay evidencia de compras reales (no intención)?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "ventas observadas en el mercado o propias",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q016",
+   "numero": 16,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Qué tamaño tiene el mercado alcanzable?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "cálculo de mercado alcanzable con supuestos explícitos",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "calcular"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "calcular"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q017",
+   "numero": 17,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Cuál es la tendencia de la demanda?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "series temporales (búsquedas, ventas del sector)",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q018",
+   "numero": 18,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Está la demanda concentrada en pocos compradores?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "distribución de clientes del sector",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q019",
+   "numero": 19,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Hay recompra o uso recurrente?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "tasas de recompra del sector o propias",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q020",
+   "numero": 20,
+   "categoria": "B",
+   "categoria_nombre": "Demanda y disposición a pagar",
+   "texto": "¿Qué evidencia directa hay de disposición a pagar?",
+   "relevancia": "Necesidad sin pago no genera beneficio",
+   "evidencia_necesaria": "preventas, depósitos, pagos, presupuestos firmados",
+   "operaciones_investigacion": [
+    "consultar_datos_internos",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "consultar_datos_internos",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q021",
+   "numero": 21,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Quiénes son los competidores directos?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "lista con URL y oferta",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q022",
+   "numero": 22,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Quiénes son los competidores indirectos?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "lista de sustitutos",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q023",
+   "numero": 23,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué alternativas gratuitas existen?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "lista de opciones gratuitas",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q024",
+   "numero": 24,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué sustitutos con IA existen o pueden aparecer?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "productos de IA que hacen lo mismo",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q025",
+   "numero": 25,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué grado de saturación tiene el mercado?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "número de ofertas y su crecimiento",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q026",
+   "numero": 26,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué debilidades tienen los competidores?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "reseñas y quejas de sus clientes",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q027",
+   "numero": 27,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué costes de cambio tiene el cliente?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "análisis de cambio (datos, contratos, hábitos)",
+   "operaciones_investigacion": [
+    "razonar",
+    "investigar_competencia"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q028",
+   "numero": 28,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué barreras de entrada existen?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "regulación, capital, marca, tecnología",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q029",
+   "numero": 29,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Qué la hace defendible a largo plazo?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "fuentes de defensa con evidencia",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q030",
+   "numero": 30,
+   "categoria": "C",
+   "categoria_nombre": "Competencia",
+   "texto": "¿Por qué podría estar ya resuelto por otro?",
+   "relevancia": "Ignorar la competencia sobreestima el beneficio",
+   "evidencia_necesaria": "búsqueda activa de soluciones existentes",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_web"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q031",
+   "numero": 31,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Qué ventaja única tenemos?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "ventaja concreta comprobable",
+   "operaciones_investigacion": [
+    "razonar",
+    "comprobar_capacidades"
+   ],
+   "capacidades_herramienta": [
+    "comprobar_capacidades"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q032",
+   "numero": 32,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay una ventaja de rendimiento medible?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "medición comparativa",
+   "operaciones_investigacion": [
+    "calcular",
+    "investigar_competencia"
+   ],
+   "capacidades_herramienta": [
+    "calcular",
+    "investigar_competencia"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q033",
+   "numero": 33,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay una ventaja física o de producto?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "prototipo o especificación comparada",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q034",
+   "numero": 34,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay conocimiento propio difícil de copiar?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "conocimiento documentado del propietario o de KRATOS",
+   "operaciones_investigacion": [
+    "buscar_memoria",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q035",
+   "numero": 35,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay una ventaja operativa (coste, rapidez, automatización)?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "coste unitario propio frente al del sector",
+   "operaciones_investigacion": [
+    "calcular",
+    "comprobar_capacidades"
+   ],
+   "capacidades_herramienta": [
+    "calcular",
+    "comprobar_capacidades"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q036",
+   "numero": 36,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay una ventaja de distribución?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "canal propio con alcance medido",
+   "operaciones_investigacion": [
+    "leer_metricas_youtube",
+    "leer_metricas_appstore",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "leer_metricas_youtube",
+    "leer_metricas_appstore",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q037",
+   "numero": 37,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Hay relación previa con clientes?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "contactos o audiencia existentes",
+   "operaciones_investigacion": [
+    "consultar_datos_internos",
+    "buscar_memoria"
+   ],
+   "capacidades_herramienta": [
+    "consultar_datos_internos",
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q038",
+   "numero": 38,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Qué tan fácil es copiarla?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "tiempo y coste estimados para copiar",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q039",
+   "numero": 39,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Cuánto durará la ventaja?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "ritmo de cambio del sector",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q040",
+   "numero": 40,
+   "categoria": "D",
+   "categoria_nombre": "Diferenciación",
+   "texto": "¿Qué evidencia demuestra la ventaja?",
+   "relevancia": "Sin ventaja real se compite solo en precio",
+   "evidencia_necesaria": "datos, no afirmaciones",
+   "operaciones_investigacion": [
+    "consultar_datos_internos",
+    "calcular"
+   ],
+   "capacidades_herramienta": [
+    "consultar_datos_internos",
+    "calcular"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q041",
+   "numero": 41,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Cómo es su proceso de decisión?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "pasos de compra observados",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q042",
+   "numero": 42,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué riesgos percibe al comprar?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "objeciones y miedos documentados",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q043",
+   "numero": 43,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué necesita para confiar?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "señales de confianza que usan los competidores exitosos",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "buscar_literatura"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "buscar_literatura"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q044",
+   "numero": 44,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué papel tiene la prueba social?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "efecto de reseñas o testimonios en el sector",
+   "operaciones_investigacion": [
+    "buscar_literatura",
+    "investigar_competencia"
+   ],
+   "capacidades_herramienta": [
+    "buscar_literatura",
+    "investigar_competencia"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q045",
+   "numero": 45,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué le motiva (ganancia, evitar pérdida, estatus)?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "motivaciones observadas",
+   "operaciones_investigacion": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q046",
+   "numero": 46,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Encaja en un hábito existente?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "hábitos del segmento",
+   "operaciones_investigacion": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q047",
+   "numero": 47,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Cuánta comodidad exige?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "fricción tolerada (pasos, tiempo)",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q048",
+   "numero": 48,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué valor emocional y práctico tiene?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "evidencia de ambos tipos de valor",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_literatura"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q049",
+   "numero": 49,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Qué objeciones aparecerán?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "lista de objeciones con frecuencia",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q050",
+   "numero": 50,
+   "categoria": "E",
+   "categoria_nombre": "Psicología del consumidor",
+   "texto": "¿Cómo persuadir sin explotar ni engañar?",
+   "relevancia": "La compra depende de cómo decide la gente, no solo del valor",
+   "evidencia_necesaria": "mensajes veraces que respondan a las objeciones",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q051",
+   "numero": 51,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Cómo descubren hoy las soluciones?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "canales de descubrimiento observados",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q052",
+   "numero": 52,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Qué canales orgánicos existen?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "canales gratuitos con alcance medible",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "leer_metricas_youtube"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "leer_metricas_youtube"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q053",
+   "numero": 53,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Qué canales de pago funcionan en el sector?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "coste por adquisición de referencia",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q054",
+   "numero": 54,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Qué alianzas son posibles?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "socios potenciales identificados",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q055",
+   "numero": 55,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Funciona el boca a boca o los referidos?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "tasas de referido del sector",
+   "operaciones_investigacion": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "buscar_literatura",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q056",
+   "numero": 56,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Sirve el contenido como canal?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "contenidos que convierten en el sector",
+   "operaciones_investigacion": [
+    "investigar_competencia",
+    "leer_metricas_youtube"
+   ],
+   "capacidades_herramienta": [
+    "investigar_competencia",
+    "leer_metricas_youtube"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q057",
+   "numero": 57,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Es YouTube un canal útil aquí (posible, no obligatorio)?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "conversión medida de vídeo a cliente",
+   "operaciones_investigacion": [
+    "leer_metricas_youtube",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "leer_metricas_youtube",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q058",
+   "numero": 58,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Qué conversión cabe esperar?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "tasas de conversión de referencia o propias",
+   "operaciones_investigacion": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "investigar_mercado",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q059",
+   "numero": 59,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Cuál es el coste de captación por cliente (CAC)?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "CAC estimado con supuestos o medido",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q060",
+   "numero": 60,
+   "categoria": "F",
+   "categoria_nombre": "Distribución y captación",
+   "texto": "¿Escala el canal sin que el CAC se dispare?",
+   "relevancia": "Sin canal que llegue al cliente no hay ventas",
+   "evidencia_necesaria": "curva de coste al aumentar el volumen",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q061",
+   "numero": 61,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuánto capital inicial hace falta?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "presupuesto detallado con precios reales",
+   "operaciones_investigacion": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q062",
+   "numero": 62,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuál es la economía unitaria?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "precio, coste variable y margen por unidad",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q063",
+   "numero": 63,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuál es el margen bruto?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "cálculo con costes de proveedor reales",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q064",
+   "numero": 64,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuál es el beneficio neto esperado (escenarios)?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "modelo con escenarios pesimista/base/optimista",
+   "operaciones_investigacion": [
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q065",
+   "numero": 65,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuál es el CAC realista?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "CAC con fuente o experimento",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "investigar_mercado"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero",
+    "investigar_mercado"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q066",
+   "numero": 66,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuál es el LTV realista?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "LTV con retención y margen supuestos explícitos",
+   "operaciones_investigacion": [
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q067",
+   "numero": 67,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Qué costes fijos hay?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "lista de costes fijos con precios",
+   "operaciones_investigacion": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q068",
+   "numero": 68,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuánto capital circulante exige?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "ciclo de caja (inventario, cobros, pagos)",
+   "operaciones_investigacion": [
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q069",
+   "numero": 69,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cómo evoluciona la caja mes a mes?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "proyección de caja",
+   "operaciones_investigacion": [
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q070",
+   "numero": 70,
+   "categoria": "G",
+   "categoria_nombre": "Viabilidad financiera",
+   "texto": "¿Cuándo se alcanza el punto de equilibrio?",
+   "relevancia": "El objetivo es beneficio neto verificado, no ingresos",
+   "evidencia_necesaria": "cálculo de equilibrio con supuestos",
+   "operaciones_investigacion": [
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q071",
+   "numero": 71,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Es técnicamente factible con lo que tenemos?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "automodelo y prueba técnica",
+   "operaciones_investigacion": [
+    "comprobar_capacidades",
+    "calcular"
+   ],
+   "capacidades_herramienta": [
+    "comprobar_capacidades",
+    "calcular"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q072",
+   "numero": 72,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Requiere producción física? ¿Cómo?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "proveedores o proceso identificados",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q073",
+   "numero": 73,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Hay suministro fiable?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "proveedores con precios y plazos",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q074",
+   "numero": 74,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Qué habilidades exige y las tenemos?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "habilidades necesarias frente a disponibles",
+   "operaciones_investigacion": [
+    "comprobar_capacidades",
+    "buscar_memoria"
+   ],
+   "capacidades_herramienta": [
+    "comprobar_capacidades",
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q075",
+   "numero": 75,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Qué regulación aplica?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "normativa aplicable con fuente oficial",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "buscar_literatura"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web",
+    "buscar_literatura"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q076",
+   "numero": 76,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Qué logística exige?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "envío, almacenaje, devoluciones",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web",
+    "buscar_precios"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q077",
+   "numero": 77,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Cuánto tarda en lanzarse?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "plan con plazos realistas",
+   "operaciones_investigacion": [
+    "razonar",
+    "buscar_memoria"
+   ],
+   "capacidades_herramienta": [
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q078",
+   "numero": 78,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Cuánto se puede automatizar?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "tareas automatizables con capacidades verificadas",
+   "operaciones_investigacion": [
+    "comprobar_capacidades",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "comprobar_capacidades"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q079",
+   "numero": 79,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Dónde están los cuellos de botella?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "análisis del proceso",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q080",
+   "numero": 80,
+   "categoria": "H",
+   "categoria_nombre": "Factibilidad y operaciones",
+   "texto": "¿Qué limitaciones del propietario (tiempo, dinero, ubicación) pesan?",
+   "relevancia": "Lo que no podemos ejecutar no vale aunque sea rentable",
+   "evidencia_necesaria": "preferencias y restricciones registradas",
+   "operaciones_investigacion": [
+    "consultar_datos_internos",
+    "buscar_memoria"
+   ],
+   "capacidades_herramienta": [
+    "consultar_datos_internos",
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q081",
+   "numero": 81,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué supuestos son críticos?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "lista de supuestos que, si fallan, matan la idea",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q082",
+   "numero": 82,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Cómo puede fracasar (pre-mortem)?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "escenarios de fracaso concretos",
+   "operaciones_investigacion": [
+    "criticar",
+    "consultar_errores_previos"
+   ],
+   "capacidades_herramienta": [
+    "consultar_errores_previos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q083",
+   "numero": 83,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Cuál es el experimento útil más barato?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "diseño de experimento con coste",
+   "operaciones_investigacion": [
+    "razonar",
+    "calcular"
+   ],
+   "capacidades_herramienta": [
+    "calcular"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q084",
+   "numero": 84,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué predicción falsable hacemos?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "predicción con número y plazo",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q085",
+   "numero": 85,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué umbral de éxito fijamos?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "umbral numérico decidido antes",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q086",
+   "numero": 86,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué umbral de corte fijamos?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "umbral para abandonar decidido antes",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q087",
+   "numero": 87,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Cuánto cuesta el experimento?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "presupuesto del experimento",
+   "operaciones_investigacion": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "capacidades_herramienta": [
+    "buscar_precios",
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q088",
+   "numero": 88,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué calidad tiene la evidencia que obtendremos?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "tipo de evidencia (conducta, pago, opinión)",
+   "operaciones_investigacion": [
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q089",
+   "numero": 89,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Es reproducible el resultado?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "condiciones para repetirlo",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q090",
+   "numero": 90,
+   "categoria": "I",
+   "categoria_nombre": "Experimentación y riesgo",
+   "texto": "¿Qué regla de decisión aplicaremos con el resultado?",
+   "relevancia": "Experimentar barato antes de construir",
+   "evidencia_necesaria": "regla si/entonces escrita antes",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q091",
+   "numero": 91,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Defiendo esta idea porque ya la recomendé?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "historial de recomendaciones propias",
+   "operaciones_investigacion": [
+    "buscar_memoria",
+    "consultar_errores_previos"
+   ],
+   "capacidades_herramienta": [
+    "buscar_memoria",
+    "consultar_errores_previos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q092",
+   "numero": 92,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Confundo una sugerencia del propietario con una orden?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "texto literal del propietario",
+   "operaciones_investigacion": [
+    "buscar_memoria",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "buscar_memoria",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q093",
+   "numero": 93,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Qué evidencia contradice mi conclusión?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "búsqueda activa de evidencia en contra",
+   "operaciones_investigacion": [
+    "buscar_web",
+    "criticar"
+   ],
+   "capacidades_herramienta": [
+    "buscar_web"
+   ],
+   "critica_nivel1": true,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q094",
+   "numero": 94,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Qué supuestos siguen sin probar?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "lista de supuestos sin evidencia",
+   "operaciones_investigacion": [
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q095",
+   "numero": 95,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Sobreestimo mis capacidades?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "automodelo y calibración C02",
+   "operaciones_investigacion": [
+    "comprobar_capacidades",
+    "consultar_datos_internos"
+   ],
+   "capacidades_herramienta": [
+    "comprobar_capacidades",
+    "consultar_datos_internos"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q096",
+   "numero": 96,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Qué alternativa tiene mejor valor esperado?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "comparación de cartera",
+   "operaciones_investigacion": [
+    "calcular",
+    "razonar"
+   ],
+   "capacidades_herramienta": [
+    "calcular"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q097",
+   "numero": 97,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Qué coste de oportunidad ignoro?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "alternativas descartadas y su valor",
+   "operaciones_investigacion": [
+    "razonar",
+    "criticar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q098",
+   "numero": 98,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Repito una estrategia que ya falló?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "memoria de estrategias fallidas",
+   "operaciones_investigacion": [
+    "consultar_errores_previos",
+    "buscar_memoria"
+   ],
+   "capacidades_herramienta": [
+    "consultar_errores_previos",
+    "buscar_memoria"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q099",
+   "numero": 99,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Qué me haría cambiar de decisión?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "condición explícita de cambio",
+   "operaciones_investigacion": [
+    "razonar"
+   ],
+   "capacidades_herramienta": [],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  },
+  {
+   "id": "Q100",
+   "numero": 100,
+   "categoria": "J",
+   "categoria_nombre": "Metacognición e independencia",
+   "texto": "¿Seguir es el mejor uso de los recursos?",
+   "relevancia": "Protege contra sesgos propios y obediencia ciega",
+   "evidencia_necesaria": "comparación con alternativas y coste hundido excluido",
+   "operaciones_investigacion": [
+    "modelo_financiero",
+    "criticar"
+   ],
+   "capacidades_herramienta": [
+    "modelo_financiero"
+   ],
+   "critica_nivel1": false,
+   "respuesta": null,
+   "procedencia": null,
+   "confianza": null,
+   "etiqueta": null,
+   "supuestos_sin_resolver": [],
+   "seguimiento": []
+  }
+ ]
+}

@@ -22,38 +22,38 @@
   {
    "id": "03",
    "nombre": "Marco de 100 preguntas",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "questions.json (100 = 10×10, 10 críticas) sembrado en ksie_preguntas; respuestas con etiqueta y evidencia obligatoria; test 7/9/10"
   },
   {
    "id": "04",
    "nombre": "Selección adaptativa",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "profundidad() y preguntasPara(): nivel 1 = 10, nivel 2 = 50 priorizadas por tipo, nivel 3 = 100 + crítica independiente; test 8"
   },
   {
    "id": "05",
    "nombre": "Descubrimiento y comparación de oportunidades",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "ksie_oportunidades (13 tipos), evaluar con rangos, comparar con valor esperado PERT×probabilidad; una ejecución a la vez (índice único + C04); test 13/23"
   },
   {
    "id": "06",
    "nombre": "Anti-fijación y crítica independiente",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "detectarFijacion (producción: fijación en apps detectada), revisionPrevia, criticar; test 11/12"
   },
   {
    "id": "07",
    "nombre": "Experimentos y evaluación financiera",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "experiments ampliada; umbrales falsables, predicción C05 previa, aprobación para gasto/acción externa, clics ≠ compras; modeloFinanciero y beneficioReal (−9,57 $ observado); test 14/15/16/19; experiment-log.md"
   },
   {
    "id": "08",
    "nombre": "Memoria estratégica y aprendizaje medido",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "recomendar (C02), explicacion_cambio, descartar con lección C03, reabrir solo con evidencia nueva, memoriaEstrategica; test 17/18/24; decision-framework.md; npm test 245/245"
   },
   {
    "id": "09",
@@ -74,5 +74,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 03: marco de 100 preguntas (docs/kratos-strategic-intelligence/questions.json, src/core/ksie-preguntas.ts)"
+ "siguiente_accion": "TAREA 09: integración con agentes y módulos cognitivos (migración 057, prompt del CEO)"
 }
