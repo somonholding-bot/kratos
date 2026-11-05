@@ -6,7 +6,7 @@ import { createScene, AGENTS } from './kratos-scene.js';
 
 const voice = new Voice();
 const SCREENS = [
-  ['inicio', 'Inicio'], ['conversacion', 'Conversación'], ['negocios', 'Negocios y productos'],
+  ['inicio', 'Inicio'], ['progreso', 'Progreso'], ['conversacion', 'Conversación'], ['negocios', 'Negocios y productos'],
   ['agentes', 'Agentes y tareas'], ['calendario', 'Calendario'], ['contenido', 'Contenido y campañas'],
   ['presupuesto', 'Presupuestos'], ['analitica', 'Analítica'], ['conexiones', 'Conexiones'],
   ['aprobaciones', 'Aprobaciones'], ['actividad', 'Registro de actividad'], ['ajustes', 'Configuración y privacidad'],
@@ -122,6 +122,37 @@ const screens = {
       <div class="grid">${o.businesses.map((b) => `<div class="card ${b.is_demo ? 'demo' : ''}"><div class="k">${b.is_demo ? 'Demostración ficticia' : 'Real'}</div>
         <div><b>${esc(b.name)}</b>${demoTag(b.is_demo)}</div><div class="meta">${b.products} productos · ${b.open_tasks} tareas abiertas</div>
         <div>${(b.goals || []).map((g) => `· ${esc(g)}`).join('<br>')}</div></div>`).join('')}</div>`;
+  },
+
+  // Dos tableros separados por regla permanente del propietario: ciencia (SOL/ACD) y economía (KSIE). Nunca una puntuación combinada.
+  async progreso() {
+    const { cientifico: c, economico: e } = await api('/api/progreso');
+    const card = (k, v, sub = '') => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${sub ? `<div class="meta">${esc(sub)}</div>` : ''}</div>`;
+    const usd2 = (v) => `${Number(v ?? 0).toFixed(2)} USD`;
+    return `<h1>Progreso</h1>${meta('dos tableros independientes: no se combinan en una sola puntuación')}
+      <h2>🔭 Progreso científico — Misión A (SOL/ACD)</h2>
+      <p class="meta">${esc(c.nota)}</p>
+      <div class="grid">
+        ${card('Preguntas investigadas', c.preguntas_investigadas.total, `${c.preguntas_investigadas.en_estudio} en estudio · ${c.preguntas_investigadas.respondidas} respondidas`)}
+        ${card('Hipótesis formuladas', c.hipotesis_formuladas.total, c.hipotesis_formuladas.por_naturaleza.map((x) => `${x.n} ${x.naturaleza}`).join(' · '))}
+        ${card('Modelos matemáticos', c.modelos_matematicos)}
+        ${card('Experimentos ejecutados', c.experimentos_ejecutados.total, `${c.experimentos_ejecutados.a_favor} a favor · ${c.experimentos_ejecutados.en_contra} en contra · ${c.experimentos_ejecutados.no_concluyentes} no concluyentes · ${c.experimentos_ejecutados.con_datos_observados} con datos observados`)}
+        ${card('Resultados replicados', c.resultados_replicados)}
+        ${card('Descubrimientos verificados', c.descubrimientos_verificados_independientemente, 'verificación independiente')}
+      </div>
+      <h3>Líneas de investigación</h3>
+      ${table([['Línea', (r) => esc(r.codigo)], ['Tema', (r) => esc(r.titulo)], ['Preguntas', (r) => r.preguntas], ['Hipótesis', (r) => r.hipotesis]], c.lineas_mision_a)}
+      <p class="meta">Biblioteca: ${c.biblioteca.fuentes} fuentes · ${c.biblioteca.afirmaciones} afirmaciones (${c.biblioteca.tradicion_hermetica_nivel_H} de tradición hermética, nivel H) · requisitos SOL verificados: ${c.requisitos_sol_verificados} · aplicaciones exploradas (Misión C): ${c.aplicaciones_exploradas_mision_c}</p>
+      <h2>💼 Progreso económico — Misión B (KRATOS/KSIE)</h2>
+      <p class="meta">${esc(e.nota)}</p>
+      <div class="grid">
+        ${card('Oportunidades evaluadas', e.oportunidades_evaluadas.con_evaluacion, `${e.oportunidades_evaluadas.total} en cartera · ${e.oportunidades_evaluadas.no_digitales} no digitales · ${e.oportunidades_evaluadas.descartadas} descartadas`)}
+        ${card('Demanda validada', e.demanda_validada.experimentos_con_exito_de_pago, `experimentos con pago real · ${e.demanda_validada.respuestas_de_pago_observadas} evidencias de pago observadas`)}
+        ${card('Costes (30 días)', usd2(e.costes_30d_usd))}
+        ${card('Ingresos (30 días)', usd2(e.ingresos_30d_usd))}
+        ${card('Flujo de caja (30 días)', usd2(e.flujo_caja_30d_usd))}
+        ${card('Beneficio neto verificado', usd2(e.beneficio_neto_verificado_30d_usd), e.avance_hito)}
+      </div>`;
   },
 
   async conversacion() {
@@ -454,7 +485,7 @@ window.kratosSpeechPulse = () => scene.pulse();
 
 // ---------- eventos ----------
 // Panel mínimo: a la vista solo lo esencial; el resto queda en «Más» (no se pierde ninguna función)
-const ESSENTIAL = new Set(['inicio', 'aprobaciones', 'conexiones', 'ajustes']);
+const ESSENTIAL = new Set(['inicio', 'progreso', 'aprobaciones', 'conexiones', 'ajustes']);
 const navBtn = ([id, label]) => `<button data-screen="${id}">${label}${id === 'aprobaciones' ? '<span class="badge" hidden></span>' : ''}</button>`;
 $('#nav').innerHTML = SCREENS.filter(([id]) => ESSENTIAL.has(id)).map(navBtn).join('') +
   `<details class="nav-more"><summary>Más</summary>${SCREENS.filter(([id]) => !ESSENTIAL.has(id)).map(navBtn).join('')}</details>`;

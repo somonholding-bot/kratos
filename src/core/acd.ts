@@ -767,7 +767,10 @@ async function focoCuriosidad(db: Db): Promise<string> {
     ['experimentos ACD en contra', await q(`SELECT id FROM acd_experimentos WHERE veredicto = 'en_contra' ORDER BY id DESC LIMIT 5`)],
     ['preguntas abiertas de materias y puentes', await q(`SELECT id FROM acd_preguntas WHERE estado = 'abierta' AND origen IN ('materia','puente') ORDER BY id DESC LIMIT 5`)],
   ].filter(([, v]) => v);
-  return (partes.length ? partes.map(([k, v]) => `${k}: ${v}`).join('; ') : 'la biblioteca aún no tiene contradicciones registradas: busca fenómenos sin explicar y mecanismos ausentes en las materias estudiadas').slice(0, 600);
+  // Misión A (adenda del propietario): la línea de investigación menos estudiada entra siempre en el foco, aunque no tenga rentabilidad
+  const linea = (await db.query(`SELECT l.codigo, l.titulo, l.area FROM sol_lineas l ORDER BY (SELECT count(*) FROM acd_preguntas p WHERE p.area = l.area) + (SELECT count(*) FROM acd_hipotesis h WHERE h.linea = l.codigo), l.codigo LIMIT 1`).catch(() => ({ rows: [] as any[] }))).rows[0];
+  const mision = linea ? `Misión A, línea menos estudiada ${linea.codigo} «${linea.titulo}» (registra al menos una pregunta con area=${linea.area}); ` : '';
+  return (mision + (partes.length ? partes.map(([k, v]) => `${k}: ${v}`).join('; ') : 'la biblioteca aún no tiene contradicciones registradas: busca fenómenos sin explicar y mecanismos ausentes en las materias estudiadas')).slice(0, 650);
 }
 
 export async function planificarAcd(db: Db): Promise<{ plan: PlanAcd | null; motivo: string; bloqueos: string[] }> {

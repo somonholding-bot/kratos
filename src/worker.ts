@@ -20,6 +20,7 @@ import { importarHistoria } from './core/autobiografia.ts';
 import { sembrarTeorias } from './core/conciencia.ts';
 import { recuperarCiclos } from './core/ciclo-cognitivo.ts';
 import { sembrarPreguntas } from './core/ksie.ts';
+import { sembrarLineas } from './core/misiones.ts';
 import { sincronizarRegistro } from './core/ksie-herramientas.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
@@ -90,6 +91,7 @@ if (import.meta.main) {
   await seedSolDef(db).catch((e) => console.error('[worker] semillas SOL:', e.message));
   await sembrarTeorias(db).catch((e) => console.error('[worker] teorías C06:', e.message));
   await sembrarPreguntas(db).catch((e) => console.error('[worker] preguntas KSIE:', e.message));
+  await sembrarLineas(db).catch((e) => console.error('[worker] líneas de la Misión A:', e.message));
   await syncPlaybooksFromFiles(db).then((r) => { if (r.invalidos.length) console.error('[worker] playbooks inválidos:', r.invalidos.map((i) => `${i.archivo}: ${i.errores.join('; ')}`).join(' | ')); }).catch((e) => console.error('[worker] playbooks:', e.message));
   await audit(db, workerId, 'proceso.iniciado', {});
   console.log(`[worker] activo (${workerId})`);

@@ -24,6 +24,7 @@ import { resources } from './core/resources.ts';
 import { allSettings, logFault, logPerf, setSetting } from './core/bitacora.ts';
 import { subStatus } from './core/subscription.ts';
 import { taskResult } from './core/registry.ts';
+import { tableroCientifico, tableroEconomico } from './core/misiones.ts';
 import { appleCredentials, appleSummary } from './core/apple.ts';
 import { spawn } from 'node:child_process';
 
@@ -117,6 +118,8 @@ const GET: Record<string, Route> = {
   '/api/code-jobs': async (db) => q(db, `SELECT id, project, instructions, status, result, cost_usd, created_at, finished_at FROM code_jobs ORDER BY id DESC LIMIT 50`),
   '/api/plugins': async (db) => q(db, `SELECT id, name, slug, description, when_to_use, input_schema, code, version, status, approval_id, created_by, created_at, activated_at, runs, last_error FROM plugins ORDER BY id DESC LIMIT 100`),
   '/api/apple': async (db) => appleSummary(db),
+  // Dos tableros independientes (adenda del propietario): nunca se combinan en una puntuación
+  '/api/progreso': async (db) => ({ cientifico: await tableroCientifico(db), economico: await tableroEconomico(db) }),
   '/api/messages': async (db) => (await q(db, `SELECT * FROM messages ORDER BY id DESC LIMIT 60`)).reverse(),
 };
 
