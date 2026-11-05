@@ -197,3 +197,51 @@ export async function resolvePrediction(db: Db, id: number, resultado: number, l
   return { id, acierto, resultado: r, rango: [Number(p.rango_min), Number(p.rango_max)],
     calibracion: { resueltas: cal.n, aciertos: cal.ok, confianza_media: Number(cal.confianza_media), nota: cal.n < 10 ? 'Menos de 10 predicciones resueltas: la calibración aún no dice nada fiable' : 'Compara aciertos/resueltas con la confianza media' } };
 }
+
+// ---------- Lectura real de textos de acceso abierto ----------
+// Las webs científicas bloquean la lectura automática de páginas; sus API abiertas no. KRATOS lee desde aquí artículos de acceso abierto
+// (Europe PMC) y obras de dominio público (Project Gutenberg, Internet Archive) y el código anota cuánto se leyó de cada fuente.
+type Fetcher = (url: string) => Promise<{ status: number; text: string }>;
+const httpText: Fetcher = async (url) => {
+  try { const r = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(40_000), headers: { 'user-agent': 'KRATOS biblioteca (lectura de acceso abierto)' } }); return { status: r.status, text: r.ok ? await r.text() : '' }; }
+  catch { return { status: 0, text: '' }; }
+};
+export const xmlToText = (xml: string) => xml.replace(/<(ref-list|table-wrap|fig|supplementary-material|front-stub|permissions|contrib-group|aff|history|pub-date|article-id|journal-meta)[\s\S]*?<\/\1>/g, ' ')
+  .replace(/<\/(p|title|sec|abstract|li|tr)>/g, '\n').replace(/<[^>]+>/g, ' ').replace(/&#x?[0-9a-f]+;|&[a-z]+;/gi, ' ').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+
+export async function searchPapers(consulta: string, soloAbierto = true, get: Fetcher = httpText) {
+  const q = `${String(consulta).slice(0, 200)}${soloAbierto ? ' OPEN_ACCESS:y' : ''}`;
+  const r = await get(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=12&resultType=lite&sort=CITED%20desc`);
+  if (r.status !== 200) return { error: `Europe PMC respondió ${r.status}` };
+  const j = JSON.parse(r.text);
+  return { total: j.hitCount, articulos: (j.resultList?.result ?? []).map((a: any) => ({ titulo: a.title, autores: a.authorString, anio: Number(a.pubYear) || null, revista: a.journalTitle, pmid: a.pmid ?? null, pmcid: a.pmcid ?? null,
+    acceso_abierto: a.isOpenAccess === 'Y', citas: a.citedByCount ?? 0, tipo: a.pubType ?? null })), nota: 'Con pmcid y acceso_abierto puedes leer el texto entero con accion=leer_texto' };
+}
+
+const TROZO = 30_000;
+// Devuelve un trozo del texto y anota el avance. Solo cuenta lo leído de forma contigua desde el principio.
+export async function readOpenText(db: Db, i: { pmcid?: string; url?: string; desde?: number }, by: string, get: Fetcher = httpText) {
+  let fuenteUrl: string, origen: string, tipo = 'articulo';
+  if (i.pmcid) {
+    const id = String(i.pmcid).toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!/^PMC\d+$/.test(id)) throw new Error('pmcid no válido (ejemplo: PMC7379166)');
+    origen = `https://www.ebi.ac.uk/europepmc/webservices/rest/${id}/fullTextXML`; fuenteUrl = `https://europepmc.org/article/PMC/${id}`;
+  } else {
+    const u = publicUrl(String(i.url ?? ''));
+    if (!/(^|\.)gutenberg\.org$|(^|\.)archive\.org$/.test(u.hostname)) throw new Error('leer_texto solo admite un pmcid de acceso abierto o una URL de texto de gutenberg.org o archive.org (dominio público)');
+    origen = fuenteUrl = u.toString(); tipo = 'libro';
+  }
+  const r = await get(origen);
+  if (r.status !== 200 || r.text.length < 500) return { error: `No se pudo leer (estado ${r.status}); puede que no sea de acceso abierto` };
+  const texto = /<\w+[\s>]/.test(r.text.slice(0, 2000)) ? xmlToText(r.text) : r.text.replace(/\r/g, '');
+  const titulo = (/<article-title[^>]*>([\s\S]*?)<\/article-title>/.exec(r.text)?.[1] ?? /^Title:\s*(.+)$/m.exec(r.text)?.[1] ?? fuenteUrl).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const desde = Math.max(0, Math.min(Number(i.desde) || 0, texto.length)), trozo = texto.slice(desde, desde + TROZO), hasta = desde + trozo.length;
+  const f = (await db.query(`INSERT INTO sol_fuentes (tipo, titulo, url, dominio, acceso, verificada, http_status, verificada_en, longitud, created_by)
+      VALUES ($1,$2,$3,$4,'pagina',true,200,now(),$5,$6)
+      ON CONFLICT (url) DO UPDATE SET longitud = EXCLUDED.longitud, verificada = true, http_status = 200, verificada_en = coalesce(sol_fuentes.verificada_en, now()) RETURNING id, leido_hasta`,
+    [tipo, titulo, fuenteUrl, new URL(fuenteUrl).hostname, texto.length, by])).rows[0];
+  const leido = desde <= f.leido_hasta ? Math.max(f.leido_hasta, hasta) : f.leido_hasta;   // un salto hacia delante no cuenta como leído
+  const completo = leido >= texto.length * 0.9;
+  await db.query(`UPDATE sol_fuentes SET leido_hasta = $2, acceso = CASE WHEN $3 THEN 'texto_completo' WHEN acceso = 'texto_completo' THEN acceso ELSE 'resumen' END WHERE id = $1`, [f.id, leido, completo]);
+  return { fuente_id: f.id, titulo, longitud: texto.length, desde, hasta, leido_pct: Math.round((leido / texto.length) * 100), acceso: completo ? 'texto_completo' : 'parcial',
+    siguiente: hasta < texto.length ? `para seguir leyendo: accion=leer_texto con desde=${hasta}` : 'fin del texto', texto_no_confiable: trozo };
+}

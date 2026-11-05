@@ -3,35 +3,139 @@
   "nombre": "Currículo de Sol: estudiar un módulo y ampliar la biblioteca",
   "version": 1,
   "objetivo": "Estudiar el módulo {{numero}} del currículo de Sol, «{{modulo}}» (bloque {{bloque}}): reunir y abrir las fuentes fundamentales, registrar el conocimiento con su nivel de evidencia y entregar el expediente del módulo.",
-  "agentes": { "responsable": "sol" },
-  "skill": "mente-humana-ciencia",
-  "palabras_clave": ["modulo del curriculo", "curriculo de sol", "estudiar modulo", "ampliar la biblioteca"],
-  "entradas": {
-    "numero": { "tipo": "numero", "descripcion": "Número de módulo (1-36)", "requerida": true, "min": 1, "max": 36 },
-    "modulo": { "tipo": "texto", "descripcion": "Título del módulo", "requerida": true, "max_caracteres": 80 },
-    "bloque": { "tipo": "texto", "descripcion": "Bloque del currículo", "requerida": false, "defecto": "Fundamentos", "max_caracteres": 40 }
+  "agentes": {
+    "responsable": "sol"
   },
-  "herramientas": ["biblioteca_sol", "proyecto_sol", "buscar_conocimiento", "WebSearch", "WebFetch", "registrar_leccion"],
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "modulo del curriculo",
+    "curriculo de sol",
+    "estudiar modulo",
+    "ampliar la biblioteca"
+  ],
+  "entradas": {
+    "numero": {
+      "tipo": "numero",
+      "descripcion": "Número de módulo (1-36)",
+      "requerida": true,
+      "min": 1,
+      "max": 36
+    },
+    "modulo": {
+      "tipo": "texto",
+      "descripcion": "Título del módulo",
+      "requerida": true,
+      "max_caracteres": 80
+    },
+    "bloque": {
+      "tipo": "texto",
+      "descripcion": "Bloque del currículo",
+      "requerida": false,
+      "defecto": "Fundamentos",
+      "max_caracteres": 40
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "proyecto_sol",
+    "buscar_conocimiento",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
   "pasos": [
-    { "n": 1, "titulo": "Mapa del módulo", "instruccion": "Mira lo que ya hay en tu biblioteca sobre «{{modulo}}» (biblioteca_sol accion=buscar) para no duplicar. Define 4-6 objetivos de aprendizaje y los 10-15 conceptos centrales del campo.", "herramienta": "biblioteca_sol" },
-    { "n": 2, "titulo": "Fuentes fundamentales", "instruccion": "Localiza y ABRE las obras y estudios fundamentales del campo: libros de referencia (registra sus metadatos y lo que consultaste de verdad), revisiones sistemáticas, metaanálisis, estudios clásicos y sus replicaciones, y textos originales de dominio público. Rutas legales que funcionan cuando una web bloquea la lectura: la API de Europe PMC (https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=…&format=json&resultType=core), OpenAlex (https://api.openalex.org/works?search=…), Crossref (https://api.crossref.org/works?query=…), Semantic Scholar (https://api.semanticscholar.org/graph/v1/paper/search?query=…), Internet Archive y Project Gutenberg para obras de dominio público. Registra al menos 10 fuentes con biblioteca_sol accion=registrar_fuente (tipo, autores, año, temas, y en «acceso» lo que leíste: texto_completo, resumen, pagina o metadatos). No descargues ni reproduzcas libros con derechos; no afirmes haber leído lo que no leíste.", "herramienta": "biblioteca_sol" },
-    { "n": 3, "titulo": "Conocimiento con evidencia", "instruccion": "Registra al menos 10 afirmaciones clave del campo con biblioteca_sol accion=registrar_afirmacion (nivel A-E o H, fuente_id, tipo_evidencia, limitaciones, replicaciones, criticas, confianza). Incluye lo que NO se sostiene: mitos populares, estudios que no se replicaron y afirmaciones refutadas (nivel E). No confundas popularidad de un autor con consenso científico.", "herramienta": "biblioteca_sol" },
-    { "n": 4, "titulo": "Conexiones", "instruccion": "Registra al menos 3 conexiones de este módulo con otros campos del currículo (biblioteca_sol accion=registrar_conexion) con su tipo real: historica, conceptual, experimental, causal, correlacional, metaforica, hipotetica o contradictoria." },
-    { "n": 5, "titulo": "Expediente del módulo", "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=modulo, titulo «Módulo {{numero}}: {{modulo}}», componentes: objetivos, conceptos, bibliografia (≥8 URLs), fuentes_primarias, estudios, evidencia (tabla afirmación · nivel · fuente · limitaciones), conexiones, aplicaciones (cómo usa esto la empresa: producto, comunicación, investigación, decisiones), evaluacion (≥5 preguntas de examen con su respuesta, para comprobar más adelante que se domina el módulo), limitaciones (qué no se pudo abrir o leer entero y qué queda por estudiar)). Si responde blocked, completa y reentrega con proyecto_id. Termina tu informe en español con las secciones pedidas.", "herramienta": "proyecto_sol" }
+    {
+      "n": 1,
+      "titulo": "Mapa del módulo",
+      "instruccion": "Mira lo que ya hay en tu biblioteca sobre «{{modulo}}» (biblioteca_sol accion=buscar) para no duplicar. Define 4-6 objetivos de aprendizaje y los 10-15 conceptos centrales del campo.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes fundamentales",
+      "instruccion": "Localiza y ABRE las obras y estudios fundamentales del campo: libros de referencia (registra sus metadatos y lo que consultaste de verdad), revisiones sistemáticas, metaanálisis, estudios clásicos y sus replicaciones, y textos originales de dominio público. Rutas legales que funcionan cuando una web bloquea la lectura: la API de Europe PMC (https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=…&format=json&resultType=core), OpenAlex (https://api.openalex.org/works?search=…), Crossref (https://api.crossref.org/works?query=…), Semantic Scholar (https://api.semanticscholar.org/graph/v1/paper/search?query=…), Internet Archive y Project Gutenberg para obras de dominio público. Registra al menos 10 fuentes con biblioteca_sol accion=registrar_fuente (tipo, autores, año, temas, y en «acceso» lo que leíste: texto_completo, resumen, pagina o metadatos). No descargues ni reproduzcas libros con derechos; no afirmes haber leído lo que no leíste. LECTURA REAL: para artículos usa biblioteca_sol accion=buscar_articulos y lee los de acceso abierto enteros con accion=leer_texto (pmcid; sigue con «desde» hasta el final); para obras de dominio público, accion=leer_texto con la URL .txt de gutenberg.org o archive.org. Lee ENTEROS al menos 2 textos por tarea; el código registra el porcentaje leído de cada fuente.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Conocimiento con evidencia",
+      "instruccion": "Registra al menos 10 afirmaciones clave del campo con biblioteca_sol accion=registrar_afirmacion (nivel A-E o H, fuente_id, tipo_evidencia, limitaciones, replicaciones, criticas, confianza). Incluye lo que NO se sostiene: mitos populares, estudios que no se replicaron y afirmaciones refutadas (nivel E). No confundas popularidad de un autor con consenso científico.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 4,
+      "titulo": "Conexiones",
+      "instruccion": "Registra al menos 3 conexiones de este módulo con otros campos del currículo (biblioteca_sol accion=registrar_conexion) con su tipo real: historica, conceptual, experimental, causal, correlacional, metaforica, hipotetica o contradictoria."
+    },
+    {
+      "n": 5,
+      "titulo": "Expediente del módulo",
+      "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=modulo, titulo «Módulo {{numero}}: {{modulo}}», componentes: objetivos, conceptos, bibliografia (≥8 URLs), fuentes_primarias, estudios, evidencia (tabla afirmación · nivel · fuente · limitaciones), conexiones, aplicaciones (cómo usa esto la empresa: producto, comunicación, investigación, decisiones), evaluacion (≥5 preguntas de examen con su respuesta, para comprobar más adelante que se domina el módulo), limitaciones (qué no se pudo abrir o leer entero y qué queda por estudiar)). Si responde blocked, completa y reentrega con proyecto_id. Termina tu informe en español con las secciones pedidas.",
+      "herramienta": "proyecto_sol"
+    }
   ],
-  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Resumen del módulo, Lo que se sostiene, Lo que no se sostiene, Fuentes, Lagunas, Proyecto entregado", "obligatoria": true }],
-  "ubicacion_artefactos": { "boveda": "Tareas" },
-  "criterios_exito": ["≥10 fuentes abiertas y registradas", "≥10 afirmaciones con nivel y fuente", "≥3 conexiones", "expediente recuperable con evaluación"],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Resumen del módulo, Lo que se sostiene, Lo que no se sostiene, Fuentes, Lagunas, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥10 fuentes abiertas y registradas",
+    "≥10 afirmaciones con nivel y fuente",
+    "≥3 conexiones",
+    "expediente recuperable con evaluación"
+  ],
   "verificacion": [
-    { "nombre": "expediente del módulo recuperable", "tipo": "proyecto_sol_completo" },
-    { "nombre": "afirmaciones con evidencia", "tipo": "afirmaciones_sol", "minimo": 10 },
-    { "nombre": "usó la biblioteca", "tipo": "herramienta_usada", "herramienta": "biblioteca_sol" },
-    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Resumen del módulo", "Lo que se sostiene", "Lo que no se sostiene", "Fuentes", "Lagunas", "Proyecto entregado"] },
-    { "nombre": "fuentes en el informe", "tipo": "fuentes_citadas", "minimo": 8 }
+    {
+      "nombre": "expediente del módulo recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "afirmaciones con evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 10
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Resumen del módulo",
+        "Lo que se sostiene",
+        "Lo que no se sostiene",
+        "Fuentes",
+        "Lagunas",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 8
+    }
   ],
-  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
-  "reintentos": { "max": 2 },
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
   "aprobaciones": [],
-  "coste": { "duracion_estimada_min": 30, "usd_estimado": 0, "nota": "con la suscripción; sin gasto. Tope diario en system_state.omega_modulos_dia" },
+  "coste": {
+    "duracion_estimada_min": 30,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto. Tope diario en system_state.omega_modulos_dia"
+  },
   "idioma_entregable": "es"
 }

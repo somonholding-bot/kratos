@@ -83,3 +83,19 @@ test('currículo: un módulo cada vez, con tope diario, y solo se completa si su
   await db.query(`UPDATE sol_modulos SET estado = 'pendiente', tarea_id = NULL, intentos = 0, lanzado_en = NULL, completado_en = NULL`);
   await db.query(`UPDATE system_state SET value = '4' WHERE key = 'omega_modulos_dia'`);
 });
+
+test('lectura real: solo cuenta lo leído de seguido y texto_completo se marca al pasar del 90 %', async () => {
+  const { readOpenText, xmlToText } = await import('../src/core/omega.ts');
+  assert.equal(xmlToText('<article><p>Hola <b>mundo</b></p><ref-list><ref>cita</ref></ref-list></article>'), 'Hola mundo');
+  const cuerpo = `<article><front><article-title>Prueba de lectura Omega</article-title></front><body><p>${'palabra '.repeat(9000)}</p></body></article>`;   // ~72.000 caracteres
+  const get = async () => ({ status: 200, text: cuerpo });
+  const a: any = await readOpenText(db, { pmcid: 'PMC999000111' }, 'prueba', get);
+  assert.equal(a.acceso, 'parcial'); assert.ok(a.leido_pct < 50);
+  const salto: any = await readOpenText(db, { pmcid: 'PMC999000111', desde: 60000 }, 'prueba', get);
+  assert.equal(salto.leido_pct, a.leido_pct);                                    // saltarse el medio no cuenta
+  const b: any = await readOpenText(db, { pmcid: 'PMC999000111', desde: a.hasta }, 'prueba', get);
+  const c: any = await readOpenText(db, { pmcid: 'PMC999000111', desde: b.hasta }, 'prueba', get);
+  assert.equal(c.acceso, 'texto_completo');
+  assert.equal((await db.query(`SELECT acceso FROM sol_fuentes WHERE id = $1`, [a.fuente_id])).rows[0].acceso, 'texto_completo');
+  await assert.rejects(readOpenText(db, { url: 'https://example.com/libro.txt' }, 'prueba', get), /dominio público/);
+});

@@ -3,35 +3,142 @@
   "nombre": "Investigación científica de Sol con niveles de evidencia",
   "version": 1,
   "objetivo": "Responder con rigor a la pregunta «{{pregunta}}»: localizar fuentes primarias, separar hechos, hipótesis y tradición, clasificar cada afirmación (A robusta, B moderada, C preliminar, D hipótesis, E refutada, H tradición histórica o simbólica), registrar todo en la biblioteca y entregar un informe de investigación recuperable.",
-  "agentes": { "responsable": "sol" },
-  "skill": "mente-humana-ciencia",
-  "palabras_clave": ["investiga", "que evidencia existe", "que sabemos realmente", "que demuestra", "evidencia cientifica", "revision de la literatura", "estado de la ciencia", "investigacion cientifica", "que relacion existe"],
-  "entradas": {
-    "pregunta": { "tipo": "texto", "descripcion": "Pregunta de investigación", "requerida": true, "max_caracteres": 400 },
-    "enfoque": { "tipo": "texto", "descripcion": "Qué distinguir o priorizar (p. ej. evidencia humana frente a animal; analogía frente a evidencia; documento original frente a evaluaciones independientes)", "requerida": false, "defecto": "separa evidencia, hipótesis y tradición", "max_caracteres": 300 }
+  "agentes": {
+    "responsable": "sol"
   },
-  "herramientas": ["biblioteca_sol", "proyecto_sol", "buscar_conocimiento", "WebSearch", "WebFetch", "registrar_leccion"],
+  "skill": "mente-humana-ciencia",
+  "palabras_clave": [
+    "investiga",
+    "que evidencia existe",
+    "que sabemos realmente",
+    "que demuestra",
+    "evidencia cientifica",
+    "revision de la literatura",
+    "estado de la ciencia",
+    "investigacion cientifica",
+    "que relacion existe"
+  ],
+  "entradas": {
+    "pregunta": {
+      "tipo": "texto",
+      "descripcion": "Pregunta de investigación",
+      "requerida": true,
+      "max_caracteres": 400
+    },
+    "enfoque": {
+      "tipo": "texto",
+      "descripcion": "Qué distinguir o priorizar (p. ej. evidencia humana frente a animal; analogía frente a evidencia; documento original frente a evaluaciones independientes)",
+      "requerida": false,
+      "defecto": "separa evidencia, hipótesis y tradición",
+      "max_caracteres": 300
+    }
+  },
+  "herramientas": [
+    "biblioteca_sol",
+    "proyecto_sol",
+    "buscar_conocimiento",
+    "WebSearch",
+    "WebFetch",
+    "registrar_leccion"
+  ],
   "pasos": [
-    { "n": 1, "titulo": "Lo que ya se sabe", "instruccion": "Busca en tu biblioteca (biblioteca_sol accion=buscar) y en buscar_conocimiento. Anota qué falta.", "herramienta": "biblioteca_sol" },
-    { "n": 2, "titulo": "Fuentes primarias", "instruccion": "Localiza y ABRE fuentes primarias con WebSearch/WebFetch: artículos, revisiones sistemáticas y metaanálisis (PubMed, PubMed Central, Cochrane, revistas), documentos originales (CIA Reading Room, National Archives) y textos originales de dominio público. Prioriza: {{enfoque}}. Busca también evaluaciones independientes y críticas. Registra cada fuente abierta con biblioteca_sol accion=registrar_fuente diciendo en «acceso» lo que leíste de verdad (texto_completo, resumen o pagina) y en «tipo» qué es (metaanalisis, revision, ensayo, documento_oficial, libro, enciclopedia). Mínimo 6 fuentes; al menos 3 que no sean enciclopedia. No afirmes haber leído un documento entero si solo viste el resumen.", "herramienta": "biblioteca_sol" },
-    { "n": 3, "titulo": "Afirmaciones con nivel de evidencia", "instruccion": "Registra al menos 6 afirmaciones con biblioteca_sol accion=registrar_afirmacion: texto, nivel (A-E o H), fuente_id, tipo_evidencia (humana, animal, mecanismo, documento, tradición…), limitaciones, replicaciones, criticas y confianza (0-1). No des el mismo nivel a todo lo que dice un autor; que una hipótesis aparezca en un documento oficial no la hace cierta; una semejanza conceptual no es evidencia.", "herramienta": "biblioteca_sol" },
-    { "n": 4, "titulo": "Conexiones", "instruccion": "Registra al menos 2 conexiones con biblioteca_sol accion=registrar_conexion indicando su tipo real (historica, conceptual, experimental, causal, correlacional, metaforica, hipotetica o contradictoria)." },
-    { "n": 5, "titulo": "Entrega", "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=investigacion, titulo, componentes: pregunta, hallazgos, evidencia (tabla afirmación · nivel · fuente · limitaciones), fuentes (URLs), limitaciones (qué no se pudo verificar o leer entero), conexiones). Si responde blocked, completa y reentrega con proyecto_id. Termina tu informe en español con las secciones pedidas y el número de proyecto.", "herramienta": "proyecto_sol" }
+    {
+      "n": 1,
+      "titulo": "Lo que ya se sabe",
+      "instruccion": "Busca en tu biblioteca (biblioteca_sol accion=buscar) y en buscar_conocimiento. Anota qué falta.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 2,
+      "titulo": "Fuentes primarias",
+      "instruccion": "Localiza y ABRE fuentes primarias con WebSearch/WebFetch: artículos, revisiones sistemáticas y metaanálisis (PubMed, PubMed Central, Cochrane, revistas), documentos originales (CIA Reading Room, National Archives) y textos originales de dominio público. Prioriza: {{enfoque}}. Busca también evaluaciones independientes y críticas. Registra cada fuente abierta con biblioteca_sol accion=registrar_fuente diciendo en «acceso» lo que leíste de verdad (texto_completo, resumen o pagina) y en «tipo» qué es (metaanalisis, revision, ensayo, documento_oficial, libro, enciclopedia). Mínimo 6 fuentes; al menos 3 que no sean enciclopedia. No afirmes haber leído un documento entero si solo viste el resumen. LECTURA REAL: para artículos usa biblioteca_sol accion=buscar_articulos y lee los de acceso abierto enteros con accion=leer_texto (pmcid; sigue con «desde» hasta el final); para obras de dominio público, accion=leer_texto con la URL .txt de gutenberg.org o archive.org. Lee ENTEROS al menos 2 textos por tarea; el código registra el porcentaje leído de cada fuente.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 3,
+      "titulo": "Afirmaciones con nivel de evidencia",
+      "instruccion": "Registra al menos 6 afirmaciones con biblioteca_sol accion=registrar_afirmacion: texto, nivel (A-E o H), fuente_id, tipo_evidencia (humana, animal, mecanismo, documento, tradición…), limitaciones, replicaciones, criticas y confianza (0-1). No des el mismo nivel a todo lo que dice un autor; que una hipótesis aparezca en un documento oficial no la hace cierta; una semejanza conceptual no es evidencia.",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "n": 4,
+      "titulo": "Conexiones",
+      "instruccion": "Registra al menos 2 conexiones con biblioteca_sol accion=registrar_conexion indicando su tipo real (historica, conceptual, experimental, causal, correlacional, metaforica, hipotetica o contradictoria)."
+    },
+    {
+      "n": 5,
+      "titulo": "Entrega",
+      "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=investigacion, titulo, componentes: pregunta, hallazgos, evidencia (tabla afirmación · nivel · fuente · limitaciones), fuentes (URLs), limitaciones (qué no se pudo verificar o leer entero), conexiones). Si responde blocked, completa y reentrega con proyecto_id. Termina tu informe en español con las secciones pedidas y el número de proyecto.",
+      "herramienta": "proyecto_sol"
+    }
   ],
-  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Respuesta corta, Evidencia por niveles, Lo que no se sabe, Fuentes, Limitaciones de esta investigación, Proyecto entregado", "obligatoria": true }],
-  "ubicacion_artefactos": { "boveda": "Tareas" },
-  "criterios_exito": ["≥6 fuentes abiertas y registradas", "≥6 afirmaciones con nivel de evidencia y fuente", "≥2 conexiones tipificadas", "limitaciones explícitas", "paquete recuperable"],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Respuesta corta, Evidencia por niveles, Lo que no se sabe, Fuentes, Limitaciones de esta investigación, Proyecto entregado",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "criterios_exito": [
+    "≥6 fuentes abiertas y registradas",
+    "≥6 afirmaciones con nivel de evidencia y fuente",
+    "≥2 conexiones tipificadas",
+    "limitaciones explícitas",
+    "paquete recuperable"
+  ],
   "verificacion": [
-    { "nombre": "informe de investigación recuperable", "tipo": "proyecto_sol_completo" },
-    { "nombre": "afirmaciones con evidencia", "tipo": "afirmaciones_sol", "minimo": 6 },
-    { "nombre": "usó la biblioteca", "tipo": "herramienta_usada", "herramienta": "biblioteca_sol" },
-    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Respuesta corta", "Evidencia por niveles", "Lo que no se sabe", "Fuentes", "Limitaciones de esta investigación", "Proyecto entregado"] },
-    { "nombre": "fuentes en el informe", "tipo": "fuentes_citadas", "minimo": 6 },
-    { "nombre": "sin promesas médicas", "tipo": "sin_promesas_medicas" }
+    {
+      "nombre": "informe de investigación recuperable",
+      "tipo": "proyecto_sol_completo"
+    },
+    {
+      "nombre": "afirmaciones con evidencia",
+      "tipo": "afirmaciones_sol",
+      "minimo": 6
+    },
+    {
+      "nombre": "usó la biblioteca",
+      "tipo": "herramienta_usada",
+      "herramienta": "biblioteca_sol"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Respuesta corta",
+        "Evidencia por niveles",
+        "Lo que no se sabe",
+        "Fuentes",
+        "Limitaciones de esta investigación",
+        "Proyecto entregado"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    },
+    {
+      "nombre": "sin promesas médicas",
+      "tipo": "sin_promesas_medicas"
+    }
   ],
-  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
-  "reintentos": { "max": 2 },
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "reintentos": {
+    "max": 2
+  },
   "aprobaciones": [],
-  "coste": { "duracion_estimada_min": 25, "usd_estimado": 0, "nota": "con la suscripción; sin gasto" },
+  "coste": {
+    "duracion_estimada_min": 25,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto"
+  },
   "idioma_entregable": "es"
 }

@@ -29,7 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT } from '../config.ts';
 import type { MusicCmd, MusicEffect } from './music.ts';
-import { addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
+import { readOpenText, searchPapers, addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
 const omegaActor = () => { const t = process.env.KRATOS_TOOLSET ?? ''; return t.startsWith('agente:') ? `agente:${t.slice(7)}` : 'kratos'; };
 
 // Inteligencia de Kratos con la API de Claude.
@@ -211,8 +211,8 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => (await db.query(`SELECT at, actor, action, details FROM audit_log ORDER BY id DESC LIMIT $1`, [Math.min(40, Math.max(1, i.cantidad))])).rows,
   },
   {
-    name: 'biblioteca_sol', description: 'Biblioteca persistente de Sol (operación Omega) con trazabilidad. buscar (consulta): fuentes, afirmaciones con nivel de evidencia y conexiones sobre un tema (recuperación selectiva). registrar_fuente (url, titulo, autores, anio, tipo, temas, acceso: texto_completo|resumen|pagina|metadatos, condiciones_uso): el código abre la URL y solo entonces la marca verificada; di con «acceso» lo que leíste de verdad. registrar_afirmacion (texto, nivel A-E o H, fuente_id, tema, limitaciones, replicaciones, criticas, confianza): toda afirmación va ligada a una fuente; A y B exigen fuente verificada. registrar_conexion (desde, hacia, tipo: historica|conceptual|experimental|causal|correlacional|metaforica|hipotetica|contradictoria, explicacion, fuente_ids). estadisticas: cuántas fuentes hay de verdad. Niveles: A robusta, B moderada, C preliminar, D hipótesis, E refutada, H tradición histórica o simbólica.',
-    input_schema: obj({ accion: { type: 'string', enum: ['buscar', 'registrar_fuente', 'registrar_afirmacion', 'registrar_conexion', 'estadisticas'] }, consulta: { type: 'string' },
+    name: 'biblioteca_sol', description: 'Biblioteca persistente de Sol (operación Omega) con trazabilidad. buscar (consulta): fuentes, afirmaciones con nivel de evidencia y conexiones sobre un tema (recuperación selectiva). registrar_fuente (url, titulo, autores, anio, tipo, temas, acceso: texto_completo|resumen|pagina|metadatos, condiciones_uso): el código abre la URL y solo entonces la marca verificada; di con «acceso» lo que leíste de verdad. registrar_afirmacion (texto, nivel A-E o H, fuente_id, tema, limitaciones, replicaciones, criticas, confianza): toda afirmación va ligada a una fuente; A y B exigen fuente verificada. registrar_conexion (desde, hacia, tipo: historica|conceptual|experimental|causal|correlacional|metaforica|hipotetica|contradictoria, explicacion, fuente_ids). buscar_articulos (consulta, solo_abierto): busca artículos científicos en Europe PMC (título, autores, año, pmcid, citas). leer_texto (pmcid de acceso abierto, o url de gutenberg.org/archive.org; desde): LEE el texto entero por trozos de 30.000 caracteres; el código anota cuánto llevas leído y solo marca texto_completo al pasar del 90 %; úsalo en vez de WebFetch cuando una web bloquee la lectura. estadisticas: cuántas fuentes hay de verdad. Niveles: A robusta, B moderada, C preliminar, D hipótesis, E refutada, H tradición histórica o simbólica.',
+    input_schema: obj({ accion: { type: 'string', enum: ['buscar', 'buscar_articulos', 'leer_texto', 'registrar_fuente', 'registrar_afirmacion', 'registrar_conexion', 'estadisticas'] }, consulta: { type: 'string' }, pmcid: { type: 'string' }, desde: { type: 'integer' }, solo_abierto: { type: 'boolean' },
       url: { type: 'string' }, titulo: { type: 'string' }, autores: { type: 'string' }, anio: { type: 'integer' }, tipo: { type: 'string' }, temas: { type: 'array', items: { type: 'string' } },
       acceso: { type: 'string', enum: ['texto_completo', 'resumen', 'pagina', 'metadatos'] }, condiciones_uso: { type: 'string' }, notas: { type: 'string' },
       texto: { type: 'string' }, nivel: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E', 'H'] }, fuente_id: { type: 'integer' }, tema: { type: 'string' }, tipo_evidencia: { type: 'string' },
@@ -222,6 +222,8 @@ export const TOOLS: ToolDef[] = [
       try {
         if (i.accion === 'buscar') return await searchLibrary(db, String(i.consulta ?? ''));
         if (i.accion === 'estadisticas') return await libraryStats(db);
+        if (i.accion === 'buscar_articulos') return await searchPapers(String(i.consulta ?? ''), i.solo_abierto !== false);
+        if (i.accion === 'leer_texto') return await readOpenText(db, i, omegaActor());
         if (i.accion === 'registrar_fuente') return await addSource(db, i, omegaActor());
         if (i.accion === 'registrar_afirmacion') return await addClaim(db, i, omegaActor());
         if (i.accion === 'registrar_conexion') return await addConnection(db, i, omegaActor());
