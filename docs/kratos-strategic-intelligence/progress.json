@@ -1,0 +1,78 @@
+{
+ "directiva": "docs/kratos-strategic-intelligence/DIRECTIVA.md",
+ "tareas": [
+  {
+   "id": "00",
+   "nombre": "Auditoría y prerrequisitos",
+   "estado": "COMPLETED",
+   "evidencia": "baseline.md; prerrequisitos cumplidos (cognitiva 18/18, npm test 229/229)"
+  },
+  {
+   "id": "01",
+   "nombre": "Registro de capacidades de herramientas",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "02",
+   "nombre": "Enrutado y recuperación de herramientas",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "03",
+   "nombre": "Marco de 100 preguntas",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "04",
+   "nombre": "Selección adaptativa",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "05",
+   "nombre": "Descubrimiento y comparación de oportunidades",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "06",
+   "nombre": "Anti-fijación y crítica independiente",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "07",
+   "nombre": "Experimentos y evaluación financiera",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "08",
+   "nombre": "Memoria estratégica y aprendizaje medido",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "09",
+   "nombre": "Integración con agentes y módulos cognitivos",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "10",
+   "nombre": "Pruebas de aceptación (24)",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "11",
+   "nombre": "Informe final y parar",
+   "estado": "QUEUED",
+   "evidencia": null
+  }
+ ],
+ "siguiente_accion": "TAREA 01: registro de capacidades de herramientas (src/core/ksie-herramientas.ts, tabla ksie_herramientas)"
+}
