@@ -44,6 +44,11 @@ import { ESPACIO_TOOL, herramientaEspacio } from './espacio.ts';
 import { MEMORIA_TOOL, herramientaMemoria } from './autobiografia.ts';
 import { METACOGNICION_TOOL, herramientaMetacognicion } from './metacognicion.ts';
 import { readOpenText, searchPapers, addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
+// Dice la verdad sobre cuándo arrancará una tarea: si el uso del plan está en su tope, queda en cola hasta el reinicio
+async function avisoArranque(db: Db, ordenPropietario = process.env.KRATOS_TOOLSET !== 'ceo') {
+  const w = await autonomyWindow(db, { ordenPropietario }).catch(() => ({ ok: true } as any));
+  return w.ok ? { arranque: 'en cola: empieza en cuanto el agente quede libre' } : { arranque: 'EN ESPERA', aviso: `No arranca todavía: ${w.reason}. Díselo así al propietario; no digas que ya está en marcha.` };
+}
 const omegaActor = () => { const t = process.env.KRATOS_TOOLSET ?? ''; return t.startsWith('agente:') ? `agente:${t.slice(7)}` : 'kratos'; };
 
 // Inteligencia de Kratos con la API de Claude.
@@ -183,7 +188,7 @@ export const TOOLS: ToolDef[] = [
         priority: Math.min(5, Math.max(1, i.prioridad)), expectedResult: i.resultado_esperado, verification: i.verificacion,
         status: 'pendiente', createdBy: 'kratos (IA)',   // arranca ya (agentes con la suscripción)
       });
-      return { id: task.id, creada: created };
+      return { id: task.id, creada: created, ...(await avisoArranque(db)) };
     },
   },
   {
@@ -669,7 +674,8 @@ export const TOOLS: ToolDef[] = [
       }
       const version = i.version !== undefined && i.version !== null && i.version !== '' ? Number(i.version) : null;
       if (version !== null && !Number.isInteger(version)) return { error: 'version debe ser un entero' };
-      return instantiatePlaybook(db, { id, negocioId: negocio, parametros, version, soloValidar: i.solo_validar === true || i.solo_validar === 'true', creadoPor: process.env.KRATOS_TOOLSET === 'ceo' ? 'kratos (ciclo CEO)' : 'kratos (IA)' });
+      const r: any = await instantiatePlaybook(db, { id, negocioId: negocio, parametros, version, soloValidar: i.solo_validar === true || i.solo_validar === 'true', creadoPor: process.env.KRATOS_TOOLSET === 'ceo' ? 'kratos (ciclo CEO)' : 'kratos (IA)' });
+      return r?.tarea || r?.task || r?.id ? { ...r, ...(await avisoArranque(db, process.env.KRATOS_TOOLSET !== 'ceo')) } : r;
     },
   },
   {
@@ -812,7 +818,7 @@ async function executeSpecialistViaSubscription(db: Db, task: any): Promise<Spec
   const agent = (await db.query(`SELECT id, name, purpose, model, allowed_tools, prohibited, escalation, deliverables, charter
     FROM agent_functions WHERE id = $1`, [task.owner_function])).rows[0];
   if (!agent || agent.id === 'kratos') throw new Error('La tarea no tiene un especialista planetario válido');
-  const av = await autonomyWindow(db);   // trabajo autónomo: hasta el tope de uso del plan, luego espera al reinicio
+  const av = await autonomyWindow(db, { ordenPropietario: task.created_by === 'kratos (IA)' });   // trabajo autónomo hasta su tope; las órdenes del propietario, hasta el suyo
   if (!av.ok) throw Object.assign(new Error(`Suscripción no disponible: ${av.reason}`), { retryAt: av.until?.toISOString() ?? null });
   const business = (await db.query(`SELECT id, name, goals, is_demo FROM businesses WHERE id = $1`, [task.business_id])).rows[0];
   const product = task.product_id ? (await db.query(`SELECT name, platforms, audience, markets, revenue_model, is_demo FROM products WHERE id = $1 AND business_id = $2`, [task.product_id, task.business_id])).rows[0] : null;
@@ -959,7 +965,8 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
   while (history.length && history[0].role !== 'usuario') history.shift();
   const messages: any[] = history.map((m, i) => {
     const recent = i >= history.length - 4;
-    const max = recent ? 2000 : m.role === 'usuario' ? 600 : 400;
+    // el último mensaje del propietario llega entero (encargos largos); los recientes, casi enteros; el historial antiguo, resumido
+    const max = i === history.length - 1 ? 12_000 : recent ? (m.role === 'usuario' ? 4000 : 2000) : m.role === 'usuario' ? 600 : 400;
     const text = String(m.content).length > max ? String(m.content).slice(0, max) + '…' : String(m.content);
     return { role: m.role === 'usuario' ? 'user' : 'assistant', content: text };
   });

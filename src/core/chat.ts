@@ -22,7 +22,8 @@ export type Reply = { text: string; spoken: string; action?: string; query?: str
 
 // onSpeak: voz en tiempo real; recibe cada frase de la respuesta de Claude en cuanto está lista.
 export async function handleMessage(db: Db, raw: string, channel: 'texto' | 'voz' = 'texto', onSpeak?: (sentence: string) => void): Promise<Reply> {
-  const text = raw.slice(0, 2000);
+  // Mensajes largos (experimentos completos, ideas dictadas): hasta 12.000 caracteres; antes se cortaban a 2.000
+  const text = raw.length > 12_000 ? raw.slice(0, 12_000) + '\n[…mensaje recortado a 12.000 caracteres]' : raw;
   await db.query(`INSERT INTO messages (role, channel, content) VALUES ('usuario', $1, $2)`, [channel, text]);
   const t = norm(text);
   // Seguridad primero y sin IA: parar, reanudar y aprobar se resuelven siempre igual.

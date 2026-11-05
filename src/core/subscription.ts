@@ -64,15 +64,18 @@ export async function subscriptionAvailable(db: Db): Promise<{ ok: boolean; unti
 
 // Trabajo autónomo (ciclo del CEO y agentes): usa el plan hasta el tope elegido por el propietario (90 % por defecto)
 // de la ventana de 5 horas o de la semanal, y entonces espera al reinicio. La conversación con el propietario no tiene este tope.
-export async function autonomyWindow(db: Db): Promise<{ ok: boolean; until?: Date; reason?: string }> {
+// Las órdenes directas del propietario (tareas que KRATOS crea en la conversación) tienen prioridad: llegan hasta un tope mayor
+// (owner_task_usage_cap, 97 % por defecto) para que lo que el propietario pide no se quede parado días por el trabajo de fondo.
+export async function autonomyWindow(db: Db, opts: { ordenPropietario?: boolean } = {}): Promise<{ ok: boolean; until?: Date; reason?: string }> {
   const av = await subscriptionAvailable(db);
   if (!av.ok) return av;
-  const cap = Number((await db.query(`SELECT value FROM system_state WHERE key = 'autonomy_usage_cap'`)).rows[0]?.value ?? 0.9);
+  const clave = opts.ordenPropietario ? 'owner_task_usage_cap' : 'autonomy_usage_cap';
+  const cap = Number((await db.query(`SELECT value FROM system_state WHERE key = $1`, [clave])).rows[0]?.value ?? (opts.ordenPropietario ? 0.97 : 0.9));
   const u = (await subStatus(db))?.usage;
   for (const k of ['seven_day', 'five_hour'] as const) {
     const resets = u?.[`${k}_resets` as const];
     if ((u?.[k] ?? 0) >= cap && resets && new Date(resets) > new Date())
-      return { ok: false, until: new Date(resets), reason: `uso del plan al ${Math.round((u?.[k] ?? 0) * 100)} % (${k === 'five_hour' ? 'ventana de 5 h' : 'semanal'}): espera al reinicio` };
+      return { ok: false, until: new Date(resets), reason: `uso del plan al ${Math.round((u?.[k] ?? 0) * 100)} % (${k === 'five_hour' ? 'ventana de 5 h' : 'semanal'}, tope ${Math.round(cap * 100)} %${opts.ordenPropietario ? ' para órdenes del propietario' : ' para el trabajo de fondo'}): espera al reinicio del ${new Date(resets).toLocaleString('es', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` };
   }
   return { ok: true };
 }
@@ -144,7 +147,7 @@ export async function runAgentWithSubscription(db: Db, opts: { system: string; p
   const effectsFile = path.join(os.tmpdir(), `kratos-efectos-${id}.json`), mcpFile = path.join(os.tmpdir(), `kratos-mcp-${id}.json`);
   const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..');
   fs.writeFileSync(mcpFile, JSON.stringify({ mcpServers: { kratos: { command: process.execPath, args: [path.join(root, 'src', 'mcp-kratos.ts')],
-    env: { KRATOS_TOOLSET: opts.toolset, KRATOS_LAST_USER: (opts.lastUser ?? '').slice(0, 2000), KRATOS_EFFECTS_FILE: effectsFile, JARVIS_DB: process.env.JARVIS_DB ?? 'jarvis' } } } }), { mode: 0o600 });
+    env: { KRATOS_TOOLSET: opts.toolset, KRATOS_LAST_USER: (opts.lastUser ?? '').slice(0, 12_000), KRATOS_EFFECTS_FILE: effectsFile, JARVIS_DB: process.env.JARVIS_DB ?? 'jarvis' } } } }), { mode: 0o600 });
   const user = os.userInfo().username;
   const env = { HOME: os.homedir(), USER: user, LOGNAME: user, TMPDIR: os.tmpdir(), LANG: 'es_ES.UTF-8', ENABLE_TOOL_SEARCH: 'false',
     PATH: `${path.dirname(CLAUDE)}:${path.dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin` };   // sin clave de API: cobra a la suscripción
