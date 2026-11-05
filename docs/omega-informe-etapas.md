@@ -22,9 +22,10 @@
 - `scripts/sol/ingesta-fuentes.ts`: abrió las 150 URLs citadas en las 5 bibliotecas de conocimiento de Sol y las guías; **140 verificadas** (página abierta), 10 no verificadas (bloqueadas o caídas).
 - **Honestidad:** acceso = «pagina». No se ha leído ningún libro entero; enciclopedias 81, web 21, artículos 16, documentación oficial 12, documento oficial 1. Faltan fuentes primarias (PubMed, CIA Reading Room, textos clásicos de dominio público).
 
-## Etapa 7 · Integración KRATOS–Sol (en curso)
+## Etapa 7 · Integración KRATOS–Sol (demostración superada, 4-nov-2026)
 - Playbooks `sol-paquete-video` y `sol-paquete-estrategia` (campañas, lanzamientos, libros, investigación: toda la empresa, no solo vídeos).
-- Demostración: se pidió a KRATOS por chat un Short de 60 s sobre sueños lúcidos y **KRATOS creó él mismo la tarea 617 para Sol**. Resultado de Sol: pendiente de ejecutar al cierre de este informe.
+- **Prueba de coordinación y prueba creativa:** se pidió a KRATOS por chat un Short de 60 s sobre sueños lúcidos → KRATOS creó la tarea 617 para Sol → Sol investigó (8 llamadas a la biblioteca, 3 fuentes nuevas, 4 afirmaciones con nivel B/C) → entregó el proyecto P1 (`completed`, 18 archivos en `~/Documents/Kratos/Proyectos/P1-…/v1/`) → verificación en código superada → predicción registrada (60–900 vistas a 7 días, confianza 0,6, con su base) → **KRATOS recuperó el paquete** en una conversación nueva y citó el guion.
+- **No probado todavía:** prueba de memoria tras reiniciar el Mac; prueba de aprendizaje (resolver la predicción con datos reales, exige publicar el Short); que la fábrica convierta el paquete en vídeo (el motor aún no renderiza Shorts desde un paquete).
 
 ## Pendiente
 Etapa 5 (afirmaciones y conexiones cargadas con contenido), etapa 6 (motor de audiencias con datos reales), etapa 8 (que la fábrica consuma el paquete de Sol), etapa 9 (resolver predicciones con analítica real), etapa 10 (las 8 pruebas y los 15 criterios), currículo de 36 módulos, biblioteca a 500+.
