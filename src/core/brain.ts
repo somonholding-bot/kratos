@@ -29,6 +29,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT } from '../config.ts';
 import type { MusicCmd, MusicEffect } from './music.ts';
+import { addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
+const omegaActor = () => { const t = process.env.KRATOS_TOOLSET ?? ''; return t.startsWith('agente:') ? `agente:${t.slice(7)}` : 'kratos'; };
 
 // Inteligencia de Kratos con la API de Claude.
 // - La clave vive en el Llavero de macOS (servicio «kratos-anthropic»), nunca en archivos ni registros.
@@ -207,6 +209,44 @@ export const TOOLS: ToolDef[] = [
     name: 'ver_actividad', description: 'Últimas acciones del registro de auditoría.',
     input_schema: obj({ cantidad: { type: 'integer' } }, ['cantidad']),
     run: async (db, i) => (await db.query(`SELECT at, actor, action, details FROM audit_log ORDER BY id DESC LIMIT $1`, [Math.min(40, Math.max(1, i.cantidad))])).rows,
+  },
+  {
+    name: 'biblioteca_sol', description: 'Biblioteca persistente de Sol (operación Omega) con trazabilidad. buscar (consulta): fuentes, afirmaciones con nivel de evidencia y conexiones sobre un tema (recuperación selectiva). registrar_fuente (url, titulo, autores, anio, tipo, temas, acceso: texto_completo|resumen|pagina|metadatos, condiciones_uso): el código abre la URL y solo entonces la marca verificada; di con «acceso» lo que leíste de verdad. registrar_afirmacion (texto, nivel A-E o H, fuente_id, tema, limitaciones, replicaciones, criticas, confianza): toda afirmación va ligada a una fuente; A y B exigen fuente verificada. registrar_conexion (desde, hacia, tipo: historica|conceptual|experimental|causal|correlacional|metaforica|hipotetica|contradictoria, explicacion, fuente_ids). estadisticas: cuántas fuentes hay de verdad. Niveles: A robusta, B moderada, C preliminar, D hipótesis, E refutada, H tradición histórica o simbólica.',
+    input_schema: obj({ accion: { type: 'string', enum: ['buscar', 'registrar_fuente', 'registrar_afirmacion', 'registrar_conexion', 'estadisticas'] }, consulta: { type: 'string' },
+      url: { type: 'string' }, titulo: { type: 'string' }, autores: { type: 'string' }, anio: { type: 'integer' }, tipo: { type: 'string' }, temas: { type: 'array', items: { type: 'string' } },
+      acceso: { type: 'string', enum: ['texto_completo', 'resumen', 'pagina', 'metadatos'] }, condiciones_uso: { type: 'string' }, notas: { type: 'string' },
+      texto: { type: 'string' }, nivel: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E', 'H'] }, fuente_id: { type: 'integer' }, tema: { type: 'string' }, tipo_evidencia: { type: 'string' },
+      limitaciones: { type: 'string' }, replicaciones: { type: 'string' }, criticas: { type: 'string' }, confianza: { type: 'number' },
+      desde: { type: 'string' }, hacia: { type: 'string' }, explicacion: { type: 'string' }, fuente_ids: { type: 'array', items: { type: 'integer' } } }, ['accion']),
+    run: async (db, i) => {
+      try {
+        if (i.accion === 'buscar') return await searchLibrary(db, String(i.consulta ?? ''));
+        if (i.accion === 'estadisticas') return await libraryStats(db);
+        if (i.accion === 'registrar_fuente') return await addSource(db, i, omegaActor());
+        if (i.accion === 'registrar_afirmacion') return await addClaim(db, i, omegaActor());
+        if (i.accion === 'registrar_conexion') return await addConnection(db, i, omegaActor());
+        return { error: 'Acción no válida' };
+      } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; }
+    },
+  },
+  {
+    name: 'proyecto_sol', description: 'Contrato de entregables KRATOS–Sol (operación Omega). entregar (titulo, tipo: video|libro|campana|investigacion, tarea_id, audiencia, plataforma, componentes: objeto {nombre: texto}; para reentregar pasa proyecto_id y solo los componentes nuevos): escribe el paquete en la bóveda, lo lee de vuelta y lo deja completed solo si están todos los componentes obligatorios; si falta algo queda blocked y dice qué falta. Componentes de un vídeo: investigacion, fuentes (≥3 URLs), publico, objetivo, concepto, titulo, variantes_titulo (≥3 líneas), miniatura, guion, escaleta, direccion_audiovisual, voz, edicion, subtitulos, descripcion, metadatos, riesgos, metricas. estado (proyecto_id o tarea_id): estado REAL contrastado con los archivos en disco. leer (proyecto_id, componente): texto de un componente. listar: últimos proyectos. predecir (proyecto_id, hipotesis, metrica, rango_min, rango_max, confianza 0-1, base): predicción con rango y confianza, nunca un número suelto. resolver_prediccion (prediccion_id, resultado, leccion): la compara con el dato real y actualiza la calibración.',
+    input_schema: obj({ accion: { type: 'string', enum: ['entregar', 'estado', 'leer', 'listar', 'predecir', 'resolver_prediccion'] }, proyecto_id: { type: 'integer' }, tarea_id: { type: 'integer' },
+      titulo: { type: 'string' }, tipo: { type: 'string', enum: ['video', 'libro', 'campana', 'investigacion'] }, audiencia: { type: 'string' }, plataforma: { type: 'string' },
+      componentes: { type: 'object', additionalProperties: true }, componente: { type: 'string' },
+      hipotesis: { type: 'string' }, metrica: { type: 'string' }, rango_min: { type: 'number' }, rango_max: { type: 'number' }, confianza: { type: 'number' }, base: { type: 'string' },
+      prediccion_id: { type: 'integer' }, resultado: { type: 'number' }, leccion: { type: 'string' } }, ['accion']),
+    run: async (db, i) => {
+      try {
+        if (i.accion === 'entregar') return await deliverProject(db, i, omegaActor());
+        if (i.accion === 'estado') return await projectStatus(db, i.proyecto_id ? Number(i.proyecto_id) : undefined, i.tarea_id ? Number(i.tarea_id) : undefined);
+        if (i.accion === 'leer') return await projectComponent(db, Number(i.proyecto_id), String(i.componente ?? ''));
+        if (i.accion === 'listar') return await listProjects(db);
+        if (i.accion === 'predecir') return await addPrediction(db, i, omegaActor());
+        if (i.accion === 'resolver_prediccion') return await resolvePrediction(db, Number(i.prediccion_id), Number(i.resultado), i.leccion, omegaActor());
+        return { error: 'Acción no válida' };
+      } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; }
+    },
   },
   {
     name: 'registrar_leccion', description: 'Guarda un aprendizaje: qué funcionó, qué no funcionó o una lección, con su evidencia. Es la memoria acumulada de KRATOS.',
@@ -629,7 +669,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['biblioteca_sol', 'proyecto_sol', 'fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -973,7 +1013,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';

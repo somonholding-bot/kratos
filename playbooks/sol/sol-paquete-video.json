@@ -1,0 +1,36 @@
+{
+  "id": "sol-paquete-video",
+  "nombre": "Paquete de producción de un vídeo (Sol investiga, define la estrategia y entrega)",
+  "version": 1,
+  "objetivo": "Para el encargo de KRATOS «{{tema}}» ({{formato}}, {{plataforma}}): investigar con fuentes, definir audiencia y estrategia psicológica y narrativa, comparar 3 conceptos, escribir el guion en inglés y entregar con proyecto_sol un paquete de producción completo que KRATOS pueda recuperar.",
+  "agentes": { "responsable": "sol" },
+  "skill": "direccion-creativa",
+  "palabras_clave": ["paquete de produccion", "crea un video", "video sobre", "guion completo", "estrategia creativa", "paquete de video", "sol investiga", "short sobre", "documental"],
+  "entradas": {
+    "tema": { "tipo": "texto", "descripcion": "Encargo de KRATOS (tema del vídeo)", "requerida": true, "max_caracteres": 300 },
+    "formato": { "tipo": "opcion", "descripcion": "Formato", "requerida": false, "defecto": "Short de 60 segundos", "opciones": ["Short de 60 segundos", "episodio largo de 8-12 minutos"] },
+    "plataforma": { "tipo": "texto", "descripcion": "Plataforma", "requerida": false, "defecto": "YouTube (canal Aion Mind, en inglés)", "max_caracteres": 80 }
+  },
+  "herramientas": ["biblioteca_sol", "proyecto_sol", "buscar_conocimiento", "estado_youtube", "WebSearch", "WebFetch", "registrar_leccion"],
+  "pasos": [
+    { "n": 1, "titulo": "Investigación", "instruccion": "Busca primero en tu biblioteca (biblioteca_sol accion=buscar) y en buscar_conocimiento. Completa con WebSearch/WebFetch. Registra cada fuente nueva que abras con biblioteca_sol accion=registrar_fuente (di en «acceso» lo que leíste de verdad: pagina, resumen o texto_completo) y al menos 3 afirmaciones clave con accion=registrar_afirmacion y su nivel de evidencia (A-E o H). No inventes fuentes.", "herramienta": "biblioteca_sol" },
+    { "n": 2, "titulo": "Audiencia y estrategia", "instruccion": "Con estado_youtube mira qué ha funcionado en el canal (datos agregados; si faltan datos, dilo y declara hipótesis). Define objetivo, público, idea central, promesa informativa, tono y duración.", "herramienta": "estado_youtube" },
+    { "n": 3, "titulo": "Tres conceptos y selección", "instruccion": "Propón 3 enfoques creativos distintos y elige uno comparando claridad, originalidad, precisión, viabilidad en el motor de dibujos de Orin y riesgos de interpretación. Explica qué hipótesis de atención justifica la apertura." },
+    { "n": 4, "titulo": "Guion, escaleta y dirección", "instruccion": "Escribe el guion completo en inglés, la escaleta por escenas y la dirección audiovisual (imagen, movimiento de Orin, símbolos auténticos con su significado, color, ritmo, música, textos en pantalla, cierre). Es narración y psicología como entretenimiento: sin promesas médicas ni poderes psíquicos; sin mencionar apps." },
+    { "n": 5, "titulo": "Entrega y predicción", "instruccion": "Entrega con proyecto_sol accion=entregar (tipo=video, titulo, componentes con TODOS: investigacion, fuentes (≥3 URLs), publico, objetivo, concepto, titulo, variantes_titulo (≥3 líneas), miniatura, guion, escaleta, direccion_audiovisual, voz, edicion, subtitulos, descripcion, metadatos, riesgos, metricas). Si responde blocked, completa lo que falta y reentrega con proyecto_id. Después registra 1 predicción con proyecto_sol accion=predecir (rango, confianza y base; si no hay datos suficientes, dilo en la base y usa un rango amplio). Termina tu informe con las secciones pedidas y el número de proyecto.", "herramienta": "proyecto_sol" }
+  ],
+  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Resumen, Proyecto entregado, Fuentes, Incertidumbres, Siguiente paso", "obligatoria": true }],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["paquete completed con todos los componentes", "≥3 fuentes reales registradas", "3 conceptos comparados", "una predicción con rango y confianza"],
+  "verificacion": [
+    { "nombre": "paquete completo y recuperable", "tipo": "proyecto_sol_completo" },
+    { "nombre": "usó la biblioteca", "tipo": "herramienta_usada", "herramienta": "biblioteca_sol" },
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Resumen", "Proyecto entregado", "Fuentes", "Incertidumbres", "Siguiente paso"] },
+    { "nombre": "fuentes en el informe", "tipo": "fuentes_citadas", "minimo": 3 }
+  ],
+  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
+  "reintentos": { "max": 2 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 20, "usd_estimado": 0, "nota": "con la suscripción; sin gasto" },
+  "idioma_entregable": "es"
+}

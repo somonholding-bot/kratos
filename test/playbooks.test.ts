@@ -86,9 +86,9 @@ test('validatePlaybook comprueba agente, skill y herramientas contra la base de 
 // ---------- 3 ----------
 test('syncPlaybooksFromFiles importa, detecta cambios y aísla los archivos inválidos sin lanzar', async () => {
   const first = await syncPlaybooksFromFiles(db);
-  assert.equal(first.importados.length, 8, JSON.stringify(first));
+  assert.equal(first.importados.length, 9, JSON.stringify(first));
   const second = await syncPlaybooksFromFiles(db);
-  assert.equal(second.sin_cambios.length, 8); assert.equal(second.importados.length, 0);
+  assert.equal(second.sin_cambios.length, 9); assert.equal(second.importados.length, 0);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kratos-pb-'));
   fs.mkdirSync(path.join(dir, 'venus')); fs.mkdirSync(path.join(dir, 'mercurio'));
   fs.writeFileSync(path.join(dir, 'venus', 'malo.json'), JSON.stringify({ id: 'malo' }));

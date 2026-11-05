@@ -18,6 +18,7 @@ export type CheckCtx = {
 
 // Los 17 tipos admitidos y las claves que aceptan (validateShape rechaza cualquier otra)
 export const CHECK_TYPES: Record<string, string[]> = {
+  proyecto_sol_completo: [],
   longitud_minima: ['caracteres', 'campo'],
   longitud_maxima: ['caracteres', 'campo'],
   secciones: ['titulos'],
@@ -234,6 +235,16 @@ export async function runCheck(c: PlaybookCheck, ctx: CheckCtx): Promise<Check> 
         const r = (await ctx.db.query(`SELECT count(*)::int AS n FROM audit_log WHERE actor = $1 AND action = $2 AND at >= $3`, [`agente:${ctx.task.owner_function}`, `herramienta.${c.herramienta}`, since])).rows[0].n;
         return out(r > 0, r > 0 ? `${r} llamada(s)` : `el agente no llamó a ${c.herramienta} durante la tarea`);
       }
+      case 'proyecto_sol_completo': {   // Omega: el paquete de Sol existe, está completed y sus archivos están en disco
+        if (!ctx.db || !ctx.task) return out(false, 'sin base de datos para comprobarlo');
+        const since = ctx.task.started_at ?? ctx.task.created_at ?? new Date(0);
+        const p = (await ctx.db.query(`SELECT id, estado, carpeta, version, faltantes FROM sol_proyectos WHERE tarea_id = $1 OR updated_at >= $2 ORDER BY (tarea_id = $1) DESC NULLS LAST, id DESC LIMIT 1`, [ctx.task.id, since])).rows[0];
+        if (!p) return out(false, 'Sol no entregó ningún paquete con proyecto_sol accion=entregar');
+        const dir = p.carpeta ? `${p.carpeta}/v${p.version}` : '';
+        const n = dir && fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.md')).length : 0;
+        if (p.estado === 'completed' && n > 0) { await ctx.db.query(`UPDATE sol_proyectos SET tarea_id = coalesce(tarea_id, $2) WHERE id = $1`, [p.id, ctx.task.id]); return out(true, `proyecto P${p.id}, ${n} archivos en ${p.carpeta}`); }
+        return out(false, `proyecto P${p.id} en estado ${p.estado}${p.faltantes?.length ? `; falta: ${p.faltantes.join('; ')}` : ''}${n ? '' : '; sin archivos en disco'}`);
+      }
       case 'archivo_existe': {
         let ruta = c.ruta ? substitute(String(c.ruta), ctx.params) : undefined;
         if (!ruta) { const f = field(ctx, c.campo); if (!f.ok) return out(false, f.detalle); ruta = String(f.value); }
@@ -262,6 +273,7 @@ export function describeChecks(checks: PlaybookCheck[], params: Record<string, u
     switch (c.tipo) {
       case 'longitud_minima': return `al menos ${n(c.caracteres)} caracteres${c.campo ? ` en ${c.campo}` : ''}`;
       case 'longitud_maxima': return `como mucho ${n(c.caracteres)} caracteres${c.campo ? ` en ${c.campo}` : ''}`;
+      case 'proyecto_sol_completo': return 'paquete entregado con proyecto_sol (accion=entregar) en estado completed, con todos sus archivos';
       case 'secciones': return `secciones obligatorias (encabezados ##): ${c.titulos.join(', ')}`;
       case 'tabla_filas': return `tabla Markdown con al menos ${n(c.minimo)} filas${c.seccion ? ` en «${c.seccion}»` : ''}`;
       case 'numero_de_items': return `al menos ${n(c.minimo)} ítems de lista${c.seccion ? ` en «${c.seccion}»` : ''}`;
