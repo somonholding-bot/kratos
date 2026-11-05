@@ -18,6 +18,7 @@ import { seedSolDef } from './core/sol-def.ts';
 import { sincronizarCapacidades } from './core/automodelo.ts';
 import { importarHistoria } from './core/autobiografia.ts';
 import { sembrarTeorias } from './core/conciencia.ts';
+import { recuperarCiclos } from './core/ciclo-cognitivo.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
 // Ciclo: observar → (parada/pausa?) → reclamar → ejecutar → comprobar → registrar → esperar.
@@ -100,6 +101,8 @@ if (import.meta.main) {
       if (Date.now() - ultimoRastreo > 10 * 60_000) { ultimoRastreo = Date.now(); await refreshRequisitos(db).then(() => exportRequisitos(db)).catch((e) => console.error('[worker] rastreador SOL:', e.message));
         await sincronizarCapacidades(db).catch((e) => console.error('[worker] automodelo C01:', e.message));
         await importarHistoria(db, 200).catch((e) => console.error('[worker] memoria C03:', e.message));
+        // un ciclo dura minutos: si lleva más de 30 «en curso», el proceso que lo ejecutaba se interrumpió
+        await recuperarCiclos(db, 30).catch((e) => console.error('[worker] recuperación de ciclos:', e.message));
       }
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);

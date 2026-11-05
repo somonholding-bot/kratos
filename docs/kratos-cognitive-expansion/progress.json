@@ -59,8 +59,8 @@
   {
    "id": "09",
    "nombre": "Pruebas de integración, persistencia, recuperación y seguridad",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "test/cognicion-integracion.test.ts 6/6; npm test 229/229"
   },
   {
    "id": "10",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 09: pruebas de integración, persistencia, recuperación y seguridad (test/cognicion-integracion.test.ts)"
+ "siguiente_accion": "TAREA 10: final-report.md con los 18 criterios PASS/FAIL/BLOCKED y evidencia"
 }

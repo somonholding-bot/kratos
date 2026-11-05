@@ -132,3 +132,26 @@ export async function herramientaCiclo(db: Db, i: any, _actor: string) {
   if (i.accion === 'ejecutar') return await ejecutarCiclo(db, i.entrada as EntradaCiclo);
   return { error: 'Acción no válida' };
 }
+
+// Recuperación tras una interrupción (KRATOS se reinició a mitad de un ciclo): el ciclo queda «fallido» por interrupción con la última
+// etapa alcanzada, su objetivo BLOQUEADO con el motivo (no se da por hecho ni se pierde) y las predicciones sin observar quedan señaladas.
+export async function recuperarCiclos(db: Db, minutos = 30) {
+  const colgados = (await db.query(`SELECT id, objetivo_id, etapas FROM cog_ciclos WHERE estado = 'en_curso' AND created_at < now() - make_interval(mins => $1)`, [minutos])).rows;
+  const out = [] as any[];
+  for (const c of colgados) {
+    const ultima = (c.etapas ?? []).at(-1);
+    const motivo = `Interrumpido tras la etapa ${ultima?.n ?? 0} (${ultima?.etapa ?? 'ninguna'}): KRATOS se detuvo a mitad del ciclo; requiere reanudar desde esa etapa`;
+    await db.query(`UPDATE cog_ciclos SET estado = 'fallido', resultado = $2, cerrado_at = now() WHERE id = $1`, [c.id, motivo]);
+    if (c.objetivo_id) {
+      const o = (await db.query(`SELECT estado FROM cog_objetivos WHERE id = $1`, [c.objetivo_id])).rows[0];
+      if (o && ['ACTIVE', 'VERIFYING'].includes(o.estado)) {
+        await db.query(`UPDATE cog_objetivos SET estado = 'BLOCKED', motivo_cierre = $2, updated_at = now() WHERE id = $1`, [c.objetivo_id, motivo]);
+        await db.query(`INSERT INTO cog_transiciones (objetivo_id, de, a, actor, motivo) VALUES ($1,$2,'BLOCKED','recuperacion',$3)`, [c.objetivo_id, o.estado, motivo]);
+      }
+    }
+    const pend = (await db.query(`SELECT id FROM cog_predicciones WHERE experimento_ref = $1 AND observado IS NULL`, [`ciclo ${c.id}`])).rows.map((x) => x.id);
+    out.push({ ciclo: c.id, objetivo: c.objetivo_id, motivo, predicciones_sin_observar: pend });
+    await audit(db, 'recuperacion', 'cog.ciclo_interrumpido', { ciclo: c.id, objetivo: c.objetivo_id });
+  }
+  return out;
+}
