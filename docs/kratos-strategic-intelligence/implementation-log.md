@@ -26,3 +26,12 @@
 
 ## TAREA 08: Memoria estratégica y aprendizaje medido
 - Memoria estratégica conectada a C03; recomendaciones que explican sus cambios; no se reabren estrategias abandonadas sin evidencia nueva.
+
+## TAREA 09: Integración con agentes y módulos cognitivos
+- KSIE integrado sin agentes nuevos, reutilizando C01–C05. Servicios reiniciados con 0 tareas en ejecución.
+
+## TAREA 10: Pruebas de aceptación (24)
+- 24 pruebas de aceptación documentadas con evidencia y límites.
+
+## TAREA 11: Informe final y parar
+- Informe final y parada.
