@@ -1,8 +1,8 @@
 # Checklist KSIE
 
 - [x] TAREA 00: Auditoría y prerrequisitos
-- [ ] TAREA 01: Registro de capacidades de herramientas
-- [ ] TAREA 02: Enrutado y recuperación de herramientas
+- [x] TAREA 01: Registro de capacidades de herramientas
+- [x] TAREA 02: Enrutado y recuperación de herramientas
 - [ ] TAREA 03: Marco de 100 preguntas
 - [ ] TAREA 04: Selección adaptativa
 - [ ] TAREA 05: Descubrimiento y comparación de oportunidades

@@ -10,14 +10,14 @@
   {
    "id": "01",
    "nombre": "Registro de capacidades de herramientas",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "ksie_herramientas (055) sincronizado con tool_registry + C01: 80 entradas (53 VERIFIED, 25 AVAILABLE, 2 DISCOVERED); credenciales comprobadas sin leer su valor; tool-registry.md"
   },
   {
    "id": "02",
    "nombre": "Enrutado y recuperación de herramientas",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "enrutar/registrarResultado/aprendizaje; test/ksie-herramientas.test.ts 7/7 (no disponible, solapadas, barata insuficiente, fiable que falla, sin herramientas, privacidad/presupuesto, aprendizaje tras reinicio)"
   },
   {
    "id": "03",
@@ -74,5 +74,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 01: registro de capacidades de herramientas (src/core/ksie-herramientas.ts, tabla ksie_herramientas)"
+ "siguiente_accion": "TAREA 03: marco de 100 preguntas (docs/kratos-strategic-intelligence/questions.json, src/core/ksie-preguntas.ts)"
 }
