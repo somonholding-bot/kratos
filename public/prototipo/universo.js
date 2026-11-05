@@ -1195,7 +1195,7 @@ window.kratosShowText = (text) => {
   let el = document.getElementById('lectura');
   if (!el) {
     el = document.createElement('aside'); el.id = 'lectura'; el.setAttribute('aria-label', 'Texto de KRATOS');
-    el.innerHTML = '<header><span>KRATOS</span><span><button type="button" data-copy-text title="Copiar">Copiar</button><button type="button" data-close-text aria-label="Cerrar">×</button></span></header><div class="lectura-body"></div>';
+    el.innerHTML = '<header><span>KRATOS</span><span><button type="button" class="bocina" data-escuchar title="Escuchar este texto">🔊</button><button type="button" data-copy-text title="Copiar">Copiar</button><button type="button" data-close-text aria-label="Cerrar">×</button></span></header><div class="lectura-body"></div>';
     document.body.append(el);
   }
   el.querySelector('.lectura-body').innerHTML = mdLite(lastText);
@@ -1294,6 +1294,53 @@ async function mostrarProgreso() {
   } catch (err) { window.kratosShowText(`No pude leer el progreso: ${err.message}`); }
 }
 
+// ---------- Bocina 🔊: lee en voz alta EXACTAMENTE el texto de esa respuesta ----------
+// En la app de Mac usa la voz elegida por el propietario (su Voz Personal o la natural); en el navegador, la voz natural del servidor
+// o, si no hay, la del sistema. Solo se quitan los símbolos de formato (asteriscos, almohadillas, viñetas), no las palabras.
+const BOCINA = ' <button type="button" class="bocina" data-escuchar title="Escuchar esta respuesta" aria-label="Escuchar esta respuesta">🔊 Escuchar</button>';
+const lectura = { btn: null, audio: null, vigia: null, ultimoPulso: 0, empezo: 0 };
+const paraVoz = (t) => String(t ?? '').replace(/https?:\/\/\S+/g, 'enlace').replace(/[*_`#>|]/g, '').replace(/^\s*[-•·]\s+/gm, '').replace(/\n{2,}/g, '.\n').trim();
+function pararLectura() {
+  if (nativeBridge) { try { nativeBridge.postMessage({ event: 'hush' }); } catch {} }
+  lectura.audio?.pause(); lectura.audio = null; speechSynthesis?.cancel?.();
+  clearInterval(lectura.vigia);
+  if (lectura.btn) { lectura.btn.textContent = lectura.btn.closest('#lectura') ? '🔊' : '🔊 Escuchar'; lectura.btn.classList.remove('sonando'); lectura.btn.title = 'Escuchar esta respuesta'; }
+  lectura.btn = null;
+}
+async function leerEnVoz(texto, btn) {
+  const mismo = lectura.btn === btn;
+  pararLectura();
+  if (mismo) return;   // pulsar otra vez la misma bocina la detiene
+  const t = paraVoz(texto); if (!t) return;
+  lectura.btn = btn; btn.textContent = btn.closest('#lectura') ? '⏹' : '⏹ Parar'; btn.classList.add('sonando'); btn.title = 'Parar';
+  lectura.empezo = performance.now(); lectura.ultimoPulso = 0;
+  if (nativeBridge) {
+    nativeBridge.postMessage({ event: 'speak', text: t });
+    // La app avisa con un pulso por cada golpe de voz: cuando deja de latir, la lectura terminó
+    lectura.vigia = setInterval(() => {
+      const ahora = performance.now();
+      if ((lectura.ultimoPulso && ahora - lectura.ultimoPulso > 3500) || ahora - lectura.empezo > 15 * 60_000 || (!lectura.ultimoPulso && ahora - lectura.empezo > 25_000)) pararLectura();
+    }, 500);
+    return;
+  }
+  try {
+    const r = await fetch('/api/voice/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: t.slice(0, 6000) }) });
+    if (r.status === 200) { const a = new Audio(URL.createObjectURL(await r.blob())); lectura.audio = a; a.onended = pararLectura; await a.play(); return; }
+  } catch {}
+  const u = new SpeechSynthesisUtterance(t); u.lang = 'es-ES';
+  const v = speechSynthesis.getVoices().find((x) => x.lang.toLowerCase().startsWith('es')); if (v) u.voice = v;
+  u.onend = pararLectura; speechSynthesis.speak(u);
+}
+const pulsoPrevio = window.kratosSpeechPulse;
+window.kratosSpeechPulse = (...a) => { lectura.ultimoPulso = performance.now(); return pulsoPrevio?.(...a); };
+addEventListener('click', (e) => {
+  const b = e.target.closest?.('[data-escuchar]'); if (!b) return;
+  e.preventDefault();
+  const burb = b.closest('.conv-msg');
+  const texto = burb ? burb.querySelector('.conv-txt')?.innerText : (b.closest('#lectura') ? lastText : '');
+  leerEnVoz(texto ?? '', b);
+});
+
 // ---------- Conversación con KRATOS (chat completo, con dictado) ----------
 // Igual que un chat normal: historial, caja grande, Intro envía, Mayús+Intro nueva línea. El micrófono no corta por silencio:
 // pulsas 🎙 para empezar, hablas todo lo que necesites y pulsas otra vez para terminar; el texto queda en la caja para revisarlo.
@@ -1304,7 +1351,7 @@ const horaCorta = (d) => (d ? new Date(d).toLocaleTimeString('es', { hour: '2-di
 function burbuja(rol, texto, extra = '') {
   const d = document.createElement('div');
   d.className = `conv-msg ${rol === 'usuario' ? 'yo' : 'kratos'} ${extra}`;
-  d.innerHTML = (rol === 'usuario' ? esc(texto).replace(/\n/g, '<br>') : mdLite(texto)) + `<small>${rol === 'usuario' ? 'Tú' : 'KRATOS'} · ${horaCorta(new Date())}</small>`;
+  d.innerHTML = (rol === 'usuario' ? esc(texto).replace(/\n/g, '<br>') : `<div class="conv-txt">${mdLite(texto)}</div>`) + `<small>${rol === 'usuario' ? 'Tú' : 'KRATOS'} · ${horaCorta(new Date())}</small>`;
   conv.log.querySelector('.conv-vacio')?.remove();
   conv.log.append(d); conv.log.scrollTop = conv.log.scrollHeight;
   return d;
@@ -1312,7 +1359,7 @@ function burbuja(rol, texto, extra = '') {
 async function cargarHistorial() {
   try {
     const msgs = await api('/api/messages');
-    conv.log.innerHTML = msgs.length ? msgs.map((m) => `<div class="conv-msg ${m.role === 'usuario' ? 'yo' : 'kratos'}">${m.role === 'usuario' ? esc(m.content).replace(/\n/g, '<br>') : mdLite(m.content)}<small>${m.role === 'usuario' ? 'Tú' : 'KRATOS'} · ${m.channel === 'voz' ? 'voz · ' : ''}${esc(new Date(m.created_at).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }))}</small></div>`).join('')
+    conv.log.innerHTML = msgs.length ? msgs.map((m) => `<div class="conv-msg ${m.role === 'usuario' ? 'yo' : 'kratos'}">${m.role === 'usuario' ? esc(m.content).replace(/\n/g, '<br>') : `<div class="conv-txt">${mdLite(m.content)}</div>`}<small>${m.role === 'usuario' ? 'Tú' : 'KRATOS'} · ${m.channel === 'voz' ? 'voz · ' : ''}${esc(new Date(m.created_at).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }))}${m.role === 'usuario' ? '' : BOCINA}</small></div>`).join('')
       : '<p class="conv-vacio">Escríbele a KRATOS o pulsa 🎙 para dictarle con calma. Tu mensaje no se envía hasta que pulses «Enviar».</p>';
     conv.cargado = true; conv.log.scrollTop = conv.log.scrollHeight;
   } catch { conv.log.innerHTML = '<p class="conv-vacio">No pude cargar la conversación. Comprueba que KRATOS esté activo.</p>'; }
@@ -1383,7 +1430,7 @@ document.getElementById('conv-form').addEventListener('submit', async (e) => {
       }
     }
     resp.classList.remove('pensando');
-    resp.innerHTML = mdLite(final?.text || parcial || 'Sin respuesta') + `<small>KRATOS · ${horaCorta(new Date())}</small>`;
+    resp.innerHTML = `<div class="conv-txt">${mdLite(final?.text || parcial || 'Sin respuesta')}</div><small>KRATOS · ${horaCorta(new Date())}${BOCINA}</small>`;
     lastText = final?.text || parcial;
   } catch (err) {
     resp.classList.remove('pensando');
