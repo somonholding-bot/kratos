@@ -35,8 +35,8 @@
   {
    "id": "05",
    "nombre": "C04 espacio global",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/espacio.ts + db/051; herramienta espacio_global; test/espacio.test.ts 4/4; npm test completo"
   },
   {
    "id": "06",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 05: C04 espacio global (src/core/espacio.ts, tablas cog_objetivos y cog_mensajes)"
+ "siguiente_accion": "TAREA 06: C05 predicción y aprendizaje activo (src/core/prediccion.ts, tabla cog_predicciones; banco determinista)"
 }

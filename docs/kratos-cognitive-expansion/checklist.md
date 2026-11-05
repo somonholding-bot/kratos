@@ -5,7 +5,7 @@
 - [x] TAREA 02: C01 automodelo funcional
 - [x] TAREA 03: C02 monitorización metacognitiva
 - [x] TAREA 04: C03 memoria autobiográfica
-- [ ] TAREA 05: C04 espacio global
+- [x] TAREA 05: C04 espacio global
 - [ ] TAREA 06: C05 predicción y aprendizaje activo
 - [ ] TAREA 07: C06 laboratorio de investigación de la conciencia
 - [ ] TAREA 08: Integración con KRATOS, SOL, ACD (Q-LAB ausente)

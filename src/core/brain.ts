@@ -35,6 +35,7 @@ import { EXAMEN_TOOL, herramientaExamen } from './examen.ts';
 import { GRAFO_TOOL, herramientaGrafo } from './grafo.ts';
 import { REQUISITOS_TOOL, herramientaRequisitos } from './requisitos.ts';
 import { AUTOMODELO_TOOL, herramientaAutomodelo } from './automodelo.ts';
+import { ESPACIO_TOOL, herramientaEspacio } from './espacio.ts';
 import { MEMORIA_TOOL, herramientaMemoria } from './autobiografia.ts';
 import { METACOGNICION_TOOL, herramientaMetacognicion } from './metacognicion.ts';
 import { readOpenText, searchPapers, addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
@@ -271,6 +272,8 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => { try { return await herramientaMetacognicion(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'memoria_autobiografica', description: MEMORIA_TOOL.description, input_schema: MEMORIA_TOOL.input_schema as any,
     run: async (db, i) => { try { return await herramientaMemoria(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'espacio_global', description: ESPACIO_TOOL.description, input_schema: ESPACIO_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaEspacio(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'automodelo', description: AUTOMODELO_TOOL.description, input_schema: AUTOMODELO_TOOL.input_schema as any,
     run: async (db, i) => { try { return await herramientaAutomodelo(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'requisitos_sol', description: REQUISITOS_TOOL.description, input_schema: REQUISITOS_TOOL.input_schema as any,
@@ -1042,7 +1045,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol', 'acd', 'grafo_sol', 'requisitos_sol', 'investigar_sol', 'automodelo', 'memoria_autobiografica', 'metacognicion'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol', 'acd', 'grafo_sol', 'requisitos_sol', 'investigar_sol', 'automodelo', 'espacio_global', 'memoria_autobiografica', 'metacognicion'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
