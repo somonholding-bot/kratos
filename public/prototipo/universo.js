@@ -1094,6 +1094,7 @@ function act(a) {
   if (a === 'text') { if (lastText) window.kratosShowText(lastText); else log('Aún no hay texto de KRATOS'); }
   if (a === 'tasks') showTasks();
   if (a === 'approvals') showApprovals();
+  if (a === 'progreso') mostrarProgreso();
   if (a === 'chat') abrirConversacion(document.getElementById('conversacion').hidden);
 }
 dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
@@ -1124,6 +1125,7 @@ addEventListener('keydown', (e) => {
   if (k === 'm') act('mute');
   if (k === 't') act('text');
   if (k === 'c') { e.preventDefault(); act('chat'); }
+  if (k === 'p') act('progreso');
   if (k === 'r') act('reduced');
   if (k === 'q') act('quality');
   if (k === 'a' && !e.metaKey && !e.ctrlKey) act('approvals');
@@ -1262,6 +1264,35 @@ addEventListener('click', async (e) => {
   refreshApprovals();
 });
 setInterval(refreshApprovals, 15_000); refreshApprovals();
+
+// ---------- Progreso: dos tableros independientes (ciencia y economía), nunca combinados ----------
+async function mostrarProgreso() {
+  window.kratosShowText('Cargando el progreso…');
+  try {
+    const { cientifico: c, economico: e } = await api('/api/progreso');
+    const usd = (v) => `${Number(v ?? 0).toFixed(2)} USD`;
+    window.kratosShowText([
+      '# 🔭 Progreso científico — Misión A (SOL/ACD)',
+      `- **Preguntas investigadas:** ${c.preguntas_investigadas.total} (${c.preguntas_investigadas.en_estudio} en estudio, ${c.preguntas_investigadas.respondidas} respondidas)`,
+      `- **Hipótesis formuladas:** ${c.hipotesis_formuladas.total} — ${c.hipotesis_formuladas.por_naturaleza.map((x) => `${x.n} ${x.naturaleza}`).join(', ')}`,
+      `- **Modelos matemáticos:** ${c.modelos_matematicos}`,
+      `- **Experimentos ejecutados:** ${c.experimentos_ejecutados.total} (${c.experimentos_ejecutados.a_favor} a favor, ${c.experimentos_ejecutados.en_contra} en contra, ${c.experimentos_ejecutados.no_concluyentes} no concluyentes)`,
+      `- **Resultados replicados:** ${c.resultados_replicados}`,
+      `- **Descubrimientos verificados:** ${c.descubrimientos_verificados_independientemente}`,
+      '## Líneas de investigación',
+      ...c.lineas_mision_a.map((l) => `- **${l.codigo}** ${l.titulo}: ${l.preguntas} preguntas, ${l.hipotesis} hipótesis`),
+      `\n${c.nota}`,
+      '\n# 💼 Progreso económico — Misión B (KSIE)',
+      `- **Oportunidades evaluadas:** ${e.oportunidades_evaluadas.con_evaluacion} (${e.oportunidades_evaluadas.total} en cartera, ${e.oportunidades_evaluadas.no_digitales} no digitales)`,
+      `- **Demanda validada con pago:** ${e.demanda_validada.experimentos_con_exito_de_pago}`,
+      `- **Costes (30 días):** ${usd(e.costes_30d_usd)}`,
+      `- **Ingresos (30 días):** ${usd(e.ingresos_30d_usd)}`,
+      `- **Flujo de caja (30 días):** ${usd(e.flujo_caja_30d_usd)}`,
+      `- **Beneficio neto verificado:** ${usd(e.beneficio_neto_verificado_30d_usd)} — ${e.avance_hito}`,
+      `\n${e.nota}`,
+    ].join('\n'));
+  } catch (err) { window.kratosShowText(`No pude leer el progreso: ${err.message}`); }
+}
 
 // ---------- Conversación con KRATOS (chat completo, con dictado) ----------
 // Igual que un chat normal: historial, caja grande, Intro envía, Mayús+Intro nueva línea. El micrófono no corta por silencio:
