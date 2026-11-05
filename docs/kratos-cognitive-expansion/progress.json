@@ -1,0 +1,79 @@
+{
+ "directiva": "docs/kratos-cognitive-expansion/DIRECTIVA.md",
+ "siguiente_directiva": "docs/kratos-strategic-intelligence/DIRECTIVA.md",
+ "tareas": [
+  {
+   "id": "00",
+   "nombre": "Auditoría y recuperación del estado",
+   "estado": "COMPLETED",
+   "evidencia": "00-baseline.md; npm test 192/192"
+  },
+  {
+   "id": "01",
+   "nombre": "Literatura obligatoria y catálogo de repositorios",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "02",
+   "nombre": "C01 automodelo funcional",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "03",
+   "nombre": "C02 monitorización metacognitiva",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "04",
+   "nombre": "C03 memoria autobiográfica",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "05",
+   "nombre": "C04 espacio global",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "06",
+   "nombre": "C05 predicción y aprendizaje activo",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "07",
+   "nombre": "C06 laboratorio de investigación de la conciencia",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "08",
+   "nombre": "Integración con KRATOS, SOL, ACD (Q-LAB ausente)",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "09",
+   "nombre": "Pruebas de integración, persistencia, recuperación y seguridad",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "10",
+   "nombre": "Informe final de arquitectura y verificación",
+   "estado": "QUEUED",
+   "evidencia": null
+  },
+  {
+   "id": "11",
+   "nombre": "Congelar arquitectura",
+   "estado": "QUEUED",
+   "evidencia": null
+  }
+ ],
+ "siguiente_accion": "TAREA 01: registro de referencias (tabla cog_referencias) y catálogo de repositorios"
+}

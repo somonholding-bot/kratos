@@ -10,3 +10,5 @@ scripts/media/episodio/ep[1-9][0-9]*.py
 __pycache__/
 *.pyc
 node_modules
+docs/SOL-REQUISITOS.md
+docs/sol-requisitos.json
