@@ -211,7 +211,7 @@ export const xmlToText = (xml: string) => xml.replace(/<(ref-list|table-wrap|fig
 
 export async function searchPapers(consulta: string, soloAbierto = true, get: Fetcher = httpText) {
   const q = `${String(consulta).slice(0, 200)}${soloAbierto ? ' OPEN_ACCESS:y' : ''}`;
-  const r = await get(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=12&resultType=lite&sort=CITED%20desc`);
+  const r = await get(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=12&resultType=lite`);
   if (r.status !== 200) return { error: `Europe PMC respondió ${r.status}` };
   const j = JSON.parse(r.text);
   return { total: j.hitCount, articulos: (j.resultList?.result ?? []).map((a: any) => ({ titulo: a.title, autores: a.authorString, anio: Number(a.pubYear) || null, revista: a.journalTitle, pmid: a.pmid ?? null, pmcid: a.pmcid ?? null,
