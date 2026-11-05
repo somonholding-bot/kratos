@@ -1,227 +1,233 @@
 {
- "id": "yt-episodio-orin",
- "nombre": "Episodio de Aion: guion y storyboard para el motor de Orin",
- "version": 1,
- "descripcion": "Escribe un episodio largo (8–12 min) o un Short del canal Aion en inglés con el método que ya produjo el episodio 1: pregunta calibrada, beats con storyboard, símbolos esotéricos, narración natural (voz Liam) y animación 2D de Orin.",
- "objetivo": "Escribir el guion y el storyboard por beats en inglés de un {{tipo}} sobre «{{tema}}» para el canal Aion: 3 títulos, 5 ganchos, esquema narrativo, brecha de curiosidad, progresión emocional, revisión de riesgos de retención, cierre y llamada a la acción natural.",
- "agentes": {
-  "responsable": "venus"
- },
- "skill": "cinematic-director",
- "palabras_clave": [
-  "guion de episodio",
-  "episodio de aion",
-  "short de aion",
-  "storyboard",
-  "guion con orin",
-  "escribe el episodio",
-  "siguiente episodio"
- ],
- "entradas": {
-  "tema": {
-   "tipo": "texto",
-   "descripcion": "Idea elegida (título provisional en inglés)",
-   "requerida": true,
-   "pregunta": "¿Qué idea elegida escribo (en inglés)?",
-   "max_caracteres": 140
+  "id": "yt-episodio-orin",
+  "nombre": "Episodio de Aion: guion y storyboard para el motor de Orin",
+  "version": 1,
+  "descripcion": "Escribe un episodio largo (8–12 min) o un Short del canal Aion en inglés con el método que ya produjo el episodio 1: pregunta calibrada, beats con storyboard, símbolos esotéricos, narración natural (voz Liam) y animación 2D de Orin.",
+  "objetivo": "Escribir el guion y el storyboard por beats en inglés de un {{tipo}} sobre «{{tema}}» para el canal Aion: 3 títulos, 5 ganchos, esquema narrativo, brecha de curiosidad, progresión emocional, revisión de riesgos de retención, cierre y llamada a la acción natural.",
+  "agentes": {
+    "responsable": "venus"
   },
-  "tipo": {
-   "tipo": "opcion",
-   "descripcion": "Formato",
-   "requerida": false,
-   "defecto": "largo",
-   "opciones": [
-    "largo",
-    "short"
-   ]
+  "skill": "cinematic-director",
+  "palabras_clave": [
+    "guion de episodio",
+    "episodio de aion",
+    "short de aion",
+    "storyboard",
+    "guion con orin",
+    "escribe el episodio",
+    "siguiente episodio"
+  ],
+  "entradas": {
+    "tema": {
+      "tipo": "texto",
+      "descripcion": "Idea elegida (título provisional en inglés)",
+      "requerida": true,
+      "pregunta": "¿Qué idea elegida escribo (en inglés)?",
+      "max_caracteres": 140
+    },
+    "tipo": {
+      "tipo": "opcion",
+      "descripcion": "Formato",
+      "requerida": false,
+      "defecto": "largo",
+      "opciones": [
+        "largo",
+        "short"
+      ]
+    },
+    "duracion_min": {
+      "tipo": "numero",
+      "descripcion": "Minutos de narración (largo: 8–12; Short: 0.5–1)",
+      "requerida": false,
+      "defecto": 9,
+      "min": 0.3,
+      "max": 12
+    },
+    "episodio_origen": {
+      "tipo": "texto",
+      "descripcion": "Para un Short: id del episodio del que sale (cola de contenido)",
+      "requerida": false,
+      "max_caracteres": 60
+    },
+    "direccion_creativa": {
+      "tipo": "texto",
+      "descripcion": "Brief creativo de Sol (apertura, bucles, efectos de mentalismo, símbolos, movimiento y color), si existe",
+      "requerida": false,
+      "max_caracteres": 6000
+    }
   },
-  "duracion_min": {
-   "tipo": "numero",
-   "descripcion": "Minutos de narración (largo: 8–12; Short: 0.5–1)",
-   "requerida": false,
-   "defecto": 9,
-   "min": 0.3,
-   "max": 12
+  "herramientas": [
+    "WebSearch",
+    "WebFetch",
+    "buscar_informes",
+    "buscar_conocimiento",
+    "consultar_bd",
+    "estado_youtube"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Investigación y fuentes",
+      "instruccion": "Si recibes una dirección creativa de Sol, síguela al pie de la letra (apertura, bucles abiertos, efectos de mentalismo, símbolos, movimiento y color): {{direccion_creativa}} Reúne las fuentes reales del tema «{{tema}}» (libros, estudios, historia) con URL y fecha. Sección «## Fuentes». Si el tema afirma hechos históricos o científicos, cada afirmación importante lleva su fuente o se redacta con cautela («according to…», «some scholars argue…»). Sin curaciones ni promesas médicas."
+    },
+    {
+      "n": 2,
+      "titulo": "Ideas de arranque",
+      "instruccion": "Sección «## Titles»: 3 títulos en inglés (≤ 60 caracteres, palabra clave primero, sin engaño) y 5 ganchos de apertura distintos. Cada gancho empieza por una pregunta calibrada What/How (no de sí/no, no de memoria) o por un caso real concreto; nada de «Welcome to…». Elige uno y di por qué."
+    },
+    {
+      "n": 3,
+      "titulo": "Estructura",
+      "instruccion": "Sección «## Narrative»: esquema (apertura 0–45 s con pregunta, caso real, promesa y bucle abierto; un re-gancho cada ~60 s; cierre que resuelve), estrategia de brecha de curiosidad, progresión emocional por bloques y revisión de riesgos de retención (dónde se caería la gente y qué lo evita). Cada bloque avanza la historia, aporta evidencia, resuelve una pregunta o abre una nueva; sin relleno."
+    },
+    {
+      "n": 4,
+      "titulo": "Guion",
+      "instruccion": "Sección «## Script»: la narración completa en inglés americano natural, frases cortas, voz cercana y amable (encaja con un personaje de dibujos; nada de tono solemne u oracular), a unas 140–155 palabras por minuto ({{duracion_min}} min). Sin saludos, sin mencionar la app (hasta que el propietario lo autorice). Cierre con llamada a la acción natural (una pregunta para los comentarios y el siguiente episodio)."
+    },
+    {
+      "n": 5,
+      "titulo": "Storyboard",
+      "instruccion": "Sección «## Storyboard»: una tabla con un beat por fila (beat, frase de narración, qué se ve: Orin y su pose o expresión, escenario, símbolo esotérico o prop, cámara y efecto, tipo de transición, música/sonido). Un cambio visual cada ~5 s. Solo ilustración 2D de nuestro motor (sin 3D, sin vídeo generado por IA, sin stock de pago). ORIGINALIDAD: cada episodio tiene su propia identidad visual. Elige un «look» (paleta de fondos distinta de los 3 últimos episodios, que se leen de content_queue.look con consultar_bd) y escenarios propios del tema (templo, laboratorio, bosque, océano, biblioteca…): no repitas la misma secuencia de fondos ni de imágenes de otros episodios. Orin y el dorado de marca se mantienen. IMPORTANTE: el campo «escena» de cada beat del paquete se usa TAL CUAL como instrucción para generar el escenario de ese tramo con un modelo de imagen local, así que escríbelo en inglés como una descripción visual completa: lugar concreto y distinto en cada episodio, luz y hora del día, y 3–5 objetos o símbolos propios del tema de ESTE episodio (no el mismo ojo, flor de la vida o sigilo de siempre salvo que el tema lo pida). Sin personas ni personajes (Orin se añade aparte) y con el suelo despejado en el tercio inferior. Varios beats seguidos pueden compartir lugar, pero cada ~3 beats cambia de escenario. ATENCIÓN Y SÍMBOLOS (obligatorio): en el campo `escena` de CADA beat nombra con palabras claras el símbolo esotérico auténtico que aparece (pentagram, ouroboros, eye in a triangle, flower of life, hexagram, caduceus, ankh, planetary glyph, alchemical stage nigredo/albedo/rubedo, flame), el movimiento de Orin (walks, runs, jumps, flies) y, cuando haya tensión o energía, un ser de color (red being, orange being, violet being); así el motor los dibuja. Cada sección cierra con una pregunta concreta sin resolver y se cierran todos los bucles abiertos."
+    },
+    {
+      "n": 6,
+      "titulo": "Voz, visual y hechos",
+      "instruccion": "Sección «## Revisión»: (a) director de voz: frases largas que cortar, nombres difíciles con su pronunciación, pausas; (b) director visual: look del episodio, transiciones y banda sonora (música cinematográfica con crescendos en los giros de la historia, efectos suaves en cada transición) y (3 conceptos: personaje grande + símbolo + 3–4 palabras, sin engaño), subtítulos legibles; (c) hechos y seguridad: lista de afirmaciones con su fuente y su calificativo, licencias de imágenes y música, cumplimiento de YouTube."
+    },
+    {
+      "n": 7,
+      "titulo": "Paquete",
+      "instruccion": "Al final, un bloque ```json paquete con: titulo, titulos (3), ganchos (5), guion (narración completa, sin encabezados), beats (lista de {texto, escena}), miniaturas (3 conceptos), look ({nombre, hue 0-255, sat, val, fondos: lista de escenarios usados, musica: prompt de la banda sonora}), descripcion (promesa en las 2 primeras líneas, capítulos con el primero en 0:00 y cada uno ≥ 10 s, fuentes, 3 hashtags), etiquetas (8–15), fuentes (lista de URL). JSON válido, comillas dobles."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Fuentes, Titles, Narrative, Script, Storyboard y Revisión sobre «{{tema}}»",
+      "obligatoria": true
+    },
+    {
+      "nombre": "paquete",
+      "tipo": "bloque_json",
+      "descripcion": "Paquete listo para el motor de Orin (scripts/media/episodio)",
+      "obligatoria": true
+    }
+  ],
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
   },
-  "episodio_origen": {
-   "tipo": "texto",
-   "descripcion": "Para un Short: id del episodio del que sale (cola de contenido)",
-   "requerida": false,
-   "max_caracteres": 60
-  }
- },
- "herramientas": [
-  "WebSearch",
-  "WebFetch",
-  "buscar_informes",
-  "buscar_conocimiento",
-  "consultar_bd",
-  "estado_youtube"
- ],
- "pasos": [
-  {
-   "n": 1,
-   "titulo": "Investigación y fuentes",
-   "instruccion": "Reúne las fuentes reales del tema «{{tema}}» (libros, estudios, historia) con URL y fecha. Sección «## Fuentes». Si el tema afirma hechos históricos o científicos, cada afirmación importante lleva su fuente o se redacta con cautela («according to…», «some scholars argue…»). Sin curaciones ni promesas médicas."
+  "criterios_exito": [
+    "pregunta calibrada What/How en la apertura",
+    "guion al ritmo de narración natural para {{duracion_min}} minutos",
+    "3 títulos ≤ 60 caracteres y 5 ganchos",
+    "storyboard por beats con símbolos esotéricos",
+    "afirmaciones con fuente",
+    "paquete JSON válido",
+    "look propio del episodio, distinto de los últimos tres"
+  ],
+  "verificacion": [
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Fuentes",
+        "Titles",
+        "Narrative",
+        "Script",
+        "Storyboard",
+        "Revisión"
+      ]
+    },
+    {
+      "nombre": "bloque paquete",
+      "tipo": "bloque_json",
+      "bloque": "paquete",
+      "campos": [
+        "titulo",
+        "titulos",
+        "ganchos",
+        "guion",
+        "beats",
+        "miniaturas",
+        "descripcion",
+        "etiquetas",
+        "fuentes",
+        "look"
+      ]
+    },
+    {
+      "nombre": "título corto",
+      "tipo": "campo_longitud",
+      "campo": "paquete.titulo",
+      "minimo": 10,
+      "maximo": 60
+    },
+    {
+      "nombre": "ritmo",
+      "tipo": "ritmo",
+      "campo": "paquete.guion",
+      "duracion": "{{duracion_min}}",
+      "ppm_min": 125,
+      "ppm_max": 165
+    },
+    {
+      "nombre": "cinco ganchos",
+      "tipo": "lista_minima",
+      "campo": "paquete.ganchos",
+      "minimo": 5
+    },
+    {
+      "nombre": "fuentes",
+      "tipo": "fuentes_citadas",
+      "minimo": 3
+    },
+    {
+      "nombre": "inglés",
+      "tipo": "idioma",
+      "campo": "paquete.guion",
+      "idioma": "en"
+    },
+    {
+      "nombre": "sin promesas médicas",
+      "tipo": "sin_promesas_medicas",
+      "campo": "paquete.guion"
+    },
+    {
+      "nombre": "sin saludos",
+      "tipo": "sin_frases",
+      "campo": "paquete.guion",
+      "frases": [
+        "welcome to",
+        "welcome back",
+        "hey guys",
+        "in today's video",
+        "don't forget to subscribe"
+      ]
+    },
+    {
+      "nombre": "sin excusas",
+      "tipo": "sin_frases",
+      "frases": [
+        "no pude acceder",
+        "no tengo acceso",
+        "datos de ejemplo"
+      ]
+    }
+  ],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
   },
-  {
-   "n": 2,
-   "titulo": "Ideas de arranque",
-   "instruccion": "Sección «## Titles»: 3 títulos en inglés (≤ 60 caracteres, palabra clave primero, sin engaño) y 5 ganchos de apertura distintos. Cada gancho empieza por una pregunta calibrada What/How (no de sí/no, no de memoria) o por un caso real concreto; nada de «Welcome to…». Elige uno y di por qué."
+  "reintentos": {
+    "max": 2
   },
-  {
-   "n": 3,
-   "titulo": "Estructura",
-   "instruccion": "Sección «## Narrative»: esquema (apertura 0–45 s con pregunta, caso real, promesa y bucle abierto; un re-gancho cada ~60 s; cierre que resuelve), estrategia de brecha de curiosidad, progresión emocional por bloques y revisión de riesgos de retención (dónde se caería la gente y qué lo evita). Cada bloque avanza la historia, aporta evidencia, resuelve una pregunta o abre una nueva; sin relleno."
+  "aprobaciones": [],
+  "coste": {
+    "duracion_estimada_min": 20,
+    "usd_estimado": 0,
+    "nota": "guion con la suscripción; la voz del episodio (ElevenLabs) gasta ≈ 800 créditos por minuto y solo se genera tras aprobar el guion"
   },
-  {
-   "n": 4,
-   "titulo": "Guion",
-   "instruccion": "Sección «## Script»: la narración completa en inglés americano natural, frases cortas, voz cercana y amable (encaja con un personaje de dibujos; nada de tono solemne u oracular), a unas 140–155 palabras por minuto ({{duracion_min}} min). Sin saludos, sin mencionar la app (hasta que el propietario lo autorice). Cierre con llamada a la acción natural (una pregunta para los comentarios y el siguiente episodio)."
-  },
-  {
-   "n": 5,
-   "titulo": "Storyboard",
-   "instruccion": "Sección «## Storyboard»: una tabla con un beat por fila (beat, frase de narración, qué se ve: Orin y su pose o expresión, escenario, símbolo esotérico o prop, cámara y efecto, tipo de transición, música/sonido). Un cambio visual cada ~5 s. Solo ilustración 2D de nuestro motor (sin 3D, sin vídeo generado por IA, sin stock de pago). ORIGINALIDAD: cada episodio tiene su propia identidad visual. Elige un «look» (paleta de fondos distinta de los 3 últimos episodios, que se leen de content_queue.look con consultar_bd) y escenarios propios del tema (templo, laboratorio, bosque, océano, biblioteca…): no repitas la misma secuencia de fondos ni de imágenes de otros episodios. Orin y el dorado de marca se mantienen. IMPORTANTE: el campo «escena» de cada beat del paquete se usa TAL CUAL como instrucción para generar el escenario de ese tramo con un modelo de imagen local, así que escríbelo en inglés como una descripción visual completa: lugar concreto y distinto en cada episodio, luz y hora del día, y 3–5 objetos o símbolos propios del tema de ESTE episodio (no el mismo ojo, flor de la vida o sigilo de siempre salvo que el tema lo pida). Sin personas ni personajes (Orin se añade aparte) y con el suelo despejado en el tercio inferior. Varios beats seguidos pueden compartir lugar, pero cada ~3 beats cambia de escenario."
-  },
-  {
-   "n": 6,
-   "titulo": "Voz, visual y hechos",
-   "instruccion": "Sección «## Revisión»: (a) director de voz: frases largas que cortar, nombres difíciles con su pronunciación, pausas; (b) director visual: look del episodio, transiciones y banda sonora (música cinematográfica con crescendos en los giros de la historia, efectos suaves en cada transición) y (3 conceptos: personaje grande + símbolo + 3–4 palabras, sin engaño), subtítulos legibles; (c) hechos y seguridad: lista de afirmaciones con su fuente y su calificativo, licencias de imágenes y música, cumplimiento de YouTube."
-  },
-  {
-   "n": 7,
-   "titulo": "Paquete",
-   "instruccion": "Al final, un bloque ```json paquete con: titulo, titulos (3), ganchos (5), guion (narración completa, sin encabezados), beats (lista de {texto, escena}), miniaturas (3 conceptos), look ({nombre, hue 0-255, sat, val, fondos: lista de escenarios usados, musica: prompt de la banda sonora}), descripcion (promesa en las 2 primeras líneas, capítulos con el primero en 0:00 y cada uno ≥ 10 s, fuentes, 3 hashtags), etiquetas (8–15), fuentes (lista de URL). JSON válido, comillas dobles."
-  }
- ],
- "salidas": [
-  {
-   "nombre": "informe",
-   "tipo": "informe",
-   "descripcion": "Fuentes, Titles, Narrative, Script, Storyboard y Revisión sobre «{{tema}}»",
-   "obligatoria": true
-  },
-  {
-   "nombre": "paquete",
-   "tipo": "bloque_json",
-   "descripcion": "Paquete listo para el motor de Orin (scripts/media/episodio)",
-   "obligatoria": true
-  }
- ],
- "ubicacion_artefactos": {
-  "boveda": "Tareas"
- },
- "criterios_exito": [
-  "pregunta calibrada What/How en la apertura",
-  "guion al ritmo de narración natural para {{duracion_min}} minutos",
-  "3 títulos ≤ 60 caracteres y 5 ganchos",
-  "storyboard por beats con símbolos esotéricos",
-  "afirmaciones con fuente",
-  "paquete JSON válido",
-  "look propio del episodio, distinto de los últimos tres"
- ],
- "verificacion": [
-  {
-   "nombre": "secciones",
-   "tipo": "secciones",
-   "titulos": [
-    "Fuentes",
-    "Titles",
-    "Narrative",
-    "Script",
-    "Storyboard",
-    "Revisión"
-   ]
-  },
-  {
-   "nombre": "bloque paquete",
-   "tipo": "bloque_json",
-   "bloque": "paquete",
-   "campos": [
-    "titulo",
-    "titulos",
-    "ganchos",
-    "guion",
-    "beats",
-    "miniaturas",
-    "descripcion",
-    "etiquetas",
-    "fuentes",
-    "look"
-   ]
-  },
-  {
-   "nombre": "título corto",
-   "tipo": "campo_longitud",
-   "campo": "paquete.titulo",
-   "minimo": 10,
-   "maximo": 60
-  },
-  {
-   "nombre": "ritmo",
-   "tipo": "ritmo",
-   "campo": "paquete.guion",
-   "duracion": "{{duracion_min}}",
-   "ppm_min": 125,
-   "ppm_max": 165
-  },
-  {
-   "nombre": "cinco ganchos",
-   "tipo": "lista_minima",
-   "campo": "paquete.ganchos",
-   "minimo": 5
-  },
-  {
-   "nombre": "fuentes",
-   "tipo": "fuentes_citadas",
-   "minimo": 3
-  },
-  {
-   "nombre": "inglés",
-   "tipo": "idioma",
-   "campo": "paquete.guion",
-   "idioma": "en"
-  },
-  {
-   "nombre": "sin promesas médicas",
-   "tipo": "sin_promesas_medicas",
-   "campo": "paquete.guion"
-  },
-  {
-   "nombre": "sin saludos",
-   "tipo": "sin_frases",
-   "campo": "paquete.guion",
-   "frases": [
-    "welcome to",
-    "welcome back",
-    "hey guys",
-    "in today's video",
-    "don't forget to subscribe"
-   ]
-  },
-  {
-   "nombre": "sin excusas",
-   "tipo": "sin_frases",
-   "frases": [
-    "no pude acceder",
-    "no tengo acceso",
-    "datos de ejemplo"
-   ]
-  }
- ],
- "recuperacion": {
-  "si_falla_verificacion": "reintentar",
-  "si_falta_herramienta": "revisar"
- },
- "reintentos": {
-  "max": 2
- },
- "aprobaciones": [],
- "coste": {
-  "duracion_estimada_min": 20,
-  "usd_estimado": 0,
-  "nota": "guion con la suscripción; la voz del episodio (ElevenLabs) gasta ≈ 800 créditos por minuto y solo se genera tras aprobar el guion"
- },
- "idioma_entregable": "en"
+  "idioma_entregable": "en"
 }

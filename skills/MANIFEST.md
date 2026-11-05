@@ -18,6 +18,7 @@ Solo instrucciones (SKILL.md), sin scripts. Versión fijada por commit. Generado
 | kratos | marketing-loops | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-loops/SKILL.md) | MIT |
 | kratos | marketing-psychology | [coreyhaines31/marketingskills@0cd9b3a0ef](https://github.com/coreyhaines31/marketingskills/blob/0cd9b3a0ef4c411a1d690419ce843f2a1da32cce/skills/marketing-psychology/SKILL.md) | MIT |
 | sol | roadmap-planning | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/roadmap-planning/SKILL.md) | MIT |
+| sol | direccion-creativa | Escrita para KRATOS (docs/guia-atencion.md y docs/guia-mentalismo-jung.md) | Propia |
 | luna | user-research-synthesis | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/user-research-synthesis/SKILL.md) | MIT |
 | luna | daily-product-digest | [shawnpang/startup-founder-skills@4ad31b43ee](https://github.com/shawnpang/startup-founder-skills/blob/4ad31b43eef3ae3755cc57ec7e435dab4699ab44/skills/daily-product-digest/SKILL.md) | MIT |
 | mercurio | competitive-intel | [alirezarezvani/claude-skills@5434623a78](https://github.com/alirezarezvani/claude-skills/blob/5434623a788ec3105d238328cfe554e1e2242ff7/c-level-advisor/skills/competitive-intel/SKILL.md) | MIT |

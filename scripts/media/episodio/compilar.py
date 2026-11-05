@@ -39,14 +39,57 @@ for g in groups:
     desc = re.sub(r'\b(orin|character|narrator|guide)\b[^,]*,?', '', beats[g[0]].get('escena', ''), flags=re.I).strip(' ,')
     scenes.append(ascii_(f"{STYLE}. Scene: {desc}. Color palette: {paleta}" if paleta else f"{STYLE}. Scene: {desc}"))
 out.insert(5, f"SCENES = {json.dumps(scenes, indent=1)}")
+# Atención: Orin se mueve por la escena y cada beat lleva un símbolo esotérico real, seres de color y destellos (ver docs/guia-atencion.md)
+SYMS = [  # (patrón sobre texto+escena, objeto del motor, parámetros)
+    (r'pentagram|occult|ritual|magic|spell|witch|protect|sigil|invok', 'pentagram', dict(r=175, col=(255, 70, 60))),
+    (r'hermes|hermetic|above|below|emerald|solomon|kybalion|mirror|reflect', 'hexa', dict(r=165)),
+    (r'cycle|loop|again|repeat|serpent|snake|infinit|ouroboros|return|spiral', 'ouro', dict(r=150)),
+    (r'\beye|watch|aware|awake|observe|notice|conscious|lucid|attention|wake', 'eyetri', dict(s=1.1)),
+    (r'geometr|pattern|creation|universe|sacred|unity|whole|mandala|center|self\b', 'flower', dict(r=70)),
+    (r'moon|planet|saturn|mars|venus|jupiter|mercury|zodiac|astro|star|night|sky', 'sigil', dict(r=190, alpha=210)),
+    (r'nigredo|albedo|rubedo', 'alchemy', dict(n=3, every=1.3)),
+    (r'tarot|card|fate|destiny|future|predict|choose|choice|door', 'card', dict()),
+    (r'\blife\b|egypt|ankh|breath|health|heart|body|sleep', 'ankh', dict(r=125)),
+    (r'fire|burn|flame|candle|heat|energy|power|passion|courage', 'trinity_flame', dict()),
+    (r'brain|neuro|\brem\b|science|study|data|research|experiment|percent|%', 'brain', dict()),
+]
+BEINGS = [  # seres de color: tensión y miedo → rojo; energía y creación → naranja; misterio → violeta
+    (r'shadow|fear|nightmare|dark|monster|danger|chase|anxiety|threat|trap|afraid|panic|demon|enemy', 'red'),
+    (r'energy|passion|creat|courage|warrior|sun\b|fire|power|rage|anger', 'orange'),
+    (r'secret|hidden|unknown|mystery|strange|ghost|spirit|guide|wise|ancient', 'violet'),
+]
+DEFAULT = ['sigil', 'flower', 'hexa', 'eyetri', 'ouro', 'pentagram', 'card', 'ankh', 'trinity_flame']
+FLASH = [(255, 70, 40), (255, 160, 30), (200, 60, 255), (40, 200, 255)]
+def props_for(i, blob, side):
+    out = []; kind = None; kw = {}
+    for pat, k, par in SYMS:
+        if re.search(pat, blob): kind, kw = k, par; break
+    if kind is None: kind, kw = DEFAULT[i % len(DEFAULT)], {}
+    base = dict(x=950 if side > 0 else 330, y=300, at=0.15); base.update(kw)
+    out.append(f"P({kind!r}, " + ', '.join(f"{k}={v!r}" for k, v in base.items()) + ")")
+    for pat, col in BEINGS:
+        if re.search(pat, blob) and i % 2 == 0:
+            out.append(f"P('being', x={300 if side > 0 else 980}, y=330, s=1.7, col={col!r}, at=0.4, flip={side < 0})"); break
+    if i % 4 == 1: out.append(f"P('burst', x=640, y=330, col={FLASH[(i // 4) % 4]!r}, at=0.0)")
+    if re.search(r'fire|burn|flame|candle', blob): out.append("P('flames', y=700, at=0.2)")
+    return out
 for gi, g in enumerate(groups):
     for i in g:
-        b = beats[i]; text = ascii_(b['texto']); scene = b.get('escena', '')
-        orin = "O(x=640, g=670, s=1.0, e='open', m='smile')" if i % 3 == 0 or re.search(r'orin|character|narrator|guide', scene.lower()) else 'None'
+        b = beats[i]; text = ascii_(b['texto']); scene = b.get('escena', ''); blob = (b['texto'] + ' ' + scene).lower(); side = 1 if i % 2 == 0 else -1
+        q = text.rstrip().endswith('?'); fear = bool(re.search(r'fear|panic|chase|run|escape|danger|nightmare|afraid', blob))
+        if q: orin = "O(x=640, s=1.15, e='wide', m='o', look=(0, -0.5))"
+        elif fear: orin = f"O(x={300 if side > 0 else 980}, s=1.2, e='wide', m='o', mv='run', vx={230 * side})"
+        elif text.rstrip().endswith('!'): orin = f"O(x={420 if side > 0 else 860}, s=1.1, e='open', m='smile', mv='jump')"
+        elif re.search(r'fly|float|rise|soar|sky|lucid', blob) and i % 3 == 0: orin = "O(x=640, y=330, s=1.0, e='open', m='smile', mv='fly')"
+        else: orin = f"O(x={260 if side > 0 else 1020}, s=1.2, e='open', m='smile', mv='walk', vx={92 * side})"
+        pr = props_for(i, blob, side)
+        if any(x.startswith("P('alchemy'") for x in pr): orin = 'None'
+        if q: pr.append("P('qmark', x=640, y=130, at=0.5)")
         lb = short_label(scene); label = f", label={json.dumps(lb)}, gold=True, ly=640" if lb else ''
         para = ', para=True' if i and i % 9 == 0 else ''
         cam = ", cam='out'" if i % 3 == 2 else ''
-        out.append(f" B({json.dumps(text)}, 'img', {orin}, []{label}{para}{cam}, src='escenarios/e{gi:02d}.png', dir={1 if gi % 2 == 0 else -1}),")
+        flash = f", flash={FLASH[(i // 5) % 4]!r}" if i % 5 == 0 else ''
+        out.append(f" B({json.dumps(text)}, 'img', {orin}, [{', '.join(pr)}]{label}{para}{cam}, src='escenarios/e{gi:02d}.png', dir={1 if gi % 2 == 0 else -1}{flash}),")
 out.append("]")
 open(sys.argv[2], 'w').write('\n'.join(out) + '\n')
 print(len(beats), 'beats,', len(scenes), 'escenarios ->', sys.argv[2])

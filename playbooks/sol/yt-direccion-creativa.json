@@ -1,0 +1,35 @@
+{
+  "id": "yt-direccion-creativa",
+  "nombre": "Dirección creativa de un episodio o Short de Aion (mentalismo, Jung y atención)",
+  "version": 1,
+  "objetivo": "Como director creativo de Aion Mind, escribir en inglés el brief creativo de un {{tipo}} sobre «{{tema}}»: gancho en los primeros segundos, bucles abiertos, efectos de mentalismo honestos, simbolismo auténtico (Jung), movimiento y color. Venus escribirá el guion a partir de este brief.",
+  "agentes": { "responsable": "sol" },
+  "skill": "direccion-creativa",
+  "palabras_clave": ["direccion creativa", "brief creativo", "director creativo", "mentalismo", "simbolismo", "jung", "gancho", "suspenso", "atencion", "retencion", "creative brief"],
+  "entradas": {
+    "tema": { "tipo": "texto", "descripcion": "Idea elegida (título provisional en inglés)", "requerida": true, "max_caracteres": 200 },
+    "tipo": { "tipo": "opcion", "descripcion": "Formato", "requerida": false, "defecto": "episodio largo", "opciones": ["episodio largo", "Short"] },
+    "datos_del_canal": { "tipo": "texto", "descripcion": "Qué ha funcionado en el canal (vistas por vídeo), si se conoce", "requerida": false, "max_caracteres": 600 }
+  },
+  "herramientas": ["buscar_conocimiento", "buscar_informes", "ver_resultado_tarea", "estado_youtube", "WebSearch", "WebFetch"],
+  "pasos": [
+    { "n": 1, "titulo": "Conocimiento", "instruccion": "Con buscar_conocimiento recupera las guías de atención, mentalismo y Jung de Aion y lo que ya funcionó en el canal (estado_youtube). Si el tema es histórico o científico, confirma 2 hechos con WebSearch y apunta la fuente.", "herramienta": "buscar_conocimiento" },
+    { "n": 2, "titulo": "Veredicto y apertura", "instruccion": "Secciones «Veredicto» y «Apertura (0-20 s)»: la promesa única del vídeo, la primera imagen, la pregunta de apertura calibrada (What/How…), de qué trata y el adelanto del premio. Título y miniatura prometen exactamente eso." },
+    { "n": 3, "titulo": "Bucles y efectos", "instruccion": "Secciones «Bucles abiertos» (2-3 en el primer minuto y el orden en que se cierran) y «Efectos de mentalismo» (3 para un largo, 1 para un Short) con la línea exacta y el visual de cada uno. Todo honesto: es narración y psicología como entretenimiento." },
+    { "n": 4, "titulo": "Símbolos, movimiento y color", "instruccion": "Secciones «Mapa de símbolos» (por sección: símbolo auténtico, su significado en una línea y el arquetipo junguiano que sirve) y «Movimiento y color» (cuándo Orin camina, corre, salta o vuela; dónde aparece un ser rojo, naranja o violeta; dónde se drena el color; un sujeto focal por escena). Usa los nombres de objetos del motor: pentagram, hexa, ouro, eyetri, flower, sigil, alchemy, card, ankh, trinity_flame, flames, being, burst." },
+    { "n": 5, "titulo": "Ritmo y cierre", "instruccion": "Secciones «Ritmo» (rápido/lento, una interrupción de patrón cada 60-90 s, imagen cumbre al 75 %, final calmado) y «Revelación honesta y fuentes» (qué técnica se nombra al final y qué fuentes salen en pantalla). Si es un Short, añade «Plan del Short»: fotograma 1, pregunta, elección de tres hacia el segundo 8, respuesta solo en los últimos 3 s, último fotograma que enlaza con el primero." }
+  ],
+  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Veredicto, Apertura (0-20 s), Bucles abiertos, Efectos de mentalismo, Mapa de símbolos, Movimiento y color, Ritmo, Revelación honesta y fuentes", "obligatoria": true }],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["primera imagen y pregunta en 5 s", "2-3 bucles abiertos con orden de cierre", "símbolo y movimiento en cada sección", "sin afirmaciones de poderes psíquicos ni terapia", "sin mencionar apps"],
+  "verificacion": [
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Veredicto", "Apertura", "Bucles abiertos", "Efectos de mentalismo", "Mapa de símbolos", "Movimiento y color", "Ritmo", "Revelación honesta"] },
+    { "nombre": "longitud", "tipo": "longitud_minima", "caracteres": 2500 },
+    { "nombre": "sin promesas imposibles", "tipo": "sin_frases", "frases": ["leo tu mente", "i can read your mind", "te voy a curar", "cures", "diagnos", "predigo tu futuro", "guaranteed result"] }
+  ],
+  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
+  "reintentos": { "max": 2 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 15, "usd_estimado": 0, "nota": "brief con la suscripción; sin gasto" },
+  "idioma_entregable": "en"
+}

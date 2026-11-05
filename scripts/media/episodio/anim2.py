@@ -120,6 +120,8 @@ def bg_img(T, t, k):
     cw, ch = W * K, H * K; src = k['src']
     if src not in _IMG:
         im = Image.open(src).convert('RGB'); sc = max(cw * 1.12 / im.width, ch * 1.12 / im.height)
+        from PIL import ImageEnhance
+        im = ImageEnhance.Contrast(ImageEnhance.Color(im).enhance(float(os.environ.get('SAT_IMG', 1.35)))).enhance(1.08)
         _IMG[src] = im.resize((round(im.width * sc), round(im.height * sc)), Image.LANCZOS)
     big = _IMG[src]; z = 1.0 + 0.06 * min(t / 7.0, 1.0)
     vw, vh = big.width / 1.12 / z, big.height / 1.12 / z
@@ -349,6 +351,43 @@ def pr_bigtext(im, d, T, a, p):
         st = a - j * p.get('every', 0.5)
         if st >= 0: pop = back(st / 0.4); text(d, txt, 640, y + j * (size + 18), int(size * pop) + 1, (*(GOLD if j == len(p['lines']) - 1 and p.get('gold_last') else (255, 255, 255)), int(255 * clamp(st / 0.2))))
 
+
+# ---------- símbolos y seres de atención (pentagrama, llamas, seres de color, destello) ----------
+def pr_pentagram(im, d, T, a, p):
+    x, y, r = p.get('x', 640), p.get('y', 330), p.get('r', 170); col = p.get('col', (255, 70, 60)); al = p.get('alpha', 235); pop = eo(a / 0.9); rot = T * 0.18 - math.pi / 2
+    for k in range(3): d.ellipse([S(x - r * (1.0 + 0.05 * k) * pop), S(y - r * (1.0 + 0.05 * k) * pop), S(x + r * (1.0 + 0.05 * k) * pop), S(y + r * (1.0 + 0.05 * k) * pop)], outline=(*col, int(al * (0.25 - 0.07 * k))), width=S(14 - 4 * k))
+    pts = [(x + r * 0.97 * pop * math.cos(rot + q * 2 * math.pi / 5), y + r * 0.97 * pop * math.sin(rot + q * 2 * math.pi / 5)) for q in range(5)]
+    seg = [(pts[q], pts[(q + 2) % 5]) for q in range(5)]; prog = clamp(a / 1.2) * 5
+    for q, (u, v) in enumerate(seg):
+        f = clamp(prog - q)
+        if f > 0: line(d, u, (u[0] + (v[0] - u[0]) * f, u[1] + (v[1] - u[1]) * f), 8, (*col, al))
+    d.ellipse([S(x - r * pop), S(y - r * pop), S(x + r * pop), S(y + r * pop)], outline=(*col, al), width=S(6))
+def pr_flames(im, d, T, a, p):
+    y0, pop = p.get('y', 690), eo(a / 0.6); n = p.get('n', 15)
+    for q in range(n):
+        cx = 40 + q * (1200 / (n - 1)); h = (70 + 55 * math.sin(T * 6 + q * 1.7) + 30 * math.sin(T * 11 + q)) * pop; w = 46
+        poly(d, [(cx - w, y0), (cx - w * 0.2, y0 - h * 0.6), (cx + 6 * math.sin(T * 9 + q), y0 - h), (cx + w * 0.3, y0 - h * 0.55), (cx + w, y0)], (255, 90, 20, 215))
+        poly(d, [(cx - w * 0.55, y0), (cx, y0 - h * 0.65), (cx + w * 0.55, y0)], (255, 200, 60, 230))
+def pr_being(im, d, T, a, p):
+    cols = dict(red=(235, 40, 40), orange=(255, 130, 20), violet=(150, 60, 230), green=(40, 200, 120), gold=(238, 188, 78)); col = cols.get(p.get('col', 'red'), p.get('col', (235, 40, 40)))
+    x, sc, pop = p.get('x', 980), p.get('s', 1.8), eo(a / 0.8); y = p.get('y', 330) + 14 * math.sin(T * 1.8)
+    for k in range(5): circ(d, x, y + 30, (150 + k * 52) * sc * 0.55 * pop, (*col, int(26 - 4 * k)))
+    L = orin('open', p.get('m', 'flat'), (0, 0), 55 + 8 * math.sin(T * 2), 55 - 8 * math.sin(T * 2), 6, 6, False, col, 0.0)
+    put(im, L, x, y + 40, sc * pop, flip=p.get('flip', False), alpha=0.95)
+def pr_burst(im, d, T, a, p):
+    x, y, col = p.get('x', 640), p.get('y', 330), p.get('col', (255, 60, 90)); pop = eo(a / 0.5); n = 18
+    for q in range(n):
+        ang = q * 2 * math.pi / n + T * 0.35; w = 0.07
+        poly(d, [(x, y), (x + 1500 * math.cos(ang - w), y + 1500 * math.sin(ang - w)), (x + 1500 * math.cos(ang + w), y + 1500 * math.sin(ang + w))], (*col, int((34 if q % 2 else 14) * pop)))
+def pr_ankh(im, d, T, a, p):
+    x, y, r = p.get('x', 640), p.get('y', 320), p.get('r', 120); pop = back(a / 0.6); col = p.get('col', GOLD); r *= pop
+    d.ellipse([S(x - r * 0.42), S(y - r * 1.0), S(x + r * 0.42), S(y - r * 0.15)], outline=(*col, 240), width=S(14)); line(d, (x, y - r * 0.15), (x, y + r * 1.0), 14, (*col, 240)); line(d, (x - r * 0.62, y + r * 0.2), (x + r * 0.62, y + r * 0.2), 14, (*col, 240))
+def pr_trinity_flame(im, d, T, a, p):
+    x, y, pop = p.get('x', 640), p.get('y', 330), eo(a / 0.6)
+    for k, c in enumerate(((255, 60, 30), (255, 140, 20), (255, 220, 90))):
+        h = (170 - 40 * k) * pop * (1 + 0.1 * math.sin(T * 7 + k)); w = 62 - 14 * k
+        poly(d, [(x - w, y + 40), (x - w * 0.3, y - h * 0.55), (x + 5 * math.sin(T * 8 + k), y - h), (x + w * 0.3, y - h * 0.5), (x + w, y + 40)], (*c, 235))
+
 PROP = {k[3:]: v for k, v in globals().items() if k.startswith('pr_')}
 PROP['shadow_near'] = pr_shadow_near
 
@@ -360,7 +399,11 @@ def draw_orin(im, T, t, o):
         return
     mv = o.get('mv'); al, ar, ll, lr = o.get('al', 16), o.get('ar', 16), o.get('ll', 6), o.get('lr', 6); y_off = 5 * math.sin(T * 2.2); rot = o.get('rot', 0); s = o.get('s', 1.0)
     if mv == 'jump': y_off = -abs(math.sin(T * 4.2)) * 34; ll, lr = 14 + 10 * math.sin(T * 8.4), 14 - 10 * math.sin(T * 8.4)
+    x_pos, flp = o.get('x', 640), o.get('flip', False)
     if mv == 'run': sw = math.sin(T * 9.5) * 38; al, ar, ll, lr = 40 - sw, 40 + sw, -sw * 1.2, sw * 1.2; y_off = -abs(math.sin(T * 9.5)) * 10
+    if mv in ('walk', 'run'):   # se desplaza por la escena (vx en px/s; negativo = hacia la izquierda y mirando a la izquierda)
+        vx = o.get('vx', 95 if mv == 'walk' else 230); x_pos = min(1180, max(100, x_pos + vx * t)); flp = (vx < 0) != bool(o.get('flip', False))
+    if mv == 'walk': sw = math.sin(T * 6.5) * 26; al, ar, ll, lr = 20 - sw * 0.8, 20 + sw * 0.8, -sw, sw; y_off = -abs(math.sin(T * 6.5)) * 6
     if mv == 'rub': al, ar = 18 + 6 * math.sin(T * 14), 18 - 6 * math.sin(T * 14)
     ee, mm = o.get('e', 'open'), o.get('m', 'smile')
     if o.get('e2_at') is not None and t >= o['e2_at']: ee, mm = o.get('e2', ee), o.get('m2', mm)
@@ -368,7 +411,7 @@ def draw_orin(im, T, t, o):
     L = orin(ee if ee != 'half' else 'open', mm, o.get('look', (0, 0)), al, ar, ll, lr, o.get('shadow', False), o.get('tint'), 0.55 if ee == 'half' else blink)
     if mv == 'fly':
         put(im, L, o.get('x', 640) + 40 * math.sin(T * 0.9), o.get('y', 300) + 22 * math.sin(T * 1.6), s, rot=-72 - 6 * math.sin(T * 1.6), flip=o.get('flip', False)); return
-    stand(im, L, o.get('x', 640), o.get('g', 650) + y_off, s, rot=rot, flip=o.get('flip', False))
+    stand(im, L, x_pos, o.get('g', 650) + y_off, s, rot=rot, flip=flp)
 
 # ---------- escena ----------
 def render_beat(bt, T, t):
@@ -379,6 +422,8 @@ def render_beat(bt, T, t):
     draw_orin(im, T, t, bt['o'])
     for p in bt['p']:
         if p.get('z') and t - p.get('at', 0.0) >= 0: PROP[p['k']](im, ImageDraw.Draw(im, 'RGBA'), T, t - p.get('at', 0.0), p)
+    fl = bt['bgk'].get('flash')
+    if fl and t < 0.5: im.alpha_composite(Image.new('RGBA', im.size, (*fl, int(120 * (1 - t / 0.5) ** 2))), (0, 0)) if im.mode == 'RGBA' else im.paste(Image.blend(im, Image.new('RGB', im.size, fl), 0.42 * (1 - t / 0.5) ** 2))
     if bt['label']: label(im, bt['label'], t - bt['lt'], 640, bt['ly'], 38, gold=bt['gold'])
     return im
 
