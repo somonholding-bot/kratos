@@ -102,7 +102,7 @@ export const COMPONENTES: Record<string, string[]> = {
   video: ['investigacion', 'fuentes', 'publico', 'objetivo', 'concepto', 'titulo', 'variantes_titulo', 'miniatura', 'guion', 'escaleta', 'direccion_audiovisual', 'voz', 'edicion', 'subtitulos', 'descripcion', 'metadatos', 'riesgos', 'metricas'],
   libro: ['investigacion', 'fuentes', 'publico', 'tesis', 'arquitectura', 'indice', 'capitulos', 'riesgos', 'metricas'],
   campana: ['investigacion', 'fuentes', 'publico', 'objetivo', 'concepto', 'mensajes', 'riesgos', 'metricas'],
-  investigacion: ['pregunta', 'hallazgos', 'fuentes', 'limitaciones'],
+  investigacion: ['pregunta', 'hallazgos', 'evidencia', 'fuentes', 'limitaciones', 'conexiones'],
 };
 const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'proyecto';
 const urls = (s: string) => (String(s).match(/https?:\/\/[^\s)>\]"']+/g) ?? []).length;

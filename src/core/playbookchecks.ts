@@ -19,6 +19,7 @@ export type CheckCtx = {
 // Los 17 tipos admitidos y las claves que aceptan (validateShape rechaza cualquier otra)
 export const CHECK_TYPES: Record<string, string[]> = {
   proyecto_sol_completo: [],
+  afirmaciones_sol: ['minimo'],
   longitud_minima: ['caracteres', 'campo'],
   longitud_maxima: ['caracteres', 'campo'],
   secciones: ['titulos'],
@@ -235,6 +236,13 @@ export async function runCheck(c: PlaybookCheck, ctx: CheckCtx): Promise<Check> 
         const r = (await ctx.db.query(`SELECT count(*)::int AS n FROM audit_log WHERE actor = $1 AND action = $2 AND at >= $3`, [`agente:${ctx.task.owner_function}`, `herramienta.${c.herramienta}`, since])).rows[0].n;
         return out(r > 0, r > 0 ? `${r} llamada(s)` : `el agente no llamó a ${c.herramienta} durante la tarea`);
       }
+      case 'afirmaciones_sol': {   // Omega: durante la tarea Sol registró afirmaciones con nivel de evidencia ligadas a fuentes
+        if (!ctx.db || !ctx.task) return out(false, 'sin base de datos para comprobarlo');
+        const since = ctx.task.started_at ?? ctx.task.created_at ?? new Date(0), min = Number(c.minimo) || 1;
+        const r = (await ctx.db.query(`SELECT count(*)::int AS n, count(DISTINCT a.fuente_id)::int AS fuentes, count(*) FILTER (WHERE f.verificada)::int AS con_fuente_verificada
+          FROM sol_afirmaciones a JOIN sol_fuentes f ON f.id = a.fuente_id WHERE a.created_by = $1 AND a.created_at >= $2`, [`agente:${ctx.task.owner_function}`, since])).rows[0];
+        return out(r.n >= min, `${r.n} afirmaciones con nivel de evidencia (mínimo ${min}), de ${r.fuentes} fuentes; ${r.con_fuente_verificada} con fuente verificada`);
+      }
       case 'proyecto_sol_completo': {   // Omega: el paquete de Sol existe, está completed y sus archivos están en disco
         if (!ctx.db || !ctx.task) return out(false, 'sin base de datos para comprobarlo');
         const since = ctx.task.started_at ?? ctx.task.created_at ?? new Date(0);
@@ -273,6 +281,7 @@ export function describeChecks(checks: PlaybookCheck[], params: Record<string, u
     switch (c.tipo) {
       case 'longitud_minima': return `al menos ${n(c.caracteres)} caracteres${c.campo ? ` en ${c.campo}` : ''}`;
       case 'longitud_maxima': return `como mucho ${n(c.caracteres)} caracteres${c.campo ? ` en ${c.campo}` : ''}`;
+      case 'afirmaciones_sol': return `al menos ${n(c.minimo)} afirmaciones registradas con biblioteca_sol (accion=registrar_afirmacion), cada una con nivel de evidencia y fuente`;
       case 'proyecto_sol_completo': return 'paquete entregado con proyecto_sol (accion=entregar) en estado completed, con todos sus archivos';
       case 'secciones': return `secciones obligatorias (encabezados ##): ${c.titulos.join(', ')}`;
       case 'tabla_filas': return `tabla Markdown con al menos ${n(c.minimo)} filas${c.seccion ? ` en «${c.seccion}»` : ''}`;
