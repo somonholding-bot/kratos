@@ -8,7 +8,7 @@ import { activePlugins, runPlugin } from './plugins.ts';
 
 // Herramientas que un especialista puede ejecutar: consultas y memoria; nada que gaste, publique o contacte a terceros
 export const AGENT_SAFE_TOOLS = new Set(['resumen_negocios', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'guardar_nota', 'listar_tareas', 'ver_resultado_tarea',
-  'buscar_informes', 'ver_actividad', 'agentes', 'ver_skills', 'ver_playbooks', 'estado_youtube', 'estado_apple', 'consultar_bd', 'crear_tarea', 'registrar_leccion', 'ver_plan', 'biblioteca_sol', 'proyecto_sol', 'investigar_sol', 'acd', 'examen', 'grafo_sol', 'requisitos_sol', 'automodelo']);
+  'buscar_informes', 'ver_actividad', 'agentes', 'ver_skills', 'ver_playbooks', 'estado_youtube', 'estado_apple', 'consultar_bd', 'crear_tarea', 'registrar_leccion', 'ver_plan', 'biblioteca_sol', 'proyecto_sol', 'investigar_sol', 'acd', 'examen', 'grafo_sol', 'requisitos_sol', 'automodelo', 'metacognicion']);
 // Lo mínimo que todo especialista tiene para no trabajar a ciegas (solo lectura)
 const AGENT_BASE_TOOLS = ['buscar_informes', 'ver_resultado_tarea', 'buscar_conocimiento', 'buscar_notas', 'leer_nota'];
 // Las que piden aprobación del propietario o crean un efecto fuera de KRATOS

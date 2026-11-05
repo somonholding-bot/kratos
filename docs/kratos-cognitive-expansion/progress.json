@@ -23,8 +23,8 @@
   {
    "id": "03",
    "nombre": "C02 monitorización metacognitiva",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/metacognicion.ts + db/049; herramienta metacognicion; test/metacognicion.test.ts 5/5; npm test 203/203"
   },
   {
    "id": "04",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 03: C02 metacognición (src/core/metacognicion.ts, tabla cog_decisiones)"
+ "siguiente_accion": "TAREA 04: C03 memoria autobiográfica (src/core/autobiografia.ts, tabla cog_experiencias)"
 }

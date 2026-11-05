@@ -3,7 +3,7 @@
 - [x] TAREA 00: Auditoría y recuperación del estado
 - [x] TAREA 01: Literatura obligatoria y catálogo de repositorios
 - [x] TAREA 02: C01 automodelo funcional
-- [ ] TAREA 03: C02 monitorización metacognitiva
+- [x] TAREA 03: C02 monitorización metacognitiva
 - [ ] TAREA 04: C03 memoria autobiográfica
 - [ ] TAREA 05: C04 espacio global
 - [ ] TAREA 06: C05 predicción y aprendizaje activo

@@ -35,6 +35,7 @@ import { EXAMEN_TOOL, herramientaExamen } from './examen.ts';
 import { GRAFO_TOOL, herramientaGrafo } from './grafo.ts';
 import { REQUISITOS_TOOL, herramientaRequisitos } from './requisitos.ts';
 import { AUTOMODELO_TOOL, herramientaAutomodelo } from './automodelo.ts';
+import { METACOGNICION_TOOL, herramientaMetacognicion } from './metacognicion.ts';
 import { readOpenText, searchPapers, addClaim, addConnection, addPrediction, addSource, deliverProject, libraryStats, listProjects, projectComponent, projectStatus, resolvePrediction, searchLibrary } from './omega.ts';
 const omegaActor = () => { const t = process.env.KRATOS_TOOLSET ?? ''; return t.startsWith('agente:') ? `agente:${t.slice(7)}` : 'kratos'; };
 
@@ -265,6 +266,8 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => { try { return await herramientaExamen(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'grafo_sol', description: GRAFO_TOOL.description, input_schema: GRAFO_TOOL.input_schema as any,
     run: async (db, i) => { try { return await herramientaGrafo(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
+  { name: 'metacognicion', description: METACOGNICION_TOOL.description, input_schema: METACOGNICION_TOOL.input_schema as any,
+    run: async (db, i) => { try { return await herramientaMetacognicion(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'automodelo', description: AUTOMODELO_TOOL.description, input_schema: AUTOMODELO_TOOL.input_schema as any,
     run: async (db, i) => { try { return await herramientaAutomodelo(db, i, omegaActor()); } catch (e: any) { return { error: String(e?.message ?? e).slice(0, 400) }; } } },
   { name: 'requisitos_sol', description: REQUISITOS_TOOL.description, input_schema: REQUISITOS_TOOL.input_schema as any,
@@ -690,7 +693,7 @@ export const TOOLS: ToolDef[] = [
 
 // La API admite como máximo 20 herramientas estrictas: lo son las que reciben datos; las de solo consulta sin parámetros y las fn_* no.
 // La API admite como máximo 20 estrictas: las consultas de solo lectura no lo son
-const READ_ONLY = new Set(['automodelo', 'investigar_sol', 'acd', 'examen', 'grafo_sol', 'requisitos_sol', 'biblioteca_sol', 'proyecto_sol', 'fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
+const READ_ONLY = new Set(['metacognicion', 'automodelo', 'investigar_sol', 'acd', 'examen', 'grafo_sol', 'requisitos_sol', 'biblioteca_sol', 'proyecto_sol', 'fabrica_aion', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'registro_herramientas', 'producir_video', 'personalizar_canal_youtube', 'subir_video_youtube', 'editar_video_youtube', 'publicar_video_youtube', 'borrar_video_youtube', 'editar_tarea', 'ejecutar_tarea_ya', 'cancelar_tarea', 'crear_negocio', 'crear_producto', 'mensajes_recibidos', 'poner_musica', 'controlar_musica', 'ver_skills', 'consultar_bd', 'leer_codigo', 'buscar_codigo', 'listar_tareas', 'buscar_conocimiento', 'buscar_notas', 'leer_nota', 'ver_agenda', 'correo_bandeja', 'ver_actividad', 'ver_resultado_tarea', 'buscar_informes', 'agentes']);
 export const isStrict = (name: string, schema: any) => !name.startsWith('fn_') && !READ_ONLY.has(name) && Object.keys(schema?.properties ?? {}).length > 0;
 export const toolCount = () => ({ total: TOOLS.length, strict: TOOLS.filter((t) => isStrict(t.name, t.input_schema)).length });
 
@@ -1036,7 +1039,7 @@ export async function think(db: Db, channel: 'texto' | 'voz', onSpeak?: (sentenc
 // ---------- Ciclo proactivo del CEO ----------
 // Cada hora (tarea recurrente «ciclo_ceo»): si los agentes terminaron algo o toca la revisión estratégica (cada 6 h), KRATOS se reúne:
 // revisa, aprende y asigna lo siguiente; si no hay novedades, no gasta nada. Con el plan al 90 %, espera al reinicio. Sin IA, se salta sin fallar.
-export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol', 'acd', 'grafo_sol', 'requisitos_sol', 'investigar_sol', 'automodelo'];
+export const CEO_TOOLS = ['resumen_negocios', 'listar_tareas', 'ver_playbooks', 'ejecutar_playbook', 'editar_playbook', 'crear_tarea', 'editar_tarea', 'cancelar_tarea', 'buscar_conocimiento', 'buscar_notas', 'registrar_leccion', 'guardar_nota', 'solicitar_aprobacion', 'ver_plan', 'actualizar_plan', 'agentes', 'ver_skills', 'registro_herramientas', 'buscar_informes', 'ver_resultado_tarea', 'consultar_bd', 'estado_apple', 'estado_youtube', 'personalizar_canal_youtube', 'producir_video', 'fabrica_aion', 'editar_video_youtube', 'publicar_video_youtube', 'diagnostico_propio', 'biblioteca_sol', 'proyecto_sol', 'acd', 'grafo_sol', 'requisitos_sol', 'investigar_sol', 'automodelo', 'metacognicion'];
 export async function ceoCycle(db: Db): Promise<Record<string, unknown>> {
   const st = await getState(db);
   const viaSub = (st.brain_engine ?? 'suscripcion') === 'suscripcion';
