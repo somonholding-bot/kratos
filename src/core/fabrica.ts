@@ -142,7 +142,8 @@ export async function startProduction(db: Db, id: number, actor: string) {
   const out = fs.openSync(path.join(logs, `fabrica-${id}.log`), 'a');
   // caffeinate -i: el Mac no se duerme por inactividad mientras dura el render (y deja de hacerlo solo al terminar); cerrar la tapa sí lo duerme
   const cafe = fs.existsSync('/usr/bin/caffeinate');
-  const child = spawn(cafe ? '/usr/bin/caffeinate' : process.execPath, [...(cafe ? ['-i', process.execPath] : []), path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
+  // nice 19: el render usa la CPU que sobre; la voz, la app y lo que el propietario tenga abierto (simulador, Xcode) van primero
+  const child = spawn('/usr/bin/nice', ['-n', '19', ...(cafe ? ['/usr/bin/caffeinate', '-i'] : []), process.execPath, path.join(ROOT, 'scripts/media/fabrica.ts'), 'producir', String(id)], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], env: process.env });
   child.unref();
   await audit(db, actor, 'fabrica.produccion_lanzada', { id, episodio: ep, voz: 'local', pid: child.pid });
   return { id, episodio: ep, beats: info.beats, escenarios: info.escenarios, voz: 'local (Kokoro bm_george), sin créditos', carpeta: carpeta(id), registro: `.jarvis/logs/fabrica-${id}.log`,
