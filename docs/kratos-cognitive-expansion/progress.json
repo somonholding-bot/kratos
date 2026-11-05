@@ -17,8 +17,8 @@
   {
    "id": "02",
    "nombre": "C01 automodelo funcional",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/automodelo.ts + db/048; herramienta automodelo; test/automodelo.test.ts 6/6; npm test 198/198; automodelo en vivo: 71 herramientas, 66 probadas, 3 degradadas (R01, R03, R05), 3 ausentes (q_lab, cuda, …)"
   },
   {
    "id": "03",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 02: C01 automodelo (src/core/automodelo.ts, tabla cog_capacidades)"
+ "siguiente_accion": "TAREA 03: C02 metacognición (src/core/metacognicion.ts, tabla cog_decisiones)"
 }
