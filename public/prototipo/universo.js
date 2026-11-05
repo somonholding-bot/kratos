@@ -9,6 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { makeStarfield, makeBrightStars, makeGalaxies, makeNebula as makeDeepSky } from './cielo.js?v=cinema-4';
 import { planetMaterial, ringMaterial } from './astros.js?v=cinema-4';
+import { Dictado } from './dictado.js?v=1';
 
 const AGENTS = [
   { id: 'sol', real: '#ffad3d', name: 'Sol', symbol: '☉', color: '#ffc24a', size: 0.83, role: 'Propósito e identidad' },
@@ -1093,7 +1094,7 @@ function act(a) {
   if (a === 'text') { if (lastText) window.kratosShowText(lastText); else log('Aún no hay texto de KRATOS'); }
   if (a === 'tasks') showTasks();
   if (a === 'approvals') showApprovals();
-  if (a === 'chat') { const f = document.getElementById('chat-box'); f.hidden = !f.hidden; if (!f.hidden) document.getElementById('chat-input').focus(); }
+  if (a === 'chat') abrirConversacion(document.getElementById('conversacion').hidden);
 }
 dock.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
 
@@ -1115,8 +1116,8 @@ addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea, [contenteditable]')) return;   // escribiendo en el chat: sin atajos
   const k = e.key.toLowerCase();
   if (e.key === 'Escape') {
-    const open = ['help', 'list'].map((id) => document.getElementById(id)).find((el) => !el.hidden);
-    if (open) open.hidden = true; else exitExperience();
+    const open = ['conversacion', 'help', 'list'].map((id) => document.getElementById(id)).find((el) => !el.hidden);
+    if (open?.id === 'conversacion') abrirConversacion(false); else if (open) open.hidden = true; else exitExperience();
     return;
   }
   if (e.key === ' ') { e.preventDefault(); act('pause'); }
@@ -1262,16 +1263,105 @@ addEventListener('click', async (e) => {
 });
 setInterval(refreshApprovals, 15_000); refreshApprovals();
 
-// Chat escrito: lo que escribas va a KRATOS como texto; la respuesta se muestra en la ventana de lectura
-document.getElementById('chat-box')?.addEventListener('submit', async (e) => {
+// ---------- Conversación con KRATOS (chat completo, con dictado) ----------
+// Igual que un chat normal: historial, caja grande, Intro envía, Mayús+Intro nueva línea. El micrófono no corta por silencio:
+// pulsas 🎙 para empezar, hablas todo lo que necesites y pulsas otra vez para terminar; el texto queda en la caja para revisarlo.
+const conv = { el: document.getElementById('conversacion'), log: document.getElementById('conv-log'), input: document.getElementById('conv-input'),
+  mic: document.getElementById('conv-mic'), estado: document.getElementById('conv-status'), ocupado: false, cargado: false, reloj: null };
+const dictado = new Dictado();
+const horaCorta = (d) => (d ? new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '');
+function burbuja(rol, texto, extra = '') {
+  const d = document.createElement('div');
+  d.className = `conv-msg ${rol === 'usuario' ? 'yo' : 'kratos'} ${extra}`;
+  d.innerHTML = (rol === 'usuario' ? esc(texto).replace(/\n/g, '<br>') : mdLite(texto)) + `<small>${rol === 'usuario' ? 'Tú' : 'KRATOS'} · ${horaCorta(new Date())}</small>`;
+  conv.log.querySelector('.conv-vacio')?.remove();
+  conv.log.append(d); conv.log.scrollTop = conv.log.scrollHeight;
+  return d;
+}
+async function cargarHistorial() {
+  try {
+    const msgs = await api('/api/messages');
+    conv.log.innerHTML = msgs.length ? msgs.map((m) => `<div class="conv-msg ${m.role === 'usuario' ? 'yo' : 'kratos'}">${m.role === 'usuario' ? esc(m.content).replace(/\n/g, '<br>') : mdLite(m.content)}<small>${m.role === 'usuario' ? 'Tú' : 'KRATOS'} · ${m.channel === 'voz' ? 'voz · ' : ''}${esc(new Date(m.created_at).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }))}</small></div>`).join('')
+      : '<p class="conv-vacio">Escríbele a KRATOS o pulsa 🎙 para dictarle con calma. Tu mensaje no se envía hasta que pulses «Enviar».</p>';
+    conv.cargado = true; conv.log.scrollTop = conv.log.scrollHeight;
+  } catch { conv.log.innerHTML = '<p class="conv-vacio">No pude cargar la conversación. Comprueba que KRATOS esté activo.</p>'; }
+}
+function abrirConversacion(abrir = true) {
+  conv.el.hidden = !abrir;
+  document.querySelector('[data-act="chat"]')?.setAttribute('aria-pressed', abrir);
+  if (abrir) { cargarHistorial(); setTimeout(() => conv.input.focus(), 30); }
+  else if (dictado.activo) dictado.terminar();
+}
+function ajustarAltura() { conv.input.style.height = 'auto'; conv.input.style.height = `${Math.min(conv.input.scrollHeight, innerHeight * 0.4)}px`; }
+conv.input.addEventListener('input', ajustarAltura);
+conv.input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); document.getElementById('conv-form').requestSubmit(); }
+  if (e.key === 'Escape') { e.preventDefault(); if (dictado.activo) dictado.cancelar(); else abrirConversacion(false); }
+});
+conv.el.addEventListener('click', (e) => { if (e.target.closest('[data-conv-close]')) abrirConversacion(false); });
+// Dictado: el texto se añade al final de lo que ya hay en la caja
+function pintarDictado() {
+  const grabando = dictado.activo;
+  conv.mic.classList.toggle('grabando', grabando);
+  conv.mic.querySelector('span').textContent = grabando ? 'Terminar' : 'Dictar';
+  document.getElementById('conv-rec').hidden = !grabando;
+  conv.estado.textContent = grabando ? 'Te escucho. Habla con calma; pulsa «Terminar» cuando acabes.' : dictado.pendientes ? 'Escribiendo lo que dijiste…' : '';
+  clearInterval(conv.reloj);
+  if (grabando) conv.reloj = setInterval(() => { const s = Math.floor((performance.now() - dictado.inicio) / 1000); document.getElementById('conv-time').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 250);
+}
+dictado.addEventListener('estado', pintarDictado);
+dictado.addEventListener('nivel', (e) => { document.getElementById('conv-meter').style.width = `${Math.min(100, e.detail.nivel * 900)}%`; });
+dictado.addEventListener('texto', (e) => {
+  const actual = conv.input.value;
+  conv.input.value = actual + (actual && !/\s$/.test(actual) ? ' ' : '') + e.detail.texto;
+  ajustarAltura(); conv.input.scrollTop = conv.input.scrollHeight;
+});
+dictado.addEventListener('error', (e) => { conv.estado.textContent = e.detail.mensaje; log(e.detail.mensaje); });
+dictado.addEventListener('aviso', (e) => log(e.detail.mensaje));
+conv.mic.addEventListener('click', async () => { if (dictado.activo) { await dictado.terminar(); conv.input.focus(); } else dictado.empezar(); });
+
+// Envío: la respuesta llega por partes (como aquí) y al final se muestra completa
+document.getElementById('conv-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const f = e.currentTarget, input = document.getElementById('chat-input'), text = input.value.trim();
-  if (!text || f.classList.contains('busy')) return;
-  f.classList.add('busy'); input.value = ''; boom(0.6); setState('pensando', false);
-  window.kratosShowText(`**Tú:** ${text}\n\nKRATOS está pensando…`);
-  try { const r = await api('/api/chat', { text, channel: 'texto' }); window.kratosShowText(`**Tú:** ${text}\n\n${r.text}`); }
-  catch (err) { window.kratosShowText(`**Tú:** ${text}\n\nNo pude responder: ${err.message}`); }
-  finally { f.classList.remove('busy'); setState(real.state ?? 'reposo', false); refreshReal(); input.focus(); }
+  if (conv.ocupado) return;
+  if (dictado.activo || dictado.pendientes) { conv.estado.textContent = 'Terminando de escribir lo que dijiste…'; await dictado.terminar(); }
+  const text = conv.input.value.trim();
+  if (!text) return;
+  conv.ocupado = true; conv.el.classList.add('ocupado');
+  conv.input.value = ''; ajustarAltura();
+  burbuja('usuario', text);
+  const resp = burbuja('kratos', 'KRATOS está pensando…', 'pensando');
+  boom(0.6); setState('pensando', false);
+  let parcial = '';
+  try {
+    const r = await fetch('/api/chat/stream', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, channel: 'texto' }) });
+    if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
+    const lector = r.body.getReader(), dec = new TextDecoder();
+    let resto = '', final = null;
+    for (;;) {
+      const { value, done } = await lector.read();
+      if (done) break;
+      resto += dec.decode(value, { stream: true });
+      let k;
+      while ((k = resto.indexOf('\n')) >= 0) {
+        const linea = resto.slice(0, k); resto = resto.slice(k + 1);
+        if (!linea.trim()) continue;
+        const o = JSON.parse(linea);
+        if (o.type === 'sentence' && o.text) { parcial += (parcial ? ' ' : '') + o.text; resp.classList.remove('pensando'); resp.innerHTML = mdLite(parcial) + `<small>KRATOS · escribiendo…</small>`; conv.log.scrollTop = conv.log.scrollHeight; }
+        if (o.type === 'done') final = o;
+      }
+    }
+    resp.classList.remove('pensando');
+    resp.innerHTML = mdLite(final?.text || parcial || 'Sin respuesta') + `<small>KRATOS · ${horaCorta(new Date())}</small>`;
+    lastText = final?.text || parcial;
+  } catch (err) {
+    resp.classList.remove('pensando');
+    resp.innerHTML = `No pude responder: ${esc(err.message)}<small>KRATOS</small>`;
+  } finally {
+    conv.ocupado = false; conv.el.classList.remove('ocupado');
+    conv.log.scrollTop = conv.log.scrollHeight;
+    setState(real.state ?? 'reposo', false); refreshReal(); conv.input.focus();
+  }
 });
 
 // ---------- música que suena (la pone y la controla la app de Mac) ----------

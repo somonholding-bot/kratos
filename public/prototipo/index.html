@@ -49,14 +49,27 @@
     <button data-act="mute" title="Micrófono (M)">🎙︎<span>Micrófono</span></button>
     <button data-act="text" title="Último texto de KRATOS (T)">📄<span>Texto</span></button>
     <button data-act="tasks" title="Tareas (L)">☰<span>Tareas</span></button>
-    <button data-act="chat" title="Escribir a KRATOS (C)">✎<span>Chat</span></button>
+    <button data-act="chat" title="Conversación con KRATOS (C)">💬<span>Chat</span></button>
     <button data-act="approvals" title="Aprobaciones pendientes (A)">✔<b id="apr-badge" class="badge" hidden>0</b><span>Aprobar</span></button>
     <button data-act="exit" title="Minimizar y abrir el panel de configuración (Esc)">✕<span>Cerrar</span></button>
   </nav>
-  <form id="chat-box" class="chat-box" hidden autocomplete="off">
-    <input id="chat-input" type="text" placeholder="Escribe a KRATOS y pulsa Intro…" maxlength="4000" aria-label="Mensaje para KRATOS">
-    <button type="submit">Enviar</button>
-  </form>
+  <!-- Conversación con KRATOS: como un chat normal. Escribe o dicta (pulsa 🎙 una vez para empezar y otra para terminar) -->
+  <section id="conversacion" class="conv" hidden aria-label="Conversación con KRATOS">
+    <header class="conv-head">
+      <div><b>Conversación con KRATOS</b><small>Escribe o dicta; el texto aparece aquí para que lo completes antes de enviarlo</small></div>
+      <button type="button" data-conv-close title="Cerrar (Esc)" aria-label="Cerrar">×</button>
+    </header>
+    <div id="conv-log" class="conv-log" aria-live="polite"></div>
+    <form id="conv-form" class="conv-composer" autocomplete="off">
+      <textarea id="conv-input" rows="3" maxlength="8000" placeholder="Escribe o pulsa 🎙 para dictar… (Intro envía · Mayús + Intro, nueva línea)" aria-label="Mensaje para KRATOS"></textarea>
+      <div class="conv-bar">
+        <button type="button" id="conv-mic" class="conv-mic" title="Pulsa para dictar; pulsa otra vez para terminar">🎙<span>Dictar</span></button>
+        <span id="conv-rec" class="conv-rec" hidden><i class="dot"></i><span id="conv-time">0:00</span><span class="meter"><i id="conv-meter"></i></span></span>
+        <span id="conv-status" class="conv-status" aria-live="polite"></span>
+        <button type="submit" id="conv-send" class="conv-send">Enviar ➤</button>
+      </div>
+    </form>
+  </section>
 
   <aside id="list" class="list" hidden aria-label="Especialistas">
     <h2>KRATOS y sus especialistas</h2>
@@ -69,6 +82,6 @@
     <p><b>Esc</b> salir · <b>Espacio</b> pausar · <b>M</b> silenciar · <b>R</b> movimiento reducido · <b>Q</b> calidad · <b>L</b> lista · <b>I</b> consumo · <b>F</b> pantalla completa · <b>1–7</b> delegación simulada · <b>S</b> estado simulado</p>
   </div>
 
-  <script type="module" src="/prototipo/universo.js?v=cinema-7"></script>
+  <script type="module" src="/prototipo/universo.js?v=cinema-8"></script>
 </body>
 </html>
