@@ -39,3 +39,30 @@
 
 ## Pendiente
 Etapa 5 (afirmaciones y conexiones cargadas con contenido), etapa 6 (motor de audiencias con datos reales), etapa 8 (que la fábrica consuma el paquete de Sol), etapa 9 (resolver predicciones con analítica real), etapa 10 (las 8 pruebas y los 15 criterios), currículo de 36 módulos, biblioteca a 500+.
+
+## Estado al 4-nov-2026, 23:55 (currículo en marcha)
+- **Currículo:** módulos 1–4 completados y verificados (Neurociencia, Psicología cognitiva, Atención, Memoria); cupo diario de 4 alcanzado, el 5 (Emoción) se lanza solo al liberarse el cupo. KRATOS, por su cuenta, encargó además un módulo extra de sueño y sueño lúcido.
+- **Biblioteca:** 273 fuentes verificadas de 302; 11 leídas a texto completo (el código anota el porcentaje leído); 127 afirmaciones (A 21, B 42, C 28, D 11, E 20, H 5); 35 conexiones tipificadas.
+- **Lectura real en uso:** Sol leyó enteros artículos de acceso abierto (p. ej. dispositivos de inducción de sueño lúcido; Godden y Baddeley 1975) y una obra de Project Gutenberg; James y Freud solo en parte (2 % y 9 %, así anotado).
+- **Empresa:** el ciclo del CEO encargó a Sol el paquete de estrategia del lanzamiento iOS de «Aion: Fasting & Meditation» (proyecto P11, completado) con una predicción: 25–120 primeras descargas en 30 días, confianza 0,6.
+
+### Criterios de aceptación (sección 34) con evidencia
+| # | Criterio | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Sol existe y conserva su identidad | Cumplido | `agent_functions.sol`, estatuto Omega |
+| 2 | KRATOS se comunica con Sol | Cumplido | tareas 617, 638, 647 creadas por KRATOS |
+| 3 | Sol accede a su biblioteca | Cumplido | herramienta `biblioteca_sol`, 8+ llamadas por tarea |
+| 4 | Las fuentes se recuperan | Cumplido | `biblioteca_sol accion=buscar`; 302 fichas |
+| 5 | Citas trazables | Cumplido | cada afirmación exige `fuente_id`; A/B exigen fuente verificada |
+| 6 | La memoria persiste | Cumplido | PostgreSQL + bóveda; sobrevivió a 3 recargas de servicios |
+| 7 | Entregables guardados | Cumplido | 11 proyectos en `~/Documents/Kratos/Proyectos/` |
+| 8 | KRATOS encuentra los resultados | Cumplido | prueba del 4-nov: recuperó P1 en conversación nueva |
+| 9 | Guiones con investigación | Cumplido | P1: fuentes y afirmaciones antes del guion |
+| 10 | Dirección narrativa a vídeos | Parcial | el paquete existe; la fábrica aún no lo consume |
+| 11 | Evaluación de calidad | Parcial | verificación en código; falta evaluador independiente del generador |
+| 12 | Sistema de aprendizaje | Parcial | predicciones registradas (2); ninguna resuelta todavía |
+| 13 | Errores registrados | Cumplido | `audit_log` (`omega.*`), lecciones |
+| 14 | Continuar proyectos anteriores | Cumplido | reentrega por `proyecto_id` con versiones |
+| 15 | Funciones existentes operativas | Cumplido | 117/118 pruebas (la de voz falla a ratos por carga) |
+
+**No probado:** reinicio completo del Mac; resolución de predicciones con datos reales; examen de dominio de cada módulo.
