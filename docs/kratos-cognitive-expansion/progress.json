@@ -47,8 +47,8 @@
   {
    "id": "07",
    "nombre": "C06 laboratorio de investigación de la conciencia",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/conciencia.ts, src/core/aislado.ts, scripts/cognicion/demos/*.py, db/053; herramienta conciencia_lab; test/conciencia.test.ts 4/4; npm test 220/220; 6 demos en vivo ok y cumplen su predicción"
   },
   {
    "id": "08",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 07: C06 laboratorio de investigación de la conciencia (src/core/conciencia.ts, cog_teorias, demos aisladas en el ejecutor ACD)"
+ "siguiente_accion": "TAREA 08: integración del ciclo operativo (src/core/ciclo-cognitivo.ts) con KRATOS, SOL y ACD; Q-LAB ausente"
 }
