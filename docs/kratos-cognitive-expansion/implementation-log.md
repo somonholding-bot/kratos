@@ -29,3 +29,9 @@
 
 ## TAREA 09: Pruebas de integración, persistencia, recuperación y seguridad
 - recuperarCiclos (ciclo-cognitivo.ts): un ciclo «en curso» más de 30 min pasa a fallido por interrupción con la última etapa, su objetivo a BLOCKED con el motivo «reanudar» y se listan las predicciones sin observar; idempotente; el worker lo ejecuta cada 10 min. Pruebas 6/6: persistencia tras reinicio de la conexión (objetivo activo, decisión, predicción pendiente y memoria; la regla de un objetivo sigue vigente), recuperación de interrupción, experimento que lanza una excepción → fallo verificado sin dejar objetivo activo, seguridad del código generado (sin variables sensibles en el entorno, sin leer la carpeta personal ni el llavero, sin fork), sin llamadas a la API de pago ni a la red en los módulos cognitivos, reproducibilidad de demos. Suite completa 229/229.
+
+## TAREA 10: Informe final de arquitectura y verificación
+- final-report.md con los 18 criterios, problemas corregidos (incluido el defecto del ciclo #2) y límites.
+
+## TAREA 11: Congelar arquitectura
+- Congelación registrada. Por orden del propietario se pasa a la directiva KSIE, que reutiliza C01–C05.

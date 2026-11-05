@@ -10,5 +10,5 @@
 - [x] TAREA 07: C06 laboratorio de investigación de la conciencia
 - [x] TAREA 08: Integración con KRATOS, SOL, ACD (Q-LAB ausente)
 - [x] TAREA 09: Pruebas de integración, persistencia, recuperación y seguridad
-- [ ] TAREA 10: Informe final de arquitectura y verificación
-- [ ] TAREA 11: Congelar arquitectura
+- [x] TAREA 10: Informe final de arquitectura y verificación
+- [x] TAREA 11: Congelar arquitectura

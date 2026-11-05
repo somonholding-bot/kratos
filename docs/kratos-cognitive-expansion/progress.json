@@ -65,15 +65,15 @@
   {
    "id": "10",
    "nombre": "Informe final de arquitectura y verificación",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "final-report.md: 18/18 PASS con comando, resultado y límite; npm test 229/229"
   },
   {
    "id": "11",
    "nombre": "Congelar arquitectura",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "Arquitectura C01–C06 congelada (final-report.md §TAREA 11); el propietario ordenó continuar con KSIE"
   }
  ],
- "siguiente_accion": "TAREA 10: final-report.md con los 18 criterios PASS/FAIL/BLOCKED y evidencia"
+ "siguiente_accion": "COMPLETADA. Siguiente: directiva KSIE en docs/kratos-strategic-intelligence/ (TAREA 00 auditoría)"
 }
