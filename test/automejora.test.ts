@@ -8,8 +8,10 @@ import { PROTECTED, diagnose, proposeImprovement, readCode } from '../src/core/s
 import { describeJob, diagnoseSelf, failureReason } from '../src/core/selfdiag.ts';
 
 let db: Db;
-before(async () => { db = createPool(); await migrate(db, () => {}); });
-after(async () => { await db.end(); });
+const autonomy = (v: 'amplia' | 'estricta') => db.query(`UPDATE system_state SET value = $1 WHERE key = 'autonomia'`, [JSON.stringify(v)]);
+// Estas pruebas clásicas usan autonomía estricta (todo por el panel); la política de autonomía amplia se prueba en plugins.test.ts
+before(async () => { db = createPool(); await migrate(db, () => {}); await autonomy('estricta'); });
+after(async () => { await autonomy('amplia'); await db.end(); });
 
 test('una mejora propuesta no se ejecuta hasta que el propietario la aprueba', async () => {
   const r: any = await proposeImprovement(db, { titulo: 'Prueba', problema: 'Latencia alta', cambio: 'Ninguno real' }, 'test');

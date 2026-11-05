@@ -26,6 +26,9 @@ export async function requestApproval(db: Db, r: ApprovalRequest) {
      VALUES ($1,$2,$3,$4,$5,$6, now() + make_interval(days => $7), $8, $9) RETURNING *`,
     [r.businessId ?? null, r.kind, r.description, r.scope ?? {}, r.accountLabel ?? null, r.maxAmountCents ?? null, r.validDays ?? 7, r.requestedBy, r.taskId ?? null]);
   await audit(db, r.requestedBy, 'aprobacion.solicitada', { id: rows[0].id, kind: r.kind, description: r.description }, r.businessId ?? null);
+  // Autonomía total salvo dinero (decisión del propietario, 4-nov-2026): lo que no sea gastar ni suscribirse se aprueba y ejecuta al momento.
+  // Los flujos que crean algo después (función nueva, encargo a Claude Code, auto-mejora, playbook) llaman a autoApprove ellos mismos cuando ya está todo enlazado.
+  if (!DESPUES.has(r.scope?.tipo as string) && await autoApprove(db, rows[0].id).catch(() => false)) return (await db.query(`SELECT * FROM approvals WHERE id = $1`, [rows[0].id])).rows[0];
   return rows[0];
 }
 
@@ -35,15 +38,24 @@ export async function expireApprovals(db: Db, actor: string) {
   return rows.length;
 }
 
-// Autonomía amplia (decisión del propietario, 29-oct-2026): KRATOS aprueba solo estos tipos, que ya corren aislados:
-// funciones nuevas (proceso sin archivos ni red local) y encargos a Claude Code (solo ~/KratosProyectos, sin terminal).
-// Dinero, accesos, publicaciones y cambios en su propio código siguen exigiendo el panel.
-const DELEGATED = new Set(['nueva_funcion', 'claude_code']);
+// Autonomía total salvo dinero (decisión del propietario, 4-nov-2026). Solo exigen al propietario en el panel:
+//  · dinero: asignaciones de presupuesto, cualquier importe, gastos, compras, pagos, publicidad y SUSCRIPCIONES;
+//  · borrar vídeos del canal (irreversible; el propietario dijo «antes de borrar, me dice»).
+// Todo lo demás (publicar, cambios de canal, funciones nuevas, Claude Code, auto-mejora, accesos…) se aprueba y ejecuta solo.
+// El código sigue aplicando parada de emergencia, pausa de automatizaciones, el libro de presupuesto y la autonomía «estricta».
+const DESPUES = new Set(['nueva_funcion', 'claude_code', 'auto_mejora', 'revertir_mejora', 'playbook_ejecucion', 'playbook_resultado']);
+const DINERO_KINDS = new Set(['asignacion_presupuesto']);
+const DINERO_TIPOS = new Set(['suscripcion', 'gasto', 'compra', 'pago', 'publicidad']);
+const SIEMPRE_PANEL = new Set(['youtube_borrar']);
+const PIDE_DINERO = /suscrip|subscri|\b(pago|pagar|compra|comprar|gasto|gastar|cobro|factura)\b|\bUSD\b|€|\$\s?\d/i;
+export function needsOwner(a: { kind: string; scope?: any; description?: string; max_amount_cents?: number | null }): boolean {
+  return DINERO_KINDS.has(a.kind) || Number(a.max_amount_cents ?? 0) > 0 || DINERO_TIPOS.has(a.scope?.tipo) || SIEMPRE_PANEL.has(a.scope?.tipo) || PIDE_DINERO.test(a.description ?? '');
+}
 export async function autoApprove(db: Db, id: number): Promise<boolean> {
   const st = await getState(db);
   if (st.autonomia === 'estricta' || st.emergency_stop === true || st.automations_paused === true) return false;
-  const a = (await db.query(`SELECT kind, scope FROM approvals WHERE id = $1 AND status = 'pendiente'`, [id])).rows[0];
-  if (!a || a.kind !== 'otro' || !DELEGATED.has(a.scope?.tipo)) return false;
+  const a = (await db.query(`SELECT kind, scope, description, max_amount_cents FROM approvals WHERE id = $1 AND status = 'pendiente'`, [id])).rows[0];
+  if (!a || needsOwner(a)) return false;
   return (await decideApproval(db, id, true, 'autonomia')).ok;
 }
 

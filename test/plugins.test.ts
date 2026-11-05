@@ -74,6 +74,25 @@ test('autonomía amplia: funciones y encargos a Claude Code se activan solos; el
   } finally { await autonomy('estricta'); }
 });
 
+test('autonomía total salvo dinero: se aprueba solo todo lo demás; dinero, suscripciones y borrar vídeos siguen en el panel', async () => {
+  const { requestApproval } = await import('../src/core/approvals.ts');
+  const estado = async (id: number) => (await db.query(`SELECT status FROM approvals WHERE id = $1`, [id])).rows[0].status;
+  const pedir = (kind: any, description: string, scope: any = {}, maxAmountCents?: number) => requestApproval(db, { kind, description, scope, maxAmountCents, requestedBy: 'test' });
+  await autonomy('amplia');
+  try {
+    assert.equal((await pedir('accion_externa', 'Cambiar la descripción del canal', { tipo: 'youtube_canal_x' })).status, 'aprobada');
+    assert.equal((await pedir('nuevo_acceso', 'Leer el correo de Apple')).status, 'aprobada');
+    // dinero y suscripciones: nunca solas
+    assert.equal(await estado((await pedir('asignacion_presupuesto', 'x', {}, 100)).id), 'pendiente');
+    assert.equal(await estado((await pedir('accion_externa', 'Contratar la suscripción mensual de la herramienta X')).id), 'pendiente');
+    assert.equal(await estado((await pedir('accion_externa', 'Comprar anuncios por 20 USD')).id), 'pendiente');
+    assert.equal(await estado((await pedir('accion_externa', 'Borrar el vídeo abc', { tipo: 'youtube_borrar', video_id: 'abc' })).id), 'pendiente');
+    // con la parada de emergencia, nada se aprueba solo
+    await db.query(`UPDATE system_state SET value = 'true' WHERE key = 'emergency_stop'`);
+    assert.equal(await estado((await pedir('nuevo_acceso', 'Otra cosa normal')).id), 'pendiente');
+  } finally { await db.query(`UPDATE system_state SET value = 'false' WHERE key = 'emergency_stop'`); await autonomy('estricta'); }
+});
+
 test('voz en tiempo real: las frases salen en cuanto terminan y solo la primera línea se habla', () => {
   const said: string[] = [];
   const s = sentenceStream((t) => said.push(t));

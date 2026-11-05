@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { Db } from '../db.ts';
 import { ROOT } from '../config.ts';
 import { audit } from './state.ts';
-import { requestApproval } from './approvals.ts';
+import { autoApprove, requestApproval } from './approvals.ts';
 import { createTask } from './tasks.ts';
 import { addAgenda } from './agenda.ts';
 
@@ -70,6 +70,7 @@ export async function proposeImprovement(db: Db, p: { titulo: string; problema: 
   const j = (await db.query(`INSERT INTO code_jobs (project, instructions, approval_id, created_by) VALUES ($1,$2,$3,$4) RETURNING id`, [PROJECT, instructions, a.id, by])).rows[0];
   await db.query(`UPDATE approvals SET scope = scope || jsonb_build_object('job_id', $2::int) WHERE id = $1`, [a.id, j.id]);
   await audit(db, by, 'auto_mejora.propuesta', { mejora: j.id, aprobacion: a.id });
+  if (await autoApprove(db, a.id).catch(() => false)) return { mejora: j.id, aprobacion: a.id, estado: 'aprobada y en marcha (autonomía total salvo dinero): se hará respaldo, se probará y se deshará sola si falla' };
   return { mejora: j.id, aprobacion: a.id, estado: 'pendiente: el propietario debe aprobarla en el panel' };
 }
 
@@ -77,6 +78,7 @@ export async function proposeRevert(db: Db, id: number, by: string) {
   const j = (await db.query(`SELECT id, status, result FROM code_jobs WHERE id = $1 AND project = $2`, [id, PROJECT])).rows[0];
   if (!j || j.status !== 'completada') return { error: 'Solo se pueden revertir mejoras aplicadas' };
   const a = await requestApproval(db, { kind: 'otro', description: `Revertir la auto-mejora #${id} de KRATOS (volver al estado anterior a ese cambio).`, scope: { tipo: 'revertir_mejora', job_id: id }, validDays: 14, requestedBy: by });
+  if (await autoApprove(db, a.id).catch(() => false)) return { aprobacion: a.id, estado: 'aprobada y en marcha (autonomía total salvo dinero)' };
   return { aprobacion: a.id, estado: 'pendiente: el propietario debe aprobarla en el panel' };
 }
 

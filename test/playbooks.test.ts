@@ -29,8 +29,9 @@ before(async () => {
   await syncToolRegistry(db);
   await db.query(`UPDATE tasks SET status = 'cancelada'`);
   biz = (await db.query(`INSERT INTO businesses (name) VALUES ('Aion') RETURNING id`)).rows[0].id;
+  await db.query(`UPDATE system_state SET value = '"estricta"' WHERE key = 'autonomia'`);   // pruebas clásicas: todo por el panel
 });
-after(async () => { await db.end(); });
+after(async () => { await db.query(`UPDATE system_state SET value = '"amplia"' WHERE key = 'autonomia'`); await db.end(); });
 
 // ---------- helpers ----------
 const SEEDS: Record<string, string> = { 'yt-investigacion-competencia': 'mercurio', 'yt-guion-ritual-lunar': 'venus', 'yt-calendario-30-dias': 'jupiter', 'yt-analisis-semanal': 'saturno' };

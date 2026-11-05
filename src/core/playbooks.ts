@@ -5,7 +5,7 @@ import { ROOT } from '../config.ts';
 import { withTx, type Db } from '../db.ts';
 import { audit } from './state.ts';
 import { cancelTask, createTask } from './tasks.ts';
-import { requestApproval } from './approvals.ts';
+import { autoApprove, requestApproval } from './approvals.ts';
 import { skillsFor } from './skills.ts';
 import { CHECK_TYPES, NUMERIC_KEYS, describeChecks, hoy, jsonBlock, markers, norm, substitute, validNumExpr, type PlaybookCheck } from './playbookchecks.ts';
 
@@ -382,6 +382,7 @@ export async function instantiatePlaybook(db: Db, o: Instantiate): Promise<Recor
       scope: { tipo: 'playbook_ejecucion', tarea_id: task.id, playbook_id: c.id }, taskId: task.id, requestedBy: base.createdBy, validDays: 7 });
     aprobacion = a.id;
   }
+  if (aprobacion && !tools.errores.length && await autoApprove(db, aprobacion).catch(() => false)) task.status = 'pendiente';
   if (tools.errores.length) await db.query(`UPDATE tasks SET status = 'requiere_revision', last_error = $2, updated_at = now() WHERE id = $1`, [task.id, `Falta una herramienta: ${tools.errores.join('; ')}`.slice(0, 500)]);
   await audit(db, base.createdBy, 'playbook.instanciado', { playbook: c.id, version, tarea: task.id, parametros: params }, o.negocioId);
   const estado = tools.errores.length ? 'requiere_revision' : task.status;
@@ -476,8 +477,8 @@ export async function afterPlaybookTask(db: Db, task: any, result: Record<string
   }
   for (const a of (pb.aprobaciones ?? []).filter((x: any) => x.cuando === 'despues')) {
     const dup = (await db.query(`SELECT 1 FROM approvals WHERE task_id = $1 AND scope->>'tipo' = 'playbook_resultado'`, [task.id])).rows.length;
-    if (!dup) await requestApproval(db, { businessId: task.business_id, kind: APPROVAL_KINDS.includes(a.tipo) ? a.tipo : 'otro', description: `Playbook «${pb.nombre}» (${pb.id}), tarea #${task.id} terminada: ${substitute(a.descripcion, params)}`,
-      scope: { tipo: 'playbook_resultado', tarea_id: task.id, playbook_id: pb.id }, taskId: task.id, requestedBy: 'worker', validDays: 14 });
+    if (!dup) { const ap = await requestApproval(db, { businessId: task.business_id, kind: APPROVAL_KINDS.includes(a.tipo) ? a.tipo : 'otro', description: `Playbook «${pb.nombre}» (${pb.id}), tarea #${task.id} terminada: ${substitute(a.descripcion, params)}`,
+      scope: { tipo: 'playbook_resultado', tarea_id: task.id, playbook_id: pb.id }, taskId: task.id, requestedBy: 'worker', validDays: 14 }); await autoApprove(db, ap.id).catch(() => false); }
   }
   return out;
 }

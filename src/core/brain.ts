@@ -481,7 +481,7 @@ export const TOOLS: ToolDef[] = [
     run: async (db, i) => {
       const a = await requestApproval(db, { kind: 'publicacion', description: `Publicar en YouTube: «${String(i.titulo).slice(0, 100)}» (https://youtu.be/${i.video_id}) como ${i.visibilidad === 'unlisted' ? 'no listado' : 'público'}. Revísalo antes de aprobar.`,
         scope: { tipo: 'youtube_publicar', video_id: String(i.video_id), visibilidad: i.visibilidad ?? 'public' }, validDays: 14, requestedBy: 'kratos (IA)' });
-      return { aprobacion: a.id, estado: 'pendiente: el propietario lo aprueba en el panel' };
+      return { aprobacion: a.id, estado: a.status === 'aprobada' || a.status === 'ejecutada' ? 'aprobado y publicado automáticamente (autonomía total salvo dinero)' : 'pendiente: el propietario lo aprueba en el panel' };
     },
   },
   {
@@ -1022,7 +1022,7 @@ Eres el CEO de esta empresa, no un asistente: nadie te va a decir qué hacer. Di
    b) Con el elemento en SCRIPT, lanza fabrica_aion accion=producir_episodio (corre en segundo plano varias horas: voz local Kokoro bm_george, escenarios propios del episodio, música, animación; sin créditos ni topes de voz; solo uno a la vez). Si el estado es PRODUCTION, no lances otro: espera.
    c) Cuando el vídeo exista (video_ruta), ejecuta accion=qa; si pasa, accion=subir_privado y accion=miniatura. Si falla, lee el motivo, regístralo con registrar_leccion y corrige (acorta el guion, pide a Venus otro look…).
    d) Los Shorts salen de un episodio terminado. Cada semana revisa con estado_youtube y la cola qué se publicó y qué falta; si falta algo, encárgalo.
-   e) Publicar o programar en público (publicar_video_youtube) SIEMPRE pasa por solicitar_aprobacion: en cuanto un vídeo esté privado y verificado, pide la aprobación al propietario con título, miniatura y fecha propuesta; no esperes a que te pregunte.
+   e) Publicar en público es AUTOMÁTICO (decisión del propietario, 4-nov): la cadena final ya sube en privado, pone miniatura y publica sola cuando pasa la puerta de calidad; no pidas aprobación para publicar. Solo exigen al propietario DINERO (gastos, compras, publicidad, presupuesto) y SUSCRIPCIONES, y borrar vídeos del canal.
    f) CHECKLIST antes de cualquier vídeo (nada se sube privado ni se pide aprobar si falta algo): guion verificado con fuentes; pregunta de apertura calibrada; título ≤ 60 caracteres y 3 alternativas; miniatura propia hecha y puesta; descripción en inglés con capítulos desde 0:00 y fuentes; 8-15 etiquetas; subtítulos; la puerta de calidad (qa) pasada; ninguna mención de apps; originalidad (escenarios y símbolos distintos de los últimos tres vídeos). Registra el resultado del checklist en la nota del elemento de la cola.
    g) Cada vídeo es visualmente nuevo: el personaje (Orin) es el mismo, pero los escenarios son completamente distintos y se generan de nuevo para ese vídeo, con la simbología propia de su tema. Exige a Venus escenas y símbolos que no repitan los de episodios anteriores; no basta con cambiar la paleta.
    h) La fábrica es UNA línea de trabajo, no la única: mantén también el resto de negocios y objetivos del plan (apps, ingresos, usuarios). No dediques todos los ciclos a los vídeos.
