@@ -41,8 +41,8 @@
   {
    "id": "06",
    "nombre": "C05 predicción y aprendizaje activo",
-   "estado": "QUEUED",
-   "evidencia": null
+   "estado": "COMPLETED",
+   "evidencia": "src/core/prediccion.ts + db/052; herramienta prediccion; test/prediccion.test.ts 3/3; npm test ℹ pass 216 ℹ fail 0 "
   },
   {
    "id": "07",
@@ -75,5 +75,5 @@
    "evidencia": null
   }
  ],
- "siguiente_accion": "TAREA 06: C05 predicción y aprendizaje activo (src/core/prediccion.ts, tabla cog_predicciones; banco determinista)"
+ "siguiente_accion": "TAREA 07: C06 laboratorio de investigación de la conciencia (src/core/conciencia.ts, cog_teorias, demos aisladas en el ejecutor ACD)"
 }
