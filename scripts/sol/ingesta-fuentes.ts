@@ -24,7 +24,7 @@ const urls = new Map<string, Set<string>>();
 for (const [f, temas] of ARCHIVOS) {
   const p = path.join(ROOT, f); if (!fs.existsSync(p)) continue;
   for (const m of fs.readFileSync(p, 'utf8').matchAll(/https?:\/\/[^\s)>\]"'`|]+/g)) {
-    const u = m[0].replace(/[.,;:]+$/, '');
+    let u = m[0].replace(/[.,;:]+$/, ''); if (u.includes('(') && !u.includes(')')) u += ')';   // enlaces de Wikipedia con paréntesis
     if (!urls.has(u)) urls.set(u, new Set()); temas.forEach((t) => urls.get(u)!.add(t));
   }
 }

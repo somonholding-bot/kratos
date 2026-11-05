@@ -1,0 +1,32 @@
+{
+  "id": "sol-paquete-estrategia",
+  "nombre": "Paquete de estrategia para la empresa (campaña, lanzamiento, libro o investigación)",
+  "version": 1,
+  "objetivo": "Para el encargo de KRATOS «{{encargo}}» (tipo {{tipo}}): investigar con fuentes y datos reales, definir audiencia, objetivo y concepto, y entregar con proyecto_sol un paquete completo y recuperable. Sirve a toda la empresa (apps, productos, ingresos), no solo al canal.",
+  "agentes": { "responsable": "sol" },
+  "skill": "narrativa-persuasion-etica-y-medicion",
+  "palabras_clave": ["campaña", "lanzamiento", "estrategia de marketing", "mensajes de marca", "aso", "primeros usuarios", "libro", "investigacion de audiencia", "embudo", "producto digital", "anuncio", "paquete de estrategia"],
+  "entradas": {
+    "encargo": { "tipo": "texto", "descripcion": "Qué pide KRATOS (producto o app, objetivo y contexto)", "requerida": true, "max_caracteres": 500 },
+    "tipo": { "tipo": "opcion", "descripcion": "Tipo de paquete", "requerida": false, "defecto": "campana", "opciones": ["campana", "libro", "investigacion"] }
+  },
+  "herramientas": ["biblioteca_sol", "proyecto_sol", "buscar_conocimiento", "resumen_negocios", "estado_youtube", "WebSearch", "WebFetch", "registrar_leccion"],
+  "pasos": [
+    { "n": 1, "titulo": "Datos reales e investigación", "instruccion": "Mira resumen_negocios y lo que ya sabes (biblioteca_sol accion=buscar, buscar_conocimiento). Investiga mercado, competidores y audiencia con WebSearch/WebFetch. Registra las fuentes nuevas con biblioteca_sol accion=registrar_fuente y las afirmaciones clave con su nivel de evidencia. Usa datos agregados; no inventes perfiles ni cifras: si faltan datos, decláralo como hipótesis.", "herramienta": "biblioteca_sol" },
+    { "n": 2, "titulo": "Audiencia, objetivo y concepto", "instruccion": "Define a quién va, qué necesita, el objetivo medible y el concepto (o la tesis, si es un libro). Compara al menos 2 alternativas y elige una explicando por qué. Persuasión solo ética y transparente." },
+    { "n": 3, "titulo": "Entrega y predicción", "instruccion": "Entrega con proyecto_sol accion=entregar (tipo={{tipo}}). Componentes — campana: investigacion, fuentes (≥3 URLs), publico, objetivo, concepto, mensajes, riesgos, metricas; libro: investigacion, fuentes, publico, tesis, arquitectura, indice, capitulos, riesgos, metricas; investigacion: pregunta, hallazgos, fuentes, limitaciones. Si responde blocked, completa y reentrega con proyecto_id. Registra 1 predicción con proyecto_sol accion=predecir (rango, confianza y base). Termina tu informe con las secciones pedidas y el número de proyecto.", "herramienta": "proyecto_sol" }
+  ],
+  "salidas": [{ "nombre": "informe", "tipo": "informe", "descripcion": "Resumen, Proyecto entregado, Fuentes, Incertidumbres, Siguiente paso", "obligatoria": true }],
+  "ubicacion_artefactos": { "boveda": "Tareas" },
+  "criterios_exito": ["paquete completed y recuperable", "≥3 fuentes reales", "objetivo medible", "una predicción con rango y confianza"],
+  "verificacion": [
+    { "nombre": "paquete completo y recuperable", "tipo": "proyecto_sol_completo" },
+    { "nombre": "secciones", "tipo": "secciones", "titulos": ["Resumen", "Proyecto entregado", "Fuentes", "Incertidumbres", "Siguiente paso"] },
+    { "nombre": "fuentes en el informe", "tipo": "fuentes_citadas", "minimo": 3 }
+  ],
+  "recuperacion": { "si_falla_verificacion": "reintentar", "si_falta_herramienta": "revisar" },
+  "reintentos": { "max": 2 },
+  "aprobaciones": [],
+  "coste": { "duracion_estimada_min": 20, "usd_estimado": 0, "nota": "con la suscripción; sin gasto" },
+  "idioma_entregable": "es"
+}
