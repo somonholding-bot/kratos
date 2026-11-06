@@ -61,6 +61,11 @@ export async function publicarPagina(db: Db, i: { slug: string; titulo: string; 
   await db.query(`INSERT INTO paginas_web (slug, url, titulo, cta_url, oportunidad_id, creado_por) VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (slug) DO UPDATE SET url = EXCLUDED.url, titulo = EXCLUDED.titulo, cta_url = EXCLUDED.cta_url, actualizado = now()`, [slug, url, i.titulo, i.cta_url, i.oportunidad_id ?? null, actor]);
   await audit(db, actor, 'paginas.publicada', { slug, url });
+  // Primera página publicada con el dominio aún sin conectar: se avisa al propietario (una sola vez) para apuntar el DNS
+  const dom = (await db.query(`SELECT value FROM system_state WHERE key = 'dominio_paginas'`)).rows[0]?.value;
+  const con = (await db.query(`SELECT value FROM system_state WHERE key = 'dominio_paginas_conectado'`)).rows[0]?.value;
+  if (dom && con !== dom && !(await db.query(`SELECT 1 FROM agenda WHERE kind = 'aviso' AND text LIKE 'KRATOS ya publicó su primera página%'`)).rows[0])
+    await db.query(`INSERT INTO agenda (at, kind, text, created_by) VALUES (now(), 'aviso', $1, 'kratos (páginas web)')`, [`KRATOS ya publicó su primera página (${url}). Ya se puede apuntar ${dom} en Namecheap para que se vea con tu dominio.`]);
   return { url, nota: sha ? 'actualizada' : 'publicada (GitHub tarda 1–2 minutos en mostrarla la primera vez)' };
 }
 
