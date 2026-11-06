@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { audit } from './state.ts';
-import { reservarExperimento } from './presupuesto-pruebas.ts';
+import { reservarExperimento, pedirAmpliacion } from './presupuesto-pruebas.ts';
 
 // Anuncios en Meta (Facebook/Instagram) para los experimentos de KRATOS (orden del propietario, 6-nov-2026). El token vive en el Llavero
 // (kratos-meta, cuenta api); la cuenta publicitaria y la página están en system_state (meta_ad_account, meta_page_id). El gasto SOLO sale
@@ -92,14 +92,15 @@ export async function detener(db: Db, experimento_id: number, actor: string, fet
 
 export const META_TOOL = {
   description: 'Anuncios en Meta (Facebook/Instagram) para experimentos KSIE, pagados SOLO con el presupuesto mensual de pruebas ya aprobado. estado. lanzar (experimento_id, nombre, destino = página o enlace de pago de KRATOS, titulo ≤40, texto 20–300, pais, edad_min, edad_max, presupuesto_diario_usd 1–15, dias 1–7; tope 50 USD por campaña): '
-    + 'reserva el dinero y crea la campaña. resultados (experimento_id): gasto, impresiones y clics reales. detener (experimento_id): pausa y cierra el gasto real. Los clics no son ventas. Sin promesas imposibles.',
-  input_schema: { type: 'object', properties: { accion: { type: 'string', enum: ['estado', 'lanzar', 'resultados', 'detener'] }, experimento_id: { type: 'number' }, nombre: { type: 'string' }, destino: { type: 'string' }, titulo: { type: 'string' }, texto: { type: 'string' },
+    + 'reserva el dinero y crea la campaña. resultados (experimento_id): gasto, impresiones y clics reales. detener (experimento_id): pausa y cierra el gasto real. pedir_mas_presupuesto (usd 10–500, justificacion con datos, experimento_ids con resultados): el límite normal es 100 USD al mes, pero puedes pedir más si lo justificas; lo aprueba el propietario en el panel. Los clics no son ventas. Sin promesas imposibles.',
+  input_schema: { type: 'object', properties: { accion: { type: 'string', enum: ['estado', 'lanzar', 'resultados', 'detener', 'pedir_mas_presupuesto'] }, usd: { type: 'number' }, justificacion: { type: 'string' }, experimento_ids: { type: 'array', items: { type: 'number' } }, experimento_id: { type: 'number' }, nombre: { type: 'string' }, destino: { type: 'string' }, titulo: { type: 'string' }, texto: { type: 'string' },
     pais: { type: 'string' }, edad_min: { type: 'number' }, edad_max: { type: 'number' }, presupuesto_diario_usd: { type: 'number' }, dias: { type: 'number' } }, required: ['accion'] },
 };
 export async function herramientaMeta(db: Db, i: any, actor: string) {
   if (i.accion === 'estado') return await estado(db);
   if (i.accion === 'lanzar') return await lanzarCampana(db, i, actor);
   if (i.accion === 'resultados') return await resultados(db, Number(i.experimento_id));
+  if (i.accion === 'pedir_mas_presupuesto') return await pedirAmpliacion(db, { usd: Number(i.usd), justificacion: String(i.justificacion ?? ''), experimento_ids: i.experimento_ids ?? [] }, actor);
   if (i.accion === 'detener') return await detener(db, Number(i.experimento_id), actor);
   return { error: 'Acción no válida' };
 }

@@ -5,7 +5,7 @@ import { createPool, type Db } from '../src/db.ts';
 import { migrate } from '../src/migrate.ts';
 import { allocate } from '../src/core/budget.ts';
 import { crearProducto, sincronizarVentas, estado, type Fetcher } from '../src/core/stripe.ts';
-import { CUENTA_PRUEBAS, pedirAsignacionMensual, saldoPruebas } from '../src/core/presupuesto-pruebas.ts';
+import { CUENTA_PRUEBAS, pedirAmpliacion, pedirAsignacionMensual, saldoPruebas } from '../src/core/presupuesto-pruebas.ts';
 import { crearOportunidad, disenarExperimento, resultadoExperimento, beneficioReal, sembrarPreguntas } from '../src/core/ksie.ts';
 
 let db: Db;
@@ -64,4 +64,17 @@ test('presupuesto de pruebas: se pide una vez al propietario y, aprobado, KRATOS
   await db.query(`UPDATE approvals SET status = 'aprobada' WHERE scope->>'experimento' = $1`, [String(e.experimento_id)]);
   await resultadoExperimento(db, e.experimento_id, { valor: 1, tipo_evidencia: 'compra', evidencia: '1 compra', fuente: 'stripe', gasto_real_usd: 25 }, 'agente:jupiter');
   const s = await saldoPruebas(db); assert.equal(s.gastado_cents, 2500); assert.equal(s.disponible_cents, 7500);
+});
+
+test('ampliación: se puede pedir más presupuesto, pero solo con justificación y resultados; la decide el propietario', async () => {
+  await db.query(`UPDATE approvals SET status = 'rechazada' WHERE status = 'pendiente' AND account_label = $1`, [CUENTA_PRUEBAS]);
+  await assert.rejects(pedirAmpliacion(db, { usd: 1000, justificacion: 'x'.repeat(130) }, 'agente:jupiter'), /entre 10 y 500/);
+  await assert.rejects(pedirAmpliacion(db, { usd: 100, justificacion: 'quiero más' }, 'agente:jupiter'), /justificación/);
+  await assert.rejects(pedirAmpliacion(db, { usd: 100, justificacion: 'El experimento de la guía trajo 3 compras con 30 USD de anuncios; con 100 USD más se puede repetir en otro público y medir si el coste por compra se mantiene por debajo del precio.' }, 'agente:jupiter'), /experimento con resultados|Todavía quedan/);
+  const o = (await crearOportunidad(db, { nombre: 'Prueba ampliación', tipo: 'producto_digital', descripcion: 'guía', origen: 'kratos' }, 'prueba-ventas')).id;
+  const e = (await disenarExperimento(db, { oportunidad_id: o, tipo: 'preventa', hipotesis: 'preventa', metrica: 'compras', linea_base: '0', presupuesto_usd: 0, resultado_previsto: 3, umbral_exito: 3, umbral_fracaso: 1, dias: 7 }, 'agente:jupiter')).experimento_id;
+  await db.query(`UPDATE approvals SET status = 'aprobada' WHERE scope->>'experimento' = $1`, [String(e)]);
+  await resultadoExperimento(db, e, { valor: 3, tipo_evidencia: 'compra', evidencia: '3 compras', fuente: 'stripe' }, 'agente:jupiter');
+  const r = await pedirAmpliacion(db, { usd: 100, justificacion: 'El experimento de la guía trajo 3 compras con 30 USD de anuncios; con 100 USD más se puede repetir en otro público y medir si el coste por compra se mantiene por debajo del precio.', experimento_ids: [e] }, 'agente:jupiter');
+  assert.equal(r.pedida, true); assert.equal(r.estado, 'pendiente');
 });

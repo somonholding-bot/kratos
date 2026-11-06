@@ -46,3 +46,22 @@ export async function cerrarGastoExperimento(db: Db, experimentoId: number, gast
   if (!e?.reserva_clave) return null;
   return await settle(db, e.reserva_clave, Math.max(0, Math.round(gastoRealCents)), actor);
 }
+
+// Ampliación justificada (propietario, 6-nov-2026): el presupuesto de pruebas es de 100 USD al mes, pero KRATOS puede PEDIR más si lo justifica
+// con resultados reales. Sigue decidiéndolo el propietario en el panel (un clic); aquí solo se exige que la petición tenga fundamento.
+export async function pedirAmpliacion(db: Db, i: { usd: number; justificacion: string; experimento_ids?: number[] }, actor: string) {
+  const usd = Number(i.usd), j = String(i.justificacion ?? '').trim();
+  if (!(usd >= 10 && usd <= 500)) throw new Error('Pide entre 10 y 500 USD por vez');
+  if (j.length < 120) throw new Error('La justificación debe explicar con datos por qué más dinero (≥ 120 caracteres): qué funcionó, qué se espera y cómo se medirá');
+  const exps = (await db.query(`SELECT id, status, interpretacion FROM experiments WHERE id = ANY($1) AND oportunidad_id IS NOT NULL AND resultados IS NOT NULL`, [i.experimento_ids ?? []])).rows;
+  const s = await saldoPruebas(db);
+  if (s.activa && s.disponible_cents > 2000 && !exps.length) throw new Error(`Todavía quedan ${s.disponible_cents / 100} USD del presupuesto: gástalos primero en experimentos y pide más con sus resultados`);
+  if (!exps.length && s.gastado_cents > 0) throw new Error('Cita al menos un experimento con resultados (experimento_ids) que respalde la petición');
+  const pendiente = (await db.query(`SELECT id FROM approvals WHERE status = 'pendiente' AND account_label = $1`, [CUENTA_PRUEBAS])).rows[0];
+  if (pendiente) return { pedida: false, aprobacion: pendiente.id, motivo: 'ya hay una petición pendiente en el panel' };
+  const hasta = new Date(Date.now() + 33 * 86_400_000).toISOString();
+  const a = await requestApproval(db, { kind: 'asignacion_presupuesto', accountLabel: CUENTA_PRUEBAS, maxAmountCents: Math.round(usd * 100), validDays: 14, requestedBy: actor,
+    description: `Ampliar el presupuesto de pruebas en ${usd} USD. ${j}${exps.length ? ` Respaldo: ${exps.map((e) => `experimento #${e.id} (${e.status})`).join(', ')}.` : ''}`.slice(0, 900), scope: { tipo: 'ampliacion_presupuesto_pruebas', valid_until: hasta } });
+  await audit(db, actor, 'presupuesto_pruebas.ampliacion', { aprobacion: a.id, usd });
+  return { pedida: true, aprobacion: a.id, estado: a.status, nota: 'El propietario decide en el panel (Aprobaciones).' };
+}
