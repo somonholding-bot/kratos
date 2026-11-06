@@ -25,6 +25,7 @@ import { sembrarPreguntasDP, avanzarDP } from './core/doble-perspectiva.ts';
 import { avanzarMotor } from './core/motor-dinero.ts';
 import { sincronizarVentas } from './core/stripe.ts';
 import { pedirAsignacionMensual } from './core/presupuesto-pruebas.ts';
+import { conectarDominioPendiente } from './core/paginas.ts';
 import { sincronizarRegistro } from './core/ksie-herramientas.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
@@ -117,6 +118,7 @@ if (import.meta.main) {
         await avanzarMotor(db).catch((e) => console.error('[worker] motor de dinero:', e.message));   // cada 10 min; con cupo diario
         await sincronizarVentas(db).catch((e) => console.error('[worker] ventas de Stripe:', e.message));   // ingresos reales
         await pedirAsignacionMensual(db).catch((e) => console.error('[worker] presupuesto de pruebas:', e.message));   // pide la renovación mensual (un clic)
+        await conectarDominioPendiente(db).catch((e) => console.error('[worker] dominio de las páginas:', e.message));   // en cuanto el DNS apunte
       }
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);

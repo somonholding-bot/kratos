@@ -70,8 +70,14 @@ export async function conectarDominio(db: Db, dominio: string, actor: string, g:
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d)) throw new Error('Dominio inválido');
   // Solo se conecta cuando el DNS ya apunta a GitHub: si no, las páginas dejarían de verse hasta que alguien lo arreglara
   const owner = REPO.split('/')[0].toLowerCase();
-  const apunta = await dns.resolveCname(d).then((r) => r.some((x) => x.toLowerCase().replace(/\.$/, '') === `${owner}.github.io`)).catch(() => false);
-  const instruccion = `En Namecheap → Domain List → ${d.split('.').slice(-2).join('.')} → Advanced DNS → Add New Record: tipo CNAME, Host «${d.split('.').slice(0, -2).join('.') || 'www'}», Value «${owner}.github.io.», TTL automático.`;
+  const raiz = d.split('.').length === 2;
+  const GH_IPS = ['185.199.108.153', '185.199.109.153', '185.199.110.153', '185.199.111.153'];
+  // Dominio raíz: registros A a GitHub Pages; subdominio: CNAME a <owner>.github.io
+  const apunta = raiz ? await dns.resolve4(d).then((ips) => ips.length > 0 && ips.every((ip) => GH_IPS.includes(ip))).catch(() => false)
+    : await dns.resolveCname(d).then((r) => r.some((x) => x.toLowerCase().replace(/\.$/, '') === `${owner}.github.io`)).catch(() => false);
+  const instruccion = raiz
+    ? `En Namecheap → Domain List → ${d} → Advanced DNS: borra el registro A de «@» actual y crea 4 registros A con Host «@» y valores ${GH_IPS.join(', ')}; cambia «www» a CNAME «${owner}.github.io.». No borres los registros de correo (MX / Mail Settings).`
+    : `En Namecheap → Domain List → ${d.split('.').slice(-2).join('.')} → Advanced DNS → Add New Record: tipo CNAME, Host «${d.split('.').slice(0, -2).join('.')}», Value «${owner}.github.io.», TTL automático.`;
   if (!apunta) return { dominio: d, conectado: false, falta: instruccion };
   await asegurarRepo(g);
   await g(['api', '-X', 'PUT', `repos/${REPO}/pages`, '-f', `cname=${d}`]);
@@ -90,4 +96,14 @@ export async function herramientaPaginas(db: Db, i: any, actor: string) {
   if (i.accion === 'dominio') return await conectarDominio(db, String(i.dominio ?? ''), actor);
   if (i.accion === 'lista') return (await db.query(`SELECT slug, url, titulo, oportunidad_id, creado_en, actualizado FROM paginas_web ORDER BY id DESC LIMIT 50`)).rows;
   return { error: 'Acción no válida' };
+}
+
+// El worker intenta conectar el dominio elegido por el propietario (system_state dominio_paginas) en cuanto el DNS ya apunta
+export async function conectarDominioPendiente(db: Db) {
+  const d = (await db.query(`SELECT value FROM system_state WHERE key = 'dominio_paginas'`)).rows[0]?.value;
+  const hecho = (await db.query(`SELECT value FROM system_state WHERE key = 'dominio_paginas_conectado'`)).rows[0]?.value;
+  if (!d || hecho === d) return null;
+  const r = await conectarDominio(db, String(d), 'kratos (páginas web)');
+  if (r.conectado) await db.query(`INSERT INTO system_state (key, value) VALUES ('dominio_paginas_conectado', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(d)]);
+  return r;
 }
