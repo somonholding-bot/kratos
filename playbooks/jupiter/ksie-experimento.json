@@ -1,0 +1,111 @@
+{
+  "id": "ksie-experimento",
+  "nombre": "Motor de dinero: el experimento útil más barato",
+  "version": 1,
+  "objetivo": "Diseñar el experimento más barato que demuestre si la gente PAGA por «{{nombre}}» (oportunidad #{{oportunidad_id}}), con umbrales decididos antes, y su modelo financiero.",
+  "agentes": {
+    "responsable": "jupiter"
+  },
+  "skill": "marketing-ideas",
+  "palabras_clave": [
+    "experimento de validacion",
+    "prueba de demanda"
+  ],
+  "entradas": {
+    "oportunidad_id": {
+      "tipo": "numero",
+      "descripcion": "Id de la oportunidad en KSIE",
+      "requerida": true
+    },
+    "nombre": {
+      "tipo": "texto",
+      "descripcion": "Nombre de la oportunidad",
+      "requerida": false,
+      "defecto": "",
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "saber",
+    "estrategia_ksie",
+    "WebSearch",
+    "memoria_autobiografica"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Contexto y crítica",
+      "instruccion": "Lee saber accion=briefing y estrategia_ksie accion=criticar (oportunidad_id={{oportunidad_id}}).",
+      "herramienta": "saber"
+    },
+    {
+      "n": 2,
+      "titulo": "Modelo financiero",
+      "instruccion": "Haz estrategia_ksie accion=modelo_financiero con supuestos honestos (precio, coste variable, unidades pesimista/base/optimista, costes fijos, CAC, capital). Beneficio NETO, no ingresos.",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "n": 3,
+      "titulo": "Diseñar el experimento",
+      "instruccion": "Diseña con estrategia_ksie accion=experimento el experimento útil más barato (prioriza los gratuitos: preventa veraz, página de interés, lista de espera, presupuestos de proveedor, demostración, simulación) con hipótesis, métrica de PAGO, línea base, umbral_exito y umbral_fracaso decididos ahora. Si cuesta dinero, el sistema pide la aprobación del propietario automáticamente: no lo ejecutes hasta que llegue.",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "n": 4,
+      "titulo": "Informe",
+      "instruccion": "En español sencillo: «El experimento» (qué haremos y cuánto cuesta), «Cómo sabremos si funciona» (umbrales), «Números honestos» (beneficio neto en los tres escenarios, sin porcentajes innecesarios), «Siguiente paso»."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "El experimento, Cómo sabremos si funciona, Números honestos, Siguiente paso",
+      "obligatoria": true
+    }
+  ],
+  "criterios_exito": [
+    "experimento con umbrales",
+    "modelo financiero"
+  ],
+  "verificacion": [
+    {
+      "nombre": "experimento diseñado",
+      "tipo": "ksie_experimentos_min",
+      "minimo": 1,
+      "oportunidad": "{{oportunidad_id}}"
+    },
+    {
+      "nombre": "usó el motor estratégico",
+      "tipo": "herramienta_usada",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "El experimento",
+        "Cómo sabremos si funciona",
+        "Números honestos",
+        "Siguiente paso"
+      ]
+    }
+  ],
+  "coste": {
+    "duracion_estimada_min": 20,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; los experimentos de pago piden aprobación"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "idioma_entregable": "es"
+}

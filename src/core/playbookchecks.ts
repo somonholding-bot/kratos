@@ -40,7 +40,10 @@ export const CHECK_TYPES: Record<string, string[]> = {
 };
 // Comprobaciones del motor ACD (src/core/acd.ts) y del currículo de Sol (src/core/examen.ts): aquí sus claves y su descripción,
 // para validar playbooks sin importar esos módulos; la lógica se carga al usarlas (import dinámico, sin ciclos de módulos)
-export const EXTERNAS: Record<string, { modulo: 'acd' | 'examen'; claves: string[]; texto: string }> = {
+export const EXTERNAS: Record<string, { modulo: 'acd' | 'examen' | 'ksie'; claves: string[]; texto: string }> = {
+  ksie_oportunidades_min: { modulo: 'ksie', claves: ['minimo', 'tipos_min'], texto: 'oportunidades nuevas registradas y evaluadas con rangos en KSIE' },
+  ksie_respuestas_min: { modulo: 'ksie', claves: ['minimo', 'oportunidad'], texto: 'preguntas del marco KSIE respondidas con evidencia y fuente' },
+  ksie_experimentos_min: { modulo: 'ksie', claves: ['minimo', 'oportunidad'], texto: 'experimentos diseñados con umbrales de éxito y de corte' },
   acd_preguntas_min: { modulo: 'acd', claves: ['minimo', 'campana', 'origen', 'unidad'], texto: 'preguntas registradas con la herramienta acd durante la tarea' },
   acd_hipotesis_min: { modulo: 'acd', claves: ['minimo', 'campana', 'con_arte_previo', 'con_puntos'], texto: 'hipótesis registradas con la herramienta acd durante la tarea' },
   acd_seleccionadas_min: { modulo: 'acd', claves: ['minimo', 'campana'], texto: 'hipótesis seleccionadas con criterios explícitos' },
@@ -60,6 +63,7 @@ export const EXTERNAS: Record<string, { modulo: 'acd' | 'examen'; claves: string
 for (const [k, v] of Object.entries(EXTERNAS)) CHECK_TYPES[k] = v.claves;
 async function comprobacionExterna(tipo: string): Promise<{ comprobar: (c: any, ctx: any) => Promise<{ ok: boolean; detalle: string }> } | undefined> {
   const e = EXTERNAS[tipo]; if (!e) return undefined;
+  if (e.modulo === 'ksie') return (await import('./motor-dinero.ts')).KSIE_CHECKS[tipo];
   return e.modulo === 'acd' ? (await import('./acd.ts')).ACD_CHECKS[tipo] : (await import('./examen.ts')).CURRICULO_CHECKS[tipo];
 }
 export const NUMERIC_KEYS = new Set(['caracteres', 'minimo', 'maximo', 'duracion', 'ppm_min', 'ppm_max']);

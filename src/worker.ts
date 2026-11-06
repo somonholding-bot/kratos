@@ -22,6 +22,7 @@ import { recuperarCiclos } from './core/ciclo-cognitivo.ts';
 import { sembrarPreguntas } from './core/ksie.ts';
 import { sembrarLineas } from './core/misiones.ts';
 import { sembrarPreguntasDP, avanzarDP } from './core/doble-perspectiva.ts';
+import { avanzarMotor } from './core/motor-dinero.ts';
 import { sincronizarRegistro } from './core/ksie-herramientas.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
@@ -111,6 +112,7 @@ if (import.meta.main) {
         await importarHistoria(db, 200).catch((e) => console.error('[worker] memoria C03:', e.message));
         // un ciclo dura minutos: si lleva más de 30 «en curso», el proceso que lo ejecutaba se interrumpió
         await recuperarCiclos(db, 30).catch((e) => console.error('[worker] recuperación de ciclos:', e.message));
+        await avanzarMotor(db).catch((e) => console.error('[worker] motor de dinero:', e.message));   // cada 10 min; con cupo diario
       }
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);

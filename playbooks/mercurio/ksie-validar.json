@@ -1,0 +1,111 @@
+{
+  "id": "ksie-validar",
+  "nombre": "Motor de dinero: validar una oportunidad con evidencia",
+  "version": 1,
+  "objetivo": "Responder con evidencia real las 10 preguntas críticas de la oportunidad #{{oportunidad_id}} («{{nombre}}») para saber si merece un experimento.",
+  "agentes": {
+    "responsable": "mercurio"
+  },
+  "skill": "market-research",
+  "palabras_clave": [
+    "validar oportunidad",
+    "evidencia de demanda"
+  ],
+  "entradas": {
+    "oportunidad_id": {
+      "tipo": "numero",
+      "descripcion": "Id de la oportunidad en KSIE",
+      "requerida": true
+    },
+    "nombre": {
+      "tipo": "texto",
+      "descripcion": "Nombre de la oportunidad",
+      "requerida": false,
+      "defecto": "",
+      "max_caracteres": 200
+    }
+  },
+  "herramientas": [
+    "saber",
+    "estrategia_ksie",
+    "WebSearch",
+    "WebFetch",
+    "memoria_autobiografica"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Contexto",
+      "instruccion": "Lee saber accion=briefing con el tema de la oportunidad y estrategia_ksie accion=preguntas (oportunidad_id={{oportunidad_id}}, nivel=1).",
+      "herramienta": "saber"
+    },
+    {
+      "n": 2,
+      "titulo": "Responder con evidencia",
+      "instruccion": "Investiga con WebSearch/WebFetch y responde al menos 7 de las 10 preguntas críticas con estrategia_ksie accion=responder (oportunidad_id={{oportunidad_id}}), cada una con evidencia, fuente (URL) y la etiqueta honesta: OBSERVED solo con fuente comprobable; si es estimación, ESTIMATE; si es suposición, HYPOTHESIS. Si no encuentras evidencia, déjala sin responder y dilo.",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "n": 3,
+      "titulo": "Informe",
+      "instruccion": "En español sencillo: «Respuesta corta» (¿hay gente pagando por esto?), «Lo que encontré», «Lo que no pude comprobar», «Fuentes» (URLs)."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Respuesta corta, Lo que encontré, Lo que no pude comprobar, Fuentes",
+      "obligatoria": true
+    }
+  ],
+  "criterios_exito": [
+    "≥7 preguntas críticas con evidencia",
+    "fuentes reales"
+  ],
+  "verificacion": [
+    {
+      "nombre": "preguntas respondidas",
+      "tipo": "ksie_respuestas_min",
+      "minimo": 7,
+      "oportunidad": "{{oportunidad_id}}"
+    },
+    {
+      "nombre": "usó el motor estratégico",
+      "tipo": "herramienta_usada",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Respuesta corta",
+        "Lo que encontré",
+        "Lo que no pude comprobar",
+        "Fuentes"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 5
+    }
+  ],
+  "coste": {
+    "duracion_estimada_min": 25,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "idioma_entregable": "es"
+}

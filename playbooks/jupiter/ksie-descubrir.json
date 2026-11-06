@@ -1,0 +1,116 @@
+{
+  "id": "ksie-descubrir",
+  "nombre": "Motor de dinero: descubrir oportunidades en cualquier sector",
+  "version": 1,
+  "objetivo": "Encontrar y evaluar con evidencia al menos 8 formas legales de generar beneficio neto, de al menos 5 tipos distintos, para la cartera de KSIE. Foco: {{foco}}.",
+  "agentes": {
+    "responsable": "jupiter"
+  },
+  "skill": "marketing-ideas",
+  "palabras_clave": [
+    "como generamos dinero",
+    "formas de hacer dinero",
+    "oportunidades de negocio",
+    "nuevas vias de ingreso"
+  ],
+  "entradas": {
+    "foco": {
+      "tipo": "texto",
+      "descripcion": "Qué priorizar en la búsqueda",
+      "requerida": false,
+      "defecto": "vías de ingreso de cualquier sector con evidencia de pago",
+      "max_caracteres": 300
+    }
+  },
+  "herramientas": [
+    "saber",
+    "estrategia_ksie",
+    "WebSearch",
+    "WebFetch",
+    "memoria_autobiografica",
+    "registrar_leccion"
+  ],
+  "pasos": [
+    {
+      "n": 1,
+      "titulo": "Lo que ya sabemos",
+      "instruccion": "Lee saber accion=briefing (tema: dinero) y estrategia_ksie accion=comparar y accion=fijacion. No repitas oportunidades ya descartadas ni caigas en la fijación detectada.",
+      "herramienta": "saber"
+    },
+    {
+      "n": 2,
+      "titulo": "Buscar en muchos sectores",
+      "instruccion": "Con WebSearch/WebFetch busca formas reales de ganar dinero que hoy pagan los clientes, en al menos 6 sectores: producto físico o fabricación bajo pedido, servicio local, servicio a empresas (B2B) o automatización con IA, libro o ebook, producto digital o curso, licencias o afiliación, contenido, comercialización del conocimiento de Sol, y otras. El trading u operar con capital solo se registra como oportunidad que necesita capital y aprobación del propietario; nunca se opera. Nada ilegal ni engañoso.",
+      "herramienta": "WebSearch"
+    },
+    {
+      "n": 3,
+      "titulo": "Registrar y evaluar",
+      "instruccion": "Registra al menos 8 oportunidades con estrategia_ksie accion=oportunidad_crear (tipo correcto, origen=kratos, inversion_usd, riesgo, irreversibilidad, incertidumbre) y evalúa cada una con accion=evaluar: rangos {min, base, max} de beneficio NETO mensual, capital y meses al primer ingreso, y los factores 0–1, con etiqueta ESTIMATE salvo que tengas datos observados. Para cada una responde con accion=responder al menos Q011 (cuánto paga hoy el cliente) con fuente.",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "n": 4,
+      "titulo": "Informe",
+      "instruccion": "Escribe en español sencillo, sin códigos: «Oportunidades encontradas» (una línea cada una, qué es y por qué podría dar dinero), «Las tres más prometedoras», «Qué no conviene y por qué», «Fuentes» (URLs)."
+    }
+  ],
+  "salidas": [
+    {
+      "nombre": "informe",
+      "tipo": "informe",
+      "descripcion": "Oportunidades encontradas, Las tres más prometedoras, Qué no conviene y por qué, Fuentes",
+      "obligatoria": true
+    }
+  ],
+  "criterios_exito": [
+    "≥8 oportunidades evaluadas",
+    "≥5 tipos distintos",
+    "fuentes reales"
+  ],
+  "verificacion": [
+    {
+      "nombre": "oportunidades evaluadas y diversas",
+      "tipo": "ksie_oportunidades_min",
+      "minimo": 8,
+      "tipos_min": 5
+    },
+    {
+      "nombre": "usó el motor estratégico",
+      "tipo": "herramienta_usada",
+      "herramienta": "estrategia_ksie"
+    },
+    {
+      "nombre": "secciones",
+      "tipo": "secciones",
+      "titulos": [
+        "Oportunidades encontradas",
+        "Las tres más prometedoras",
+        "Qué no conviene y por qué",
+        "Fuentes"
+      ]
+    },
+    {
+      "nombre": "fuentes en el informe",
+      "tipo": "fuentes_citadas",
+      "minimo": 6
+    }
+  ],
+  "coste": {
+    "duracion_estimada_min": 30,
+    "usd_estimado": 0,
+    "nota": "con la suscripción; sin gasto"
+  },
+  "reintentos": {
+    "max": 2
+  },
+  "aprobaciones": [],
+  "recuperacion": {
+    "si_falla_verificacion": "reintentar",
+    "si_falta_herramienta": "revisar"
+  },
+  "ubicacion_artefactos": {
+    "boveda": "Tareas"
+  },
+  "idioma_entregable": "es"
+}
