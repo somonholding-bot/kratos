@@ -38,7 +38,7 @@ export async function saberParaDecidir(db: Db, tema = '', max = 4200) {
   const L: string[] = [
     `MISIÓN: generar beneficio neto verificado (hito 10.000 $/mes) por CUALQUIER vía legal; vídeos y apps son solo dos vías entre muchas. Hoy: beneficio neto observado ${real?.beneficio_neto_observado ?? '¿?'} $ en 30 días.`,
     'DECIDE TÚ con este conocimiento; no le preguntes al propietario qué hacer. Solo él aprueba: gastar dinero fuera del presupuesto de pruebas, operar con capital, contratar o firmar algo nuevo, y borrar vídeos.',
-    `HERRAMIENTAS PARA GANAR: Stripe ${stripeKey() ? 'CONECTADO: crea productos con enlace de pago (stripe_ventas accion=crear_producto) y mide ventas reales' : 'sin conectar todavía'}; presupuesto de pruebas ${pres.activa ? `ACTIVO con ${pres.disponible_cents / 100} USD disponibles este mes (gástalo en experimentos sin preguntar, con cabeza)` : 'pendiente de aprobación del propietario'}.`,
+    `HERRAMIENTAS PARA GANAR: Stripe ${stripeKey() ? 'CONECTADO: crea productos con enlace de pago (stripe_ventas accion=crear_producto) y mide ventas reales' : 'sin conectar todavía'}; páginas web propias con paginas_web accion=publicar (GitHub Pages); presupuesto de pruebas ${pres.activa ? `ACTIVO con ${pres.disponible_cents / 100} USD disponibles este mes (gástalo en experimentos sin preguntar, con cabeza)` : 'pendiente de aprobación del propietario'}.`,
     `CÓMO PIENSA LA GENTE (investigación de Sol, niveles A–C): ${afirm.map((a) => `[${a.nivel}] ${a.texto}`).join(' · ') || 'sin afirmaciones aún'}`,
     `MÉTODOS INSTALADOS sobre la mente y la persuasión ética: skills ${skills.join(', ')}; documentos ${docs.join(', ')}.`,
     `LO QUE FUNCIONÓ: ${bien.map((b) => corta(b.c, 150)).join(' · ')}`,

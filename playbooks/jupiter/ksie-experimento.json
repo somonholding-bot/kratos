@@ -1,7 +1,7 @@
 {
   "id": "ksie-experimento",
   "nombre": "Motor de dinero: el experimento útil más barato",
-  "version": 2,
+  "version": 3,
   "objetivo": "Diseñar el experimento más barato que demuestre si la gente PAGA por «{{nombre}}» (oportunidad #{{oportunidad_id}}), con umbrales decididos antes, y su modelo financiero.",
   "agentes": {
     "responsable": "jupiter"
@@ -30,7 +30,8 @@
     "estrategia_ksie",
     "WebSearch",
     "memoria_autobiografica",
-    "stripe_ventas"
+    "stripe_ventas",
+    "paginas_web"
   ],
   "pasos": [
     {
@@ -48,7 +49,7 @@
     {
       "n": 3,
       "titulo": "Diseñar el experimento",
-      "instruccion": "Diseña con estrategia_ksie accion=experimento el experimento útil más barato (prioriza los gratuitos: preventa veraz, página de interés, lista de espera, presupuestos de proveedor, demostración, simulación) con hipótesis, métrica de PAGO, línea base, umbral_exito y umbral_fracaso decididos ahora. Si cuesta dinero, el sistema pide la aprobación del propietario automáticamente: no lo ejecutes hasta que llegue. Si el experimento es una preventa o una venta de prueba, crea el producto con stripe_ventas accion=crear_producto (preventa=true si aún no existe, entrega honesta) y usa ese enlace de pago: así las ventas se miden solas. Si cuesta dinero y cabe en el presupuesto de pruebas, se paga de ahí sin preguntar.",
+      "instruccion": "Diseña con estrategia_ksie accion=experimento el experimento útil más barato (prioriza los gratuitos: preventa veraz, página de interés, lista de espera, presupuestos de proveedor, demostración, simulación) con hipótesis, métrica de PAGO, línea base, umbral_exito y umbral_fracaso decididos ahora. Si cuesta dinero, el sistema pide la aprobación del propietario automáticamente: no lo ejecutes hasta que llegue. Si el experimento es una preventa o una venta de prueba, crea el producto con stripe_ventas accion=crear_producto (preventa=true si aún no existe, entrega honesta) y usa ese enlace de pago: así las ventas se miden solas. Si cuesta dinero y cabe en el presupuesto de pruebas, se paga de ahí sin preguntar. Si necesitas una página para el experimento, publícala con paginas_web accion=publicar (el botón, el enlace de pago de Stripe) y usa su URL.",
       "herramienta": "estrategia_ksie"
     },
     {
