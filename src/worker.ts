@@ -26,6 +26,7 @@ import { avanzarMotor } from './core/motor-dinero.ts';
 import { sincronizarVentas } from './core/stripe.ts';
 import { pedirAsignacionMensual } from './core/presupuesto-pruebas.ts';
 import { conectarDominioPendiente } from './core/paginas.ts';
+import { sincronizar as sincronizarCorreo } from './core/correo-kratos.ts';
 import { sincronizarRegistro } from './core/ksie-herramientas.ts';
 import { afterPlaybookTask, onPlaybookVerificationFailed, recordPlaybookOutcome, syncPlaybooksFromFiles } from './core/playbooks.ts';
 
@@ -119,6 +120,7 @@ if (import.meta.main) {
         await sincronizarVentas(db).catch((e) => console.error('[worker] ventas de Stripe:', e.message));   // ingresos reales
         await pedirAsignacionMensual(db).catch((e) => console.error('[worker] presupuesto de pruebas:', e.message));   // pide la renovación mensual (un clic)
         await conectarDominioPendiente(db).catch((e) => console.error('[worker] dominio de las páginas:', e.message));   // en cuanto el DNS apunte
+        await sincronizarCorreo(db).catch((e) => console.error('[worker] correo de KRATOS:', e.message));   // bandeja de streetlumos
       }
       let r = await tick(db, workerId);
       while (r === 'ejecutada' && !stopping) r = await tick(db, workerId);
