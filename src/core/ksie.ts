@@ -4,6 +4,7 @@ import type { Db } from '../db.ts';
 import { ROOT } from '../config.ts';
 import { audit } from './state.ts';
 import { requestApproval } from './approvals.ts';
+import { reservarExperimento, cerrarGastoExperimento } from './presupuesto-pruebas.ts';
 import { construirAutomodelo } from './automodelo.ts';
 import { registrarDecision } from './metacognicion.ts';
 import { buscarMemoria, recordar } from './autobiografia.ts';
@@ -218,15 +219,19 @@ export async function disenarExperimento(db: Db, i: { oportunidad_id: number; ti
   // Predicción C05 registrada antes de observar
   const sd = Math.max(Math.abs(i.umbral_exito - i.umbral_fracaso) / 2, 1e-6);
   const p = await predecir(db, { contexto: `ksie:exp:${e.id}`, clave: i.metrica, prior: { media: Number(i.resultado_previsto), varianza: sd ** 2, ruido: sd / 2 }, hipotesis: i.hipotesis, experimento_ref: `experiments#${e.id}` }, actor);
-  let aprobacion: any = null;
-  if (pago || t.externo) aprobacion = await requestApproval(db, { businessId: negocio, kind: pago ? 'asignacion_presupuesto' : 'accion_externa', description: `Experimento KSIE #${e.id} (${i.tipo}) para «${o.nombre}»: ${i.hipotesis}`.slice(0, 500),
+  let aprobacion: any = null, reservado: any = null;
+  // Gasto dentro del presupuesto mensual de pruebas que el propietario ya aprobó: se reserva y no se le pregunta otra vez
+  if (pago && Number(i.presupuesto_usd) > 0) reservado = await reservarExperimento(db, e.id, Math.round(Number(i.presupuesto_usd) * 100), actor);
+  // con el presupuesto mensual ya aprobado por el propietario no se pide otra aprobación: esa asignación es la autorización
+  if (reservado?.ok) await db.query(`UPDATE experiments SET status = 'propuesto' WHERE id = $1`, [e.id]);
+  else if (pago || t.externo) aprobacion = await requestApproval(db, { businessId: negocio, kind: pago ? 'asignacion_presupuesto' : 'accion_externa', description: `Experimento KSIE #${e.id} (${i.tipo}) para «${o.nombre}»: ${i.hipotesis}`.slice(0, 500),
     scope: { tipo: 'experimento_ksie', experimento: e.id }, maxAmountCents: pago ? Math.round(Number(i.presupuesto_usd || 0) * 100) : null, requestedBy: actor });
   await db.query(`UPDATE experiments SET approval_id = $2, prediccion_id = $3, status = CASE WHEN $4::text IN ('aprobada','ejecutada') THEN 'propuesto' ELSE status END WHERE id = $1`, [e.id, aprobacion?.id ?? null, p.id, aprobacion?.status ?? null]);
   await db.query(`UPDATE ksie_oportunidades SET estado = CASE WHEN estado IN ('candidata','investigando') THEN 'experimentando' ELSE estado END, updated_at = now() WHERE id = $1`, [o.id]);
-  return { experimento_id: e.id, prediccion_id: p.id, requiere_autorizacion: pago || t.externo, aprobacion: aprobacion ? { id: aprobacion.id, estado: aprobacion.status, motivo: pago ? 'gasto: lo decide el propietario' : 'acción externa' } : null,
+  return { experimento_id: e.id, prediccion_id: p.id, requiere_autorizacion: (pago && !reservado?.ok) || t.externo, presupuesto_pruebas: reservado, aprobacion: aprobacion ? { id: aprobacion.id, estado: aprobacion.status, motivo: pago ? 'gasto: lo decide el propietario' : 'acción externa' } : null,
     nota: pago && aprobacion?.status === 'pendiente' ? 'No se ejecuta hasta que el propietario lo apruebe en el panel' : undefined };
 }
-export async function resultadoExperimento(db: Db, id: number, i: { valor: number; tipo_evidencia: string; evidencia: string; fuente: string }, actor: string) {
+export async function resultadoExperimento(db: Db, id: number, i: { valor: number; tipo_evidencia: string; evidencia: string; fuente: string; gasto_real_usd?: number }, actor: string) {
   const e = (await db.query(`SELECT e.*, a.status AS aprobacion FROM experiments e LEFT JOIN approvals a ON a.id = e.approval_id WHERE e.id = $1`, [id])).rows[0];
   if (!e) throw new Error(`No existe el experimento ${id}`);
   if (e.resultados) throw new Error(`El experimento ${id} ya tiene resultados`);
@@ -238,6 +243,7 @@ export async function resultadoExperimento(db: Db, id: number, i: { valor: numbe
   const veredicto = !cuenta ? 'no_concluyente' : v >= Number(e.umbral_exito) ? 'exito' : v <= Number(e.umbral_fracaso) ? 'fracaso' : 'no_concluyente';
   const interpretacion = !cuenta ? `«${i.tipo_evidencia}» no es una compra: la métrica «${e.metric}» exige ${[...EVIDENCIA_PAGO].join('/')}` : `${e.metric} = ${v} (éxito ≥ ${e.umbral_exito}, corte ≤ ${e.umbral_fracaso}) → ${veredicto}`;
   const siguiente = veredicto === 'exito' ? 'Pasar a revisión de ejecución (nivel 3, crítica independiente)' : veredicto === 'fracaso' ? 'Descartar o reformular con evidencia nueva; no repetir el mismo experimento' : 'Repetir con evidencia de pago o ampliar la muestra';
+  if (e.reserva_clave) await cerrarGastoExperimento(db, id, i.gasto_real_usd != null ? Number(i.gasto_real_usd) * 100 : Number(e.budget_cents ?? 0), actor);
   const o = e.prediccion_id && cuenta ? await observar(db, e.prediccion_id, v, `experiments#${id}: ${i.fuente}`, actor) : null;
   await db.query(`UPDATE experiments SET resultados = $2, status = $3, result = $4, interpretacion = $5, siguiente_decision = $6, decision = $7 WHERE id = $1`,
     [id, JSON.stringify({ valor: v, tipo_evidencia: i.tipo_evidencia, evidencia: i.evidencia, fuente: i.fuente, cuenta }), veredicto, JSON.stringify({ valor: v }), interpretacion, siguiente, veredicto]);
@@ -409,7 +415,7 @@ export const KSIE_TOOL = {
   input_schema: { type: 'object', properties: { accion: { type: 'string' }, oportunidad_id: { type: 'number' }, experimento_id: { type: 'number' }, seleccion_id: { type: 'number' }, nivel: { type: 'number' }, nombre: { type: 'string' }, tipo: { type: 'string' }, descripcion: { type: 'string' }, origen: { type: 'string' },
     sector: { type: 'string' }, incertidumbre: { type: 'number' }, inversion_usd: { type: 'number' }, riesgo: { type: 'number' }, irreversibilidad: { type: 'number' }, pregunta_id: { type: 'string' }, respuesta: { type: 'string' }, evidencia: { type: 'string' }, fuente: { type: 'string' }, etiqueta: { type: 'string' },
     confianza: { type: 'number' }, verificado_por: { type: 'string' }, evaluacion: { type: 'object' }, hipotesis: { type: 'string' }, metrica: { type: 'string' }, linea_base: { type: 'string' }, presupuesto_usd: { type: 'number' }, resultado_previsto: { type: 'number' }, umbral_exito: { type: 'number' },
-    umbral_fracaso: { type: 'number' }, dias: { type: 'number' }, valor: { type: 'number' }, tipo_evidencia: { type: 'string' }, supuestos: { type: 'object' }, necesidad: { type: 'string' }, operaciones: { type: 'array', items: { type: 'string' } }, herramienta: { type: 'string' }, resultado: { type: 'string' }, detalle: { type: 'string' }, objetivo: { type: 'string' } }, required: ['accion'] },
+    umbral_fracaso: { type: 'number' }, dias: { type: 'number' }, valor: { type: 'number' }, gasto_real_usd: { type: 'number' }, tipo_evidencia: { type: 'string' }, supuestos: { type: 'object' }, necesidad: { type: 'string' }, operaciones: { type: 'array', items: { type: 'string' } }, herramienta: { type: 'string' }, resultado: { type: 'string' }, detalle: { type: 'string' }, objetivo: { type: 'string' } }, required: ['accion'] },
 };
 export async function herramientaKsie(db: Db, i: any, actor: string) {
   const id = Number(i.oportunidad_id);

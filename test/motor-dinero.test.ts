@@ -22,7 +22,7 @@ const ev = { beneficio_neto_mensual: { min: 0, base: 1500, max: 5000 }, capital_
 
 test('el saber reúne misión, límites, lecciones y cartera; no limita a vídeos ni apps', async () => {
   const s = await saberParaDecidir(db, 'libro sobre sueños lúcidos');
-  assert.match(s, /CUALQUIER vía legal/); assert.match(s, /DECIDE TÚ/); assert.match(s, /aprueba: gastar dinero, operar con capital/);
+  assert.match(s, /CUALQUIER vía legal/); assert.match(s, /DECIDE TÚ/); assert.match(s, /aprueba: gastar dinero fuera del presupuesto de pruebas, operar con capital/); assert.match(s, /Stripe/);
   assert.match(s, /LO QUE FUNCIONÓ/); assert.match(s, /CARTERA/);
   assert.ok((await saberParaDecidir(db, '', 1600)).length <= 1600);
 });

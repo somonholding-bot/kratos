@@ -83,7 +83,8 @@ export async function routeLocal(db: Db, channel: 'texto' | 'voz', text: string)
   const t = text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^\W*((hey|oye|ey)\W+)?kratos\b\W*/, '');
   // Preguntas sobre la naturaleza (doble perspectiva Hermes–Einstein): las responde Claude, que además encarga la investigación a Sol
   const NATURALEZA = /\b(hermes|trismegisto|einstein|hermetic\w*|alquimi\w*|kybalion|cabala|bardon|corpus hermeticum|tabla esmeralda|materia|conciencia|tiempo|universo|leyes de la naturaleza|realidad|ilusion|transformacion interior|perspectiva)\b/;
-  if (ACTION.test(t) || DATA.test(t) || NATURALEZA.test(t) || t.length > (channel === 'voz' ? 400 : 600)) return false;
+  // Orden del propietario (5-nov-2026): el cerebro gratis solo para charla corta; todo lo que tenga sustancia lo piensa Claude
+  if (ACTION.test(t) || DATA.test(t) || NATURALEZA.test(t) || t.length > 120) return false;
   return localAvailable();
 }
 

@@ -270,13 +270,16 @@ async function registrarModelo(db: Db, i: any, actor: string) {
   const codigo = String(i.codigo ?? '');
   if (codigo.trim().length < 40 || codigo.length > 200_000) throw new Error('codigo: programa Python completo (40 a 200.000 caracteres)');
   if (!codigo.includes('salida.json')) throw new Error('El código debe escribir salida.json según el contrato (ver la descripción de la herramienta)');
+  // Datos públicos reales (si los hay): deben estar descargados por KRATOS; el sandbox sigue sin red
+  const datasets = Array.isArray(i.datasets) ? i.datasets.map(String).slice(0, 400) : [];
+  if (datasets.length) await (await import('./datos-publicos.ts')).resolver(db, datasets);
   const c = { descripcion: txt(i.descripcion, 'descripcion', 40), variables: txt(i.variables, 'variables', 10), predicciones: txt(i.predicciones, 'predicciones', 30), falsacion: txt(i.falsacion, 'falsacion', 30), baseline: txt(i.baseline, 'baseline', 20) };
   return withTx(db, async (tx) => {
     await tx.query(`SELECT 1 FROM acd_hipotesis WHERE id = $1 FOR UPDATE`, [h.id]);
     const version = Number((await tx.query(`SELECT coalesce(max(version), 0) AS v FROM acd_modelos WHERE hipotesis_id = $1`, [h.id])).rows[0].v) + 1;
-    const m = (await tx.query(`INSERT INTO acd_modelos (hipotesis_id, version, tipo, descripcion, variables, supuestos, predicciones, falsacion, baseline, codigo, lenguaje, sha256, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'python',$11,$12) RETURNING id, sha256`,
-      [h.id, version, tipo, c.descripcion, c.variables, opt(i.supuestos, 3000), c.predicciones, c.falsacion, c.baseline, codigo, sha(codigo), actor])).rows[0];
+    const m = (await tx.query(`INSERT INTO acd_modelos (hipotesis_id, version, tipo, descripcion, variables, supuestos, predicciones, falsacion, baseline, codigo, lenguaje, sha256, created_by, datasets)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'python',$11,$12,$13) RETURNING id, sha256`,
+      [h.id, version, tipo, c.descripcion, c.variables, opt(i.supuestos, 3000), c.predicciones, c.falsacion, c.baseline, codigo, sha(codigo), actor, datasets])).rows[0];
     let estado = h.estado;
     if (['propuesta', 'seleccionada'].includes(h.estado)) { await cambiarEstado(tx, h, 'formalizada', `modelo #${m.id} v${version} (${tipo})`, actor, { modelo: m.id }); estado = 'formalizada'; }
     await audit(tx, actor, 'acd.modelo', { id: m.id, hipotesis: h.id, version, sha256: m.sha256 });
@@ -394,6 +397,16 @@ async function correr(db: Db, m: any, e: any, actor: string, opts: OpcionesEjecu
   if (fs.existsSync(dir) && fs.readdirSync(dir).length) { await cerrar('error', `la carpeta ${dir} ya existe con archivos: no se sobrescriben salidas anteriores`); throw new Error(`La carpeta ${dir} ya existe: no se sobrescriben salidas anteriores`); }
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'modelo.py'), m.codigo);
+  // Datos públicos reales: KRATOS copia los archivos ya descargados (con su sha256 comprobado) a datos/; el script solo los lee
+  const datosUsados: { nombre: string; sha256: string }[] = [];
+  if (m.datasets?.length) {
+    const ds = await (await import('./datos-publicos.ts')).resolver(db, m.datasets);
+    fs.mkdirSync(path.join(dir, 'datos'));
+    for (const d of ds) {
+      if (shaFile(d.ruta) !== d.sha256) { await cerrar('error', `el dataset ${d.nombre} no coincide con su sha256: no se usa`, { carpeta: dir }); throw new Error(`Dataset ${d.nombre} alterado`); }
+      fs.copyFileSync(d.ruta, path.join(dir, 'datos', d.archivo)); datosUsados.push({ nombre: d.nombre, sha256: d.sha256 });
+    }
+  }
   if (shaFile(path.join(dir, 'modelo.py')) !== m.sha256) { await cerrar('error', 'modelo.py escrito no coincide con el sha256 del modelo', { carpeta: dir }); throw new Error('No se pudo escribir modelo.py intacto'); }
   const pyReal = fs.realpathSync(py), venv = path.resolve(path.dirname(py), '..'), pyBase = path.resolve(path.dirname(pyReal), '..');
   const args = ['-n', '19', '/usr/bin/sandbox-exec', '-f', SANDBOX, '-D', `DIR=${dir}`, '-D', `HOME_REAL=${fs.realpathSync(os.homedir())}`, '-D', `PYENV=${fs.realpathSync(venv)}`, '-D', `PYBASE=${pyBase}`, '-D', `PYREAL=${pyReal}`, py, '-I', '-B', 'modelo.py'];
@@ -454,6 +467,7 @@ async function correr(db: Db, m: any, e: any, actor: string, opts: OpcionesEjecu
     try { salida = JSON.parse(leerTexto(fSalida, 20 * 1024 * 1024) ?? ''); } catch { salida = undefined; }
     const v = salida === undefined ? { ok: false, errores: ['salida.json no es JSON válido (¿NaN o Infinity?)'] } : validarSalida(salida);
     if (!v.ok) { estado = 'contrato_invalido'; veredicto = 'invalido'; detalle = `contrato roto: ${v.errores.join('; ')}`; }
+    else if (['observado', 'mixto'].includes(salida.datos) && !datosUsados.length) { estado = 'contrato_invalido'; veredicto = 'invalido'; detalle = 'declara datos observados pero el modelo no usó ningún dataset público registrado (datasets): no se acepta'; }
     else { comparacion = comparar(salida.metricas, opts.margen ?? MARGEN); veredicto = comparacion.veredicto; }
   }
   const preds = estado === 'ok' && Array.isArray(salida.predicciones) ? salida.predicciones.slice(0, 200) : [];
@@ -462,7 +476,7 @@ async function correr(db: Db, m: any, e: any, actor: string, opts: OpcionesEjecu
     : { error: detalle, stderr: cola(path.join(dir, 'stderr.txt'), 1500) };
   const meta = { experimento_id: e.id, modelo_id: m.id, hipotesis_id: m.h_id, version_modelo: m.version, comando: cmd, python: pyReal, sandbox: SANDBOX, sha256_sandbox: shaFile(SANDBOX),
     inicio: new Date(t0).toISOString(), fin: new Date().toISOString(), duracion_ms, timeout_s: timeoutS, limite_cpu_s: cpuS, limite_memoria_mb: memMb, exit_code: fin.code, senal: fin.signal, estado, detalle, datos: salida?.datos ?? null,
-    sha256_codigo: m.sha256, sha256_salida: shaSalida, sha256_stdout: shaFile(path.join(dir, 'stdout.txt')), sha256_stderr: shaFile(path.join(dir, 'stderr.txt')), comparacion, veredicto, ejecutado_por: actor,
+    sha256_codigo: m.sha256, datasets: datosUsados, sha256_salida: shaSalida, sha256_stdout: shaFile(path.join(dir, 'stdout.txt')), sha256_stderr: shaFile(path.join(dir, 'stderr.txt')), comparacion, veredicto, ejecutado_por: actor,
     aviso: 'Experimento computacional: la comparación la hizo el código de KRATOS. Datos «sintetico» = simulados, no observados. Un resultado a favor no confirma ninguna ley física.' };
   escribirNuevo(path.join(dir, 'meta.json'), JSON.stringify(meta, null, 1));
   let integ = integridad({ carpeta: dir, sha256_codigo: m.sha256, sha256_salida: shaSalida, estado });
@@ -1038,10 +1052,10 @@ export const ACD_TOOL = {
     + 'imaginar (pregunta_id, titulo, enunciado, mecanismo, supuestos, campana): rechaza las casi duplicadas de otra hipótesis. '
     + 'arte_previo (hipotesis_id, arte_previo, fuente_ids, novedad conocida|variante|posiblemente_nueva): posiblemente_nueva exige ≥2 fuentes verificadas consultadas. '
     + `puntuar (hipotesis_id, importancia, novedad_puntos, coherencia, testabilidad, coste, evidencia; todos 0-1): el código calcula ${FORMULA} ranking (n, campana). seleccionar (hipotesis_ids, criterios). `
-    + 'registrar_modelo (hipotesis_id, tipo ecuaciones|simulacion|algoritmo|causal|estadistico, descripcion, variables, supuestos, predicciones, falsacion, baseline, codigo Python). '
+    + 'registrar_modelo (hipotesis_id, tipo ecuaciones|simulacion|algoritmo|causal|estadistico, descripcion, variables, supuestos, predicciones, falsacion, baseline, codigo Python, datasets opcional: ["gcp:AAAA-MM-DD", …] descargados antes con datos_publicos; aparecen en la carpeta datos/ del experimento y permiten datos="observado"). '
     + 'ejecutar (modelo_id, timeout_s ≤600, por defecto 120): ejecuta el código DE VERDAD en un sandbox sin red, sin escribir fuera de su carpeta, sin leer la carpeta personal y sin procesos hijos; guarda modelo.py, salida.json, stdout, stderr y meta.json con sha256. '
     + 'CONTRATO: el script escribe en su carpeta de trabajo salida.json = {"datos":"sintetico|observado|mixto|ninguno","descripcion":"…","metricas":{"nombre":{"modelo":número,"baseline":número,"mejor":"menor|mayor"}},"predicciones":[…]} '
-    + `(de 1 a ${MAX_METRICAS} métricas; solo numpy, scipy, sympy, pandas, networkx; sin red, sin archivos externos —los datos observados van dentro del código—, sin subprocesos y con memoria limitada; salida.json, stdout.txt y stderr.txt deben quedar como archivos normales). El CÓDIGO de KRATOS, no el script, compara: a_favor si gana al baseline en todas las métricas por más de un 5 % relativo, `
+    + `(de 1 a ${MAX_METRICAS} métricas; solo numpy, scipy, sympy, pandas, networkx; sin red, sin archivos externos salvo los datasets públicos que KRATOS copia a datos/ (datos observados),  sin subprocesos y con memoria limitada; salida.json, stdout.txt y stderr.txt deben quedar como archivos normales). El CÓDIGO de KRATOS, no el script, compara: a_favor si gana al baseline en todas las métricas por más de un 5 % relativo, `
     + 'en_contra si pierde en todas, no_concluyente en otro caso, invalido si se rompe el contrato. '
     + 'criticar (objeto hipotesis|modelo|experimento, objeto_id, veredicto aceptar|revisar|rechazar, objeciones, puntos): solo un agente independiente, nunca Sol ni quien lo generó. '
     + 'evolucionar (padres, operacion modificar|combinar|refinar, titulo, enunciado, mecanismo, motivo): guarda el linaje; los padres quedan revisada. '
@@ -1057,7 +1071,7 @@ export const ACD_TOOL = {
       hipotesis_ids: { type: 'array', items: I }, criterios: S, tipo: { type: 'string', enum: TIPOS_MODELO }, descripcion: S, variables: S, predicciones: S, falsacion: S, baseline: S, codigo: S,
       modelo_id: I, timeout_s: { type: 'integer', minimum: 1, maximum: TIMEOUT_MAX }, objeto: { type: 'string', enum: ['pregunta', 'hipotesis', 'modelo', 'experimento'] }, objeto_id: I,
       veredicto: { type: 'string', enum: ['aceptar', 'revisar', 'rechazar'] }, objeciones: S, puntos: { type: 'object', additionalProperties: true }, tarea_id: I,
-      padres: { type: 'array', items: I }, operacion: { type: 'string', enum: ['modificar', 'combinar', 'refinar'] }, estado: { type: 'string', enum: DECISIONES },
+      datasets: { type: 'array', items: S }, padres: { type: 'array', items: I }, operacion: { type: 'string', enum: ['modificar', 'combinar', 'refinar'] }, estado: { type: 'string', enum: DECISIONES },
     },
   },
 };
