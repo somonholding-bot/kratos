@@ -8,7 +8,8 @@ import { capacidad, construirAutomodelo, nivel, puedo, quienHace, registrarPrueb
 
 let db: Db;
 before(async () => { db = createPool(); await migrate(db, () => {}); await syncToolRegistry(db); await sincronizarCapacidades(db);
-  await db.query(`UPDATE cog_capacidades SET pruebas_ok = 0, pruebas_fallo = 0, ultima_ok = NULL, ultimo_fallo = NULL, detalle_fallo = NULL WHERE capacidad = 'herramienta:buscar_notas'`); });
+  await db.query(`INSERT INTO cog_capacidades (capacidad, tipo, descripcion, instalada, disponible) VALUES ('herramienta:prueba_c01', 'herramienta', 'capacidad sintética de prueba', true, true) ON CONFLICT (capacidad) DO UPDATE SET pruebas_ok = 0, pruebas_fallo = 0, ultima_ok = NULL, ultimo_fallo = NULL, detalle_fallo = NULL, instalada = true, disponible = true`);
+  await db.query(`DELETE FROM cog_capacidad_pruebas WHERE capacidad = 'herramienta:prueba_c01'`); });
 after(async () => { await db.query(`DELETE FROM cog_capacidad_pruebas WHERE origen = 'prueba'`); await db.end(); });
 
 test('una herramienta inexistente no existe; una registrada sin pruebas está disponible, no probada', async () => {
@@ -26,14 +27,14 @@ test('Q-LAB y CUDA se reconocen como ausentes; el motor ACD existe', async () =>
 });
 
 test('autoevaluación incorrecta: un éxito antiguo no tapa un fallo posterior y la confianza baja', async () => {
-  const cap = 'herramienta:buscar_notas';
+  const cap = 'herramienta:prueba_c01';
   await registrarPrueba(db, cap, true, 'búsqueda devolvió 3 notas', 'prueba', new Date(Date.now() - 3600_000));
   const antes = await capacidad(db, cap);
   assert.equal(antes.nivel, 'probada');
   await registrarPrueba(db, cap, false, 'la bóveda no respondió', 'prueba');
   const despues = await capacidad(db, cap);
   assert.equal(despues.nivel, 'degradada'); assert.ok(despues.confianza < antes.confianza);
-  const r = await puedo(db, ['buscar_notas']);
+  const r = await puedo(db, ['prueba_c01']);
   assert.equal(r.puedo, false); assert.match(r.respuesta, /No puedo/);
   await registrarPrueba(db, cap, true, 'búsqueda repetida con éxito', 'prueba');
   assert.equal((await capacidad(db, cap)).nivel, 'probada');
